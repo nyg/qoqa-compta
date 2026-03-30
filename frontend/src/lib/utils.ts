@@ -15,7 +15,7 @@ export function formatCHF(amount: number): string {
   }).format(amount);
 }
 
-/** Format an ISO date string to a localised short date (e.g. "15 janv. 2024"). */
+/** Format an ISO date string to a localised short date using fr-CH locale. */
 export function formatDate(isoDate: string): string {
   return new Intl.DateTimeFormat("fr-CH", {
     year: "numeric",

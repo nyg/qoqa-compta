@@ -20,23 +20,23 @@ interface StatsCardsProps {
 export function StatsCards({ stats }: StatsCardsProps) {
   const cards = [
     {
-      title: "Total dépensé",
+      title: "Total spent",
       value: formatCHF(stats.total_spent),
-      description: "Toutes commandes confondues",
+      description: "All orders combined",
       icon: CreditCard,
       color: "text-blue-500",
     },
     {
-      title: "Commandes",
+      title: "Orders",
       value: stats.order_count.toString(),
-      description: "Nombre de commandes passées",
+      description: "Total number of orders placed",
       icon: ShoppingBag,
       color: "text-green-500",
     },
     {
-      title: "Moyenne / commande",
+      title: "Average / order",
       value: formatCHF(stats.average_per_order),
-      description: "Montant moyen par commande",
+      description: "Average amount per order",
       icon: TrendingUp,
       color: "text-orange-500",
     },
