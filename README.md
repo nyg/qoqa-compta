@@ -1,31 +1,31 @@
 # qoqa-compta
 
-> Outil open-source personnel pour télécharger automatiquement les factures PDF de Qoqa.ch, les parser, les stocker dans PostgreSQL (Neon.tech) et afficher un beau dashboard de statistiques de dépenses.
+> Personal open-source tool to automatically download PDF invoices from Qoqa.ch, parse them, store them in PostgreSQL (Neon.tech), and display a spending dashboard.
 
 ---
 
-## Table des matières
+## Table of contents
 
-- [Aperçu](#aperçu)
-- [Structure du projet](#structure-du-projet)
-- [Prérequis](#prérequis)
-- [Variables d'environnement](#variables-denvironnement)
-- [Crawler Python](#crawler-python)
-  - [Installation](#installation-crawler)
-  - [Lancer le crawler](#lancer-le-crawler)
-- [Frontend Next.js](#frontend-nextjs)
-  - [Installation](#installation-frontend)
-  - [Lancer le frontend](#lancer-le-frontend)
-- [Base de données (Neon.tech)](#base-de-données-neontech)
-- [Contribuer](#contribuer)
+- [Overview](#overview)
+- [Project structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Environment variables](#environment-variables)
+- [Python crawler](#python-crawler)
+  - [Installation](#crawler-installation)
+  - [Running the crawler](#running-the-crawler)
+- [Next.js frontend](#nextjs-frontend)
+  - [Installation](#frontend-installation)
+  - [Running the frontend](#running-the-frontend)
+- [Database (Neon.tech)](#database-neontech)
+- [Contributing](#contributing)
 
 ---
 
-## Aperçu
+## Overview
 
 ```
 ┌──────────────────┐     PDFs      ┌──────────────────┐    SQL     ┌──────────────────┐
-│   Qoqa.ch        │ ──────────►   │  Crawler Python  │ ────────►  │  PostgreSQL      │
+│   Qoqa.ch        │ ──────────►   │  Python Crawler  │ ────────►  │  PostgreSQL      │
 │  (via CDP/Chrome)│               │  (SeleniumBase)  │            │  (Neon.tech)     │
 └──────────────────┘               └──────────────────┘            └────────┬─────────┘
                                                                             │
@@ -38,50 +38,48 @@
 
 ---
 
-## Structure du projet
+## Project structure
 
 ```
 qoqa-compta/
-├── .env.example              # Variables d'environnement racine
 ├── .gitignore
 ├── renovate.json
 ├── README.md
-├── crawler/                  # Code Python
+├── crawler/                  # Python code
 │   ├── .env.example
 │   ├── requirements.txt
 │   ├── crawler/
 │   │   ├── __init__.py
-│   │   ├── __main__.py       # Point d'entrée CLI
-│   │   ├── sync.py           # Logique principale de synchronisation
-│   │   ├── browser.py        # Gestion du navigateur (SeleniumBase CDP)
-│   │   ├── db.py             # Connexion et session SQLAlchemy
+│   │   ├── __main__.py       # CLI entry point
+│   │   ├── sync.py           # Main synchronisation logic
+│   │   ├── browser.py        # Browser management (SeleniumBase CDP)
+│   │   ├── db.py             # SQLAlchemy connection and session
 │   │   ├── models/
 │   │   │   ├── __init__.py
-│   │   │   └── order.py      # Modèle SQLAlchemy QoqaOrder
+│   │   │   └── order.py      # SQLAlchemy QoqaOrder model
 │   │   └── utils/
 │   │       ├── __init__.py
-│   │       └── pdf_parser.py # Parsing PDF avec pdfplumber
-└── frontend/                 # Application Next.js
+│   │       └── pdf_parser.py # PDF parsing with pdfplumber
+└── frontend/                 # Next.js application
     ├── .env.example
     ├── package.json
     ├── tsconfig.json
-    ├── tailwind.config.ts
     ├── next.config.ts
     ├── components.json       # shadcn/ui config
     └── src/
         ├── app/
         │   ├── layout.tsx
-        │   ├── page.tsx      # Dashboard principal
+        │   ├── page.tsx      # Main dashboard
         │   └── api/
         │       └── orders/
         │           └── route.ts
         ├── components/
-        │   ├── ui/           # shadcn/ui auto-générés
+        │   ├── ui/           # shadcn/ui auto-generated
         │   ├── stats-cards.tsx
         │   ├── spending-chart.tsx
         │   └── orders-table.tsx
         ├── lib/
-        │   ├── db.ts         # Connexion Neon serverless
+        │   ├── db.ts         # Neon serverless connection
         │   └── utils.ts
         └── types/
             └── order.ts
@@ -89,106 +87,112 @@ qoqa-compta/
 
 ---
 
-## Prérequis
+## Prerequisites
 
 - **Python 3.11+**
-- **Node.js 20+** et **pnpm** (ou npm/yarn)
-- **Google Chrome** installé (le crawler réutilise votre profil existant)
-- Un compte **Neon.tech** avec une base PostgreSQL (niveau gratuit suffisant)
-- Un compte **Qoqa.ch** avec des commandes
+- **Node.js 20+** and **pnpm**
+- **Google Chrome** installed (the crawler reuses your existing profile)
+- A **Neon.tech** account with a PostgreSQL database (free tier is sufficient)
+- A **Qoqa.ch** account with orders
 
 ---
 
-## Variables d'environnement
+## Environment variables
 
-Copiez `.env.example` à la racine vers `.env` et adaptez les valeurs :
+### Crawler
 
-```bash
-cp .env.example .env
-```
+Copy `crawler/.env.example` to `crawler/.env` and fill in:
 
-| Variable            | Description                                               | Exemple                                                                              |
-| ------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `DATABASE_URL`      | URL de connexion PostgreSQL (Neon.tech)                   | `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/qoqa?sslmode=require`     |
-| `CHROME_USER_DATA_DIR` | Chemin vers le profil Chrome principal               | `~/.config/google-chrome` (Linux) ou `~/Library/Application Support/Google/Chrome` (macOS) |
-| `PDF_DOWNLOAD_DIR`  | Dossier de téléchargement des PDFs                        | `./crawler/pdfs`                                                                     |
+| Variable               | Description                              | Example                                                                          |
+| ---------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
+| `DATABASE_URL`         | PostgreSQL connection URL (Neon.tech)    | `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/qoqa?sslmode=require` |
+| `CHROME_USER_DATA_DIR` | Path to your main Chrome profile         | `~/Library/Application Support/Google/Chrome` (macOS)                            |
+| `PDF_DOWNLOAD_DIR`     | PDF download folder                      | `./pdfs`                                                                         |
 
-> **Note Neon.tech** : votre `DATABASE_URL` se trouve dans le dashboard Neon → votre projet → *Connection Details* → choisir le driver `psycopg`.
+### Frontend
+
+Copy `frontend/.env.example` to `frontend/.env.local` and fill in:
+
+| Variable       | Description                              | Example                                                                          |
+| -------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
+| `DATABASE_URL` | PostgreSQL connection URL (Neon.tech)    | `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/qoqa?sslmode=require` |
+
+> **Neon.tech note**: your `DATABASE_URL` can be found in the Neon dashboard → your project → *Connection Details* → select the `psycopg` driver.
 
 ---
 
-## Crawler Python
+## Python crawler
 
-### Installation (crawler)
+### Crawler installation
 
 ```bash
 cd crawler
 
-# Créer un environnement virtuel
+# Create a virtual environment
 python -m venv .venv
-source .venv/bin/activate   # Windows : .venv\Scripts\activate
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
-# Installer les dépendances
+# Install dependencies
 pip install -r requirements.txt
 
-# Copier et configurer les variables d'environnement
+# Copy and configure environment variables
 cp .env.example .env
-# Éditer .env avec votre DATABASE_URL et CHROME_USER_DATA_DIR
+# Edit .env with your DATABASE_URL and CHROME_USER_DATA_DIR
 ```
 
-### Lancer le crawler
+### Running the crawler
 
 ```bash
-# Depuis le dossier crawler/, avec le venv activé :
+# From the crawler/ directory, with the venv activated:
 
-# Synchronisation complète (toutes les commandes)
+# Full sync (all orders)
 python -m crawler.sync --full
 
-# Synchronisation incrémentale (seulement les nouvelles commandes)
+# Incremental sync (new orders only)
 python -m crawler.sync --update
 
-# Afficher l'aide
+# Show help
 python -m crawler.sync --help
 ```
 
-**Important** : fermez toutes les fenêtres Chrome avant de lancer le crawler, car celui-ci réutilise votre profil Chrome principal (cookies inclus → aucune connexion manuelle requise).
+**Important**: close all Chrome windows before running the crawler, as it reuses your main Chrome profile (cookies included — no manual login required).
 
 ---
 
-## Frontend Next.js
+## Next.js frontend
 
-### Installation (frontend)
+### Frontend installation
 
 ```bash
 cd frontend
 
-# Installer les dépendances
-pnpm install   # ou: npm install
+# Install dependencies
+pnpm install
 
-# Copier et configurer les variables d'environnement
+# Copy and configure environment variables
 cp .env.example .env.local
-# Éditer .env.local avec votre DATABASE_URL
+# Edit .env.local with your DATABASE_URL
 ```
 
-### Lancer le frontend
+### Running the frontend
 
 ```bash
-# Mode développement
-pnpm dev       # ou: npm run dev
+# Development mode
+pnpm dev
 
-# Build de production
+# Production build
 pnpm build && pnpm start
 ```
 
-Le dashboard sera accessible sur [http://localhost:3000](http://localhost:3000).
+The dashboard will be available at [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Base de données (Neon.tech)
+## Database (Neon.tech)
 
-Le crawler crée automatiquement la table `qoqa_orders` au premier lancement (via SQLAlchemy `create_all`).
+The crawler automatically creates the `qoqa_orders` table on first run (via SQLAlchemy `create_all`).
 
-Structure de la table :
+Table structure:
 
 ```sql
 CREATE TABLE qoqa_orders (
@@ -206,6 +210,6 @@ CREATE TABLE qoqa_orders (
 
 ---
 
-## Contribuer
+## Contributing
 
-Ce projet est personnel mais les PRs sont les bienvenues. Ouvrez une issue avant de soumettre un changement majeur.
+This is a personal project but PRs are welcome. Please open an issue before submitting a major change.

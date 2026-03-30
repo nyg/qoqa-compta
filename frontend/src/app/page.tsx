@@ -1,5 +1,5 @@
 /**
- * Dashboard principal — page d'accueil de l'application Qoqa Compta.
+ * Main dashboard — home page of the Qoqa Compta application.
  *
  * Fetches data server-side via the /api/orders API route and renders:
  *   - Stats cards (total, count, average)
@@ -79,10 +79,10 @@ export default async function DashboardPage() {
       <main className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-2">Qoqa Compta</h1>
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive">
-          <p className="font-semibold">Impossible de se connecter à la base de données.</p>
+          <p className="font-semibold">Unable to connect to the database.</p>
           <p className="text-sm mt-1">
-            Vérifiez que <code className="font-mono">DATABASE_URL</code> est correctement
-            configuré dans <code className="font-mono">frontend/.env.local</code>.
+            Make sure <code className="font-mono">DATABASE_URL</code> is correctly
+            configured in <code className="font-mono">frontend/.env.local</code>.
           </p>
         </div>
       </main>
@@ -97,7 +97,7 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Qoqa Compta</h1>
         <p className="text-muted-foreground mt-1">
-          Tableau de bord de vos dépenses sur Qoqa.ch
+          Your Qoqa.ch spending dashboard
         </p>
       </div>
 

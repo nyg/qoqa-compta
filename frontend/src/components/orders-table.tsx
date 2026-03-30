@@ -81,12 +81,12 @@ export function OrdersTable({
       <CardHeader>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base">
-            Toutes les commandes ({pagination.total})
+            All orders ({pagination.total})
           </CardTitle>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher…"
+              placeholder="Search…"
               className="pl-9"
               value={search}
               onChange={handleSearch}
@@ -101,16 +101,16 @@ export function OrdersTable({
             <thead>
               <tr className="border-b bg-muted/50">
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  N° commande
+                  Order #
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                   Date
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Partenaire
+                  Partner
                 </th>
                 <th className="px-4 py-3 text-right font-medium text-muted-foreground">
-                  Montant
+                  Amount
                 </th>
               </tr>
             </thead>
@@ -118,14 +118,14 @@ export function OrdersTable({
               {loading && (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                    Chargement…
+                    Loading…
                   </td>
                 </tr>
               )}
               {!loading && orders.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                    Aucune commande trouvée.
+                    No orders found.
                   </td>
                 </tr>
               )}
@@ -171,14 +171,14 @@ export function OrdersTable({
                 disabled={currentPage <= 1}
                 className="rounded-md border px-3 py-1 text-xs disabled:opacity-40 hover:bg-accent transition-colors"
               >
-                ← Précédent
+                ← Previous
               </button>
               <button
                 onClick={() => handlePage(currentPage + 1)}
                 disabled={currentPage >= pagination.totalPages}
                 className="rounded-md border px-3 py-1 text-xs disabled:opacity-40 hover:bg-accent transition-colors"
               >
-                Suivant →
+                Next →
               </button>
             </div>
           </div>

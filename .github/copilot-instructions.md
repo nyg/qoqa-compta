@@ -70,7 +70,7 @@ The crawler reuses the user's Chrome profile for authentication (no stored crede
 - UI built with shadcn/ui (Radix primitives + CVA + `cn()` utility from `src/lib/utils.ts`)
 - Tailwind v4 with CSS-variable theming in `globals.css` (`@theme inline` directive) — no `tailwind.config.ts`
 - Charts use Recharts (`ComposedChart` with bar + line dual-axis)
-- All UI text is hard-coded French (no i18n library); formatting uses `fr-CH` locale
+- All UI text is in English; number/date formatting uses `fr-CH` locale for Swiss conventions
 - Currency formatting via `formatCHF()` and date formatting via `formatDate()` in `src/lib/utils.ts`
 - Client components marked with `"use client"`; server components are the default
 
@@ -82,6 +82,6 @@ The crawler reuses the user's Chrome profile for authentication (no stored crede
 
 ### Environment
 
-- Root `.env` holds shared vars (`DATABASE_URL`, `CHROME_USER_DATA_DIR`, `PDF_DOWNLOAD_DIR`)
-- Frontend uses `frontend/.env.local` (only `DATABASE_URL`)
+- `crawler/.env` holds crawler vars (`DATABASE_URL`, `CHROME_USER_DATA_DIR`, `PDF_DOWNLOAD_DIR`)
+- `frontend/.env.local` holds frontend vars (`DATABASE_URL`)
 - Dependency updates managed by Renovate (config extends `github>nyg/renovate-presets`)

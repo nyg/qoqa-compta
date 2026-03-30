@@ -35,13 +35,13 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
   const monthlyData = monthly.map((m) => ({
     name: formatMonth(m.month),
     total: m.total,
-    commandes: m.count,
+    orders: m.count,
   }));
 
   const yearlyData = yearly.map((y) => ({
     name: y.year.toString(),
     total: y.total,
-    commandes: y.count,
+    orders: y.count,
   }));
 
   return (
@@ -49,7 +49,7 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
       {/* Monthly chart */}
       <Card className="col-span-1 md:col-span-1">
         <CardHeader>
-          <CardTitle className="text-base">Dépenses mensuelles (24 mois)</CardTitle>
+          <CardTitle className="text-base">Monthly spending (24 months)</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={280}>
@@ -67,8 +67,10 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
               />
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
               <Tooltip
-                formatter={(value: number, name: string) =>
-                  name === "total" ? [`${value.toFixed(2)} CHF`, "Total"] : [value, "Commandes"]
+                formatter={(value, name) =>
+                  name === "total"
+                    ? [`${Number(value).toFixed(2)} CHF`, "Total"]
+                    : [value, "Orders"]
                 }
               />
               <Legend />
@@ -82,8 +84,8 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
               <Line
                 yAxisId="right"
                 type="monotone"
-                dataKey="commandes"
-                name="Commandes"
+                dataKey="orders"
+                name="Orders"
                 stroke="hsl(var(--chart-2))"
                 strokeWidth={2}
                 dot={false}
@@ -96,7 +98,7 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
       {/* Yearly chart */}
       <Card className="col-span-1 md:col-span-1">
         <CardHeader>
-          <CardTitle className="text-base">Dépenses par année</CardTitle>
+          <CardTitle className="text-base">Yearly spending</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={280}>
@@ -110,8 +112,10 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
               />
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
               <Tooltip
-                formatter={(value: number, name: string) =>
-                  name === "total" ? [`${value.toFixed(2)} CHF`, "Total"] : [value, "Commandes"]
+                formatter={(value, name) =>
+                  name === "total"
+                    ? [`${Number(value).toFixed(2)} CHF`, "Total"]
+                    : [value, "Orders"]
                 }
               />
               <Legend />
@@ -125,8 +129,8 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
               <Line
                 yAxisId="right"
                 type="monotone"
-                dataKey="commandes"
-                name="Commandes"
+                dataKey="orders"
+                name="Orders"
                 stroke="hsl(var(--chart-4))"
                 strokeWidth={2}
                 dot={{ r: 4 }}
