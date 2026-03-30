@@ -80,6 +80,10 @@ The crawler reuses the user's Chrome profile for authentication (no stored crede
 - Amounts stored as `NUMERIC(10, 2)` (CHF); represented as `Decimal` in Python, `string` in TypeScript
 - Crawler uses SQLAlchemy upsert (INSERT … ON CONFLICT UPDATE); frontend uses raw SQL via Neon driver
 
+### Git
+
+- Use [Conventional Commits](https://www.conventionalcommits.org/) for all commit messages (e.g., `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`)
+
 ### Environment
 
 - `crawler/.env` holds crawler vars (`DATABASE_URL`, `CHROME_USER_DATA_DIR`, `PDF_DOWNLOAD_DIR`)
