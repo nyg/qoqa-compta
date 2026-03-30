@@ -16,7 +16,7 @@ from seleniumbase import SB
 load_dotenv()
 
 QOQA_BASE_URL = "https://www.qoqa.ch/fr"
-ORDERS_URL = "https://www.qoqa.ch/fr/mon-qompte/mes-commandes"
+ORDERS_URL = "https://www.qoqa.ch/fr/my_account/orders"
 
 
 def get_chrome_user_data_dir() -> str:
