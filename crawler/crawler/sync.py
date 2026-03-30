@@ -12,12 +12,20 @@ from pathlib import Path
 import typer
 from rich.console import Console
 from rich.progress import track
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from crawler.browser import download_order_pdfs, get_pdf_download_dir
+from crawler.api import (
+    OrderData,
+    download_pdf,
+    get_auth_token,
+    get_order_details,
+    list_all_purchases,
+    parse_order_data,
+)
+from crawler.browser import get_pdf_download_dir, login_and_get_cookies
 from crawler.db import Base, SessionLocal, engine
 from crawler.models import QoqaOrder
-from crawler.utils.pdf_parser import parse_invoice_pdf
 
 console = Console()
 app = typer.Typer(help="Qoqa.ch invoice crawler & DB sync tool.")
@@ -29,24 +37,33 @@ def _ensure_schema() -> None:
     console.log("[green]✓[/green] Database schema is up to date.")
 
 
-def _upsert_order(session, invoice) -> bool:
+def _known_order_numbers() -> set[str]:
+    """Return the set of order numbers already in the database."""
+    with SessionLocal() as session:
+        rows = session.execute(select(QoqaOrder.order_number)).scalars().all()
+        return set(rows)
+
+
+def _upsert_order(session, order: OrderData) -> bool:
     """Insert or update one QoqaOrder row. Returns True if a new row was inserted."""
     stmt = (
         pg_insert(QoqaOrder)
         .values(
-            order_number=invoice.order_number,
-            order_date=invoice.order_date,
-            amount_chf=invoice.amount_chf,
-            partner_name=invoice.partner_name,
-            raw_text=invoice.raw_text,
+            order_number=order.order_number,
+            order_date=order.order_date,
+            amount_chf=order.amount_chf,
+            partner_name=order.partner_name,
+            pdf_filename=order.pdf_filename,
+            raw_text=order.raw_json,
         )
         .on_conflict_do_update(
             index_elements=["order_number"],
             set_={
-                "order_date": invoice.order_date,
-                "amount_chf": invoice.amount_chf,
-                "partner_name": invoice.partner_name,
-                "raw_text": invoice.raw_text,
+                "order_date": order.order_date,
+                "amount_chf": order.amount_chf,
+                "partner_name": order.partner_name,
+                "pdf_filename": order.pdf_filename,
+                "raw_text": order.raw_json,
             },
         )
     )
@@ -54,50 +71,17 @@ def _upsert_order(session, invoice) -> bool:
     return result.rowcount == 1
 
 
-def _sync_pdfs_to_db(pdf_paths: list[Path]) -> dict[str, int]:
-    """Parse each PDF and upsert into the database.
-
-    Returns:
-        A dict with counts: {"parsed": N, "inserted": N, "updated": N, "failed": N}
-    """
-    counts = {"parsed": 0, "inserted": 0, "updated": 0, "failed": 0}
-
-    with SessionLocal() as session:
-        for pdf_path in track(pdf_paths, description="Parsing & syncing PDFs…"):
-            invoice = parse_invoice_pdf(pdf_path)
-            if invoice is None:
-                counts["failed"] += 1
-                continue
-
-            counts["parsed"] += 1
-
-            try:
-                is_new = _upsert_order(session, invoice)
-                if is_new:
-                    counts["inserted"] += 1
-                else:
-                    counts["updated"] += 1
-            except Exception as exc:
-                console.print(f"[red]✗[/red] DB error for {pdf_path.name}: {exc}")
-                session.rollback()
-                counts["failed"] += 1
-
-        session.commit()
-
-    return counts
-
-
 @app.command()
 def sync(
     full: bool = typer.Option(
         False,
         "--full",
-        help="Download all invoices from the beginning (ignores already-downloaded PDFs).",
+        help="Sync all orders from the beginning.",
     ),
     update: bool = typer.Option(
         False,
         "--update",
-        help="Download only new invoices since the last run (default behaviour).",
+        help="Sync only new orders since the last run (default behaviour).",
     ),
     pdf_only: bool = typer.Option(
         False,
@@ -107,45 +91,102 @@ def sync(
     db_only: bool = typer.Option(
         False,
         "--db-only",
-        help="Skip browser download; parse PDFs already in the download directory.",
+        help="Skip PDF download, only sync data to database.",
     ),
 ) -> None:
-    """Synchronise Qoqa invoices: download PDFs and upsert into the database."""
+    """Synchronise Qoqa invoices: fetch via API, upsert to DB, download PDFs."""
 
     console.rule("[bold blue]qoqa-compta sync[/bold blue]")
 
     _ensure_schema()
 
-    # ── Step 1: Download PDFs ──────────────────────────────────────────────────
-    if not db_only:
-        console.log(f"[cyan]→[/cyan] Launching browser ({'full' if full else 'incremental'} mode)…")
+    # ── Step 1: Authenticate ───────────────────────────────────────────────────
+    console.log("[cyan]→[/cyan] Logging in to Qoqa.ch…")
+    try:
+        cookies = login_and_get_cookies()
+    except Exception as exc:
+        console.print(f"[red]✗ Login error:[/red] {exc}")
+        raise typer.Exit(code=1)
+    console.log("[green]✓[/green] Browser login successful.")
+
+    console.log("[cyan]→[/cyan] Obtaining API token…")
+    try:
+        token = get_auth_token(cookies)
+    except Exception as exc:
+        console.print(f"[red]✗ Token error:[/red] {exc}")
+        raise typer.Exit(code=1)
+    console.log("[green]✓[/green] API token obtained.")
+
+    # ── Step 2: Fetch purchases ────────────────────────────────────────────────
+    console.log("[cyan]→[/cyan] Fetching purchases from API…")
+    try:
+        purchases = list_all_purchases(token)
+    except Exception as exc:
+        console.print(f"[red]✗ API error:[/red] {exc}")
+        raise typer.Exit(code=1)
+    console.log(f"[green]✓[/green] Found {len(purchases)} purchase(s).")
+
+    if not purchases:
+        console.log("[yellow]No purchases found.[/yellow]")
+        raise typer.Exit()
+
+    # In update mode, filter out already-known orders
+    known = _known_order_numbers() if not full else set()
+
+    # ── Step 3: Get order details + sync ───────────────────────────────────────
+    pdf_dir = get_pdf_download_dir()
+    counts = {"synced": 0, "downloaded": 0, "skipped": 0, "failed": 0}
+
+    for purchase in track(purchases, description="Syncing orders…"):
+        purchase_id = purchase.get("id") or purchase.get("reference", "")
+        if not purchase_id:
+            counts["failed"] += 1
+            continue
+
+        # Skip orders already in DB (update mode)
+        if purchase_id in known:
+            counts["skipped"] += 1
+            continue
+
         try:
-            downloaded = download_order_pdfs(full=full or not update)
-            console.log(f"[green]✓[/green] Downloaded {len(downloaded)} PDF(s).")
+            detail = get_order_details(token, purchase_id)
         except Exception as exc:
-            console.print(f"[red]✗ Browser error:[/red] {exc}")
-            raise typer.Exit(code=1)
-    else:
-        # Parse everything already in the download directory
-        pdf_dir = get_pdf_download_dir()
-        downloaded = list(pdf_dir.glob("*.pdf"))
-        console.log(f"[cyan]→[/cyan] Found {len(downloaded)} PDF(s) in {pdf_dir}.")
+            console.print(f"[red]✗[/red] API error for {purchase_id}: {exc}")
+            counts["failed"] += 1
+            continue
 
-    if pdf_only:
-        console.log("[yellow]--pdf-only: skipping DB sync.[/yellow]")
-        raise typer.Exit()
+        order = parse_order_data(detail)
 
-    # ── Step 2: Sync to DB ─────────────────────────────────────────────────────
-    if not downloaded:
-        console.log("[yellow]No PDFs to sync.[/yellow]")
-        raise typer.Exit()
+        # Upsert to DB
+        if not pdf_only:
+            try:
+                with SessionLocal() as session:
+                    _upsert_order(session, order)
+                    session.commit()
+                counts["synced"] += 1
+            except Exception as exc:
+                console.print(f"[red]✗[/red] DB error for {order.order_number}: {exc}")
+                counts["failed"] += 1
+                continue
 
-    counts = _sync_pdfs_to_db(downloaded)
+        # Download PDF
+        if not db_only and order.pdf_url:
+            dest = pdf_dir / (order.pdf_filename or f"{order.order_number}.pdf")
+            if full or not dest.exists():
+                try:
+                    download_pdf(order.pdf_url, dest)
+                    counts["downloaded"] += 1
+                except Exception as exc:
+                    console.print(f"[red]✗[/red] PDF error for {order.order_number}: {exc}")
 
     console.rule("[bold green]Done[/bold green]")
     console.print(
-        f"  Parsed : [cyan]{counts['parsed']}[/cyan]\n"
-        f"  Inserted: [green]{counts['inserted']}[/green]\n"
-        f"  Updated : [blue]{counts['updated']}[/blue]\n"
-        f"  Failed  : [red]{counts['failed']}[/red]"
+        f"  Synced to DB : [green]{counts['synced']}[/green]\n"
+        f"  PDFs downloaded: [cyan]{counts['downloaded']}[/cyan]\n"
+        f"  Skipped      : [blue]{counts['skipped']}[/blue]\n"
+        f"  Failed       : [red]{counts['failed']}[/red]"
     )
+
+
+if __name__ == "__main__":
+    app()

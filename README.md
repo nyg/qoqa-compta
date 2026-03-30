@@ -1,6 +1,6 @@
 # qoqa-compta
 
-> Personal open-source tool to automatically download PDF invoices from Qoqa.ch, parse them, store them in PostgreSQL (Neon.tech), and display a spending dashboard.
+> Personal open-source tool to automatically sync Qoqa.ch order data and PDF invoices to PostgreSQL (Neon.tech) and display a spending dashboard.
 
 ---
 
@@ -23,17 +23,30 @@
 
 ## Overview
 
+The crawler logs in to Qoqa.ch via the browser (just for authentication), then
+uses the Qoqa REST API to fetch all order data and download PDF invoices.
+
 ```
-┌──────────────────┐     PDFs      ┌──────────────────┐    SQL     ┌──────────────────┐
-│   Qoqa.ch        │ ──────────►   │  Python Crawler  │ ────────►  │  PostgreSQL      │
-│  (via CDP/Chrome)│               │  (SeleniumBase)  │            │  (Neon.tech)     │
-└──────────────────┘               └──────────────────┘            └────────┬─────────┘
-                                                                            │
-                                                                            ▼
-                                                                   ┌──────────────────┐
-                                                                   │  Dashboard       │
-                                                                   │  (Next.js 16)    │
-                                                                   └──────────────────┘
+                          cookies           JWT token
+┌──────────┐  login  ┌──────────┐  auth  ┌──────────────┐
+│  Chrome   │ ──────► │ Cookies  │ ─────► │ Qoqa REST API│
+│ (CDP,10s) │        └──────────┘        │ api.qoqa.ch  │
+└──────────┘                              └──────┬───────┘
+                                                 │  JSON + PDF URLs
+                                          ┌──────▼───────┐
+                                          │ Python Sync   │
+                                          │ (requests)    │
+                                          └──┬────────┬──┘
+                                    upsert   │        │  download
+                                   ┌─────────▼──┐  ┌─▼──────────┐
+                                   │ PostgreSQL  │  │   PDFs/    │
+                                   │ (Neon.tech) │  │   (local)  │
+                                   └──────┬──────┘  └────────────┘
+                                          │
+                                   ┌──────▼──────┐
+                                   │  Dashboard  │
+                                   │ (Next.js 16)│
+                                   └─────────────┘
 ```
 
 ---
@@ -51,8 +64,9 @@ qoqa-compta/
 │   ├── crawler/
 │   │   ├── __init__.py
 │   │   ├── __main__.py       # CLI entry point
-│   │   ├── sync.py           # Main synchronisation logic
-│   │   ├── browser.py        # Browser management (SeleniumBase CDP)
+│   │   ├── sync.py           # Main synchronisation logic (CLI)
+│   │   ├── api.py            # Qoqa REST API client
+│   │   ├── browser.py        # Browser login only (SeleniumBase CDP)
 │   │   ├── db.py             # SQLAlchemy connection and session
 │   │   ├── models/
 │   │   │   ├── __init__.py
@@ -91,7 +105,7 @@ qoqa-compta/
 
 - **Python 3.11+**
 - **Node.js 20+** and **pnpm**
-- **Google Chrome** installed (the crawler reuses your existing profile)
+- **Google Chrome** or **Chromium** installed
 - A **Neon.tech** account with a PostgreSQL database (free tier is sufficient)
 - A **Qoqa.ch** account with orders
 
@@ -106,8 +120,11 @@ Copy `crawler/.env.example` to `crawler/.env` and fill in:
 | Variable               | Description                              | Example                                                                          |
 | ---------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
 | `DATABASE_URL`         | PostgreSQL connection URL (Neon.tech)    | `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/qoqa?sslmode=require` |
-| `CHROME_USER_DATA_DIR` | Path to your main Chrome profile         | `~/Library/Application Support/Google/Chrome` (macOS)                            |
+| `QOQA_EMAIL`           | Qoqa.ch login email *(recommended)*     | `me@example.com`                                                                 |
+| `QOQA_PASSWORD`        | Qoqa.ch login password *(recommended)*  | `••••••••`                                                                       |
+| `CHROME_USER_DATA_DIR` | Chrome profile path *(alt. auth method)* | `~/Library/Application Support/Google/Chrome` (macOS)                            |
 | `PDF_DOWNLOAD_DIR`     | PDF download folder                      | `./pdfs`                                                                         |
+| `BROWSER_PATH`         | Custom browser binary *(optional)*       | `/Applications/Chromium.app/Contents/MacOS/Chromium`                             |
 
 ### Frontend
 
@@ -137,7 +154,7 @@ pip install -r requirements.txt
 
 # Copy and configure environment variables
 cp .env.example .env
-# Edit .env with your DATABASE_URL and CHROME_USER_DATA_DIR
+# Edit .env with your DATABASE_URL and QOQA_EMAIL + QOQA_PASSWORD
 ```
 
 ### Running the crawler
@@ -145,17 +162,27 @@ cp .env.example .env
 ```bash
 # From the crawler/ directory, with the venv activated:
 
-# Full sync (all orders)
+# Full sync (all orders + PDFs)
 python -m crawler.sync --full
 
-# Incremental sync (new orders only)
+# Incremental sync (new orders only — default)
 python -m crawler.sync --update
+
+# Only sync data to DB, skip PDF download
+python -m crawler.sync --full --db-only
+
+# Only download PDFs, skip DB sync
+python -m crawler.sync --full --pdf-only
 
 # Show help
 python -m crawler.sync --help
 ```
 
-**Important**: close all Chrome windows before running the crawler, as it reuses your main Chrome profile (cookies included — no manual login required).
+> **Authentication**: the crawler supports two modes:
+> - **Credentials** *(recommended)*: set `QOQA_EMAIL` + `QOQA_PASSWORD` in `.env`. The crawler logs in automatically — Chrome can stay open.
+> - **Profile reuse**: set `CHROME_USER_DATA_DIR` in `.env`. Uses your existing Chrome cookies — you must close Chrome first.
+>
+> **Chromium**: set `BROWSER_PATH` in `.env` to use Chromium instead of Chrome.
 
 ---
 
@@ -202,7 +229,7 @@ CREATE TABLE qoqa_orders (
     amount_chf      NUMERIC(10, 2) NOT NULL,
     partner_name    VARCHAR(255),
     pdf_filename    VARCHAR(255),
-    raw_text        TEXT,
+    raw_text        TEXT,            -- JSON from the Qoqa API
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
 );

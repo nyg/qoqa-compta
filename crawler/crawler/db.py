@@ -24,7 +24,12 @@ def get_engine():
     # Use psycopg 3 driver explicitly
     if database_url.startswith("postgresql://") and "+psycopg" not in database_url:
         database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
-    return create_engine(database_url, echo=False, pool_pre_ping=True)
+    return create_engine(
+        database_url,
+        echo=False,
+        pool_pre_ping=True,
+        connect_args={"connect_timeout": 1},
+    )
 
 
 engine = get_engine()

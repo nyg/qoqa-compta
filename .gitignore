@@ -48,3 +48,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# seleniumbase
+downloaded_files
