@@ -140,12 +140,13 @@ def _download_pdf(sb, url: str, dest_path: Path) -> None:
         ),
     }
 
-    # Validate the URL scheme and domain before fetching
+    # Validate the URL scheme and domain before fetching.
+    # Only allow HTTPS downloads from qoqa.ch or its subdomains.
     from urllib.parse import urlparse
     parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not (
-        parsed.netloc.endswith("qoqa.ch") or parsed.netloc.endswith("qoqa.com")
-    ):
+    netloc = parsed.netloc.lower().split(":")[0]  # strip optional port
+    allowed = netloc == "qoqa.ch" or netloc.endswith(".qoqa.ch")
+    if parsed.scheme not in ("http", "https") or not allowed:
         raise ValueError(f"Refused to download from untrusted URL: {url!r}")
 
     req = urllib.request.Request(url, headers=headers)
