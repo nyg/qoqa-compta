@@ -1,0 +1,7 @@
+seleniumbase==4.47.8
+pdfplumber==0.11.9
+SQLAlchemy==2.0.48
+psycopg[binary]==3.3.3
+python-dotenv==1.2.2
+typer==0.24.1
+rich==14.3.3
