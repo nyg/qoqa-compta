@@ -38,6 +38,7 @@ frontend/.next/
 frontend/out/
 frontend/.turbo/
 *.tsbuildinfo
+next-env.d.ts
 
 # OS
 .DS_Store
