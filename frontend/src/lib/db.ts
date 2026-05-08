@@ -8,6 +8,7 @@
  * If DATABASE_URL is unset, defaults to SQLite at the XDG data home:
  *   $XDG_DATA_HOME/qoqa-compta/qoqa.db  (~/.local/share/qoqa-compta/qoqa.db)
  */
+import os from "os";
 import { createClient } from "@libsql/client";
 import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzleLibsql, LibSQLDatabase } from "drizzle-orm/libsql";
@@ -17,7 +18,7 @@ import { qoqaOrdersPg, qoqaOrdersSqlite } from "./schema";
 
 const XDG_DATA_HOME =
   process.env.XDG_DATA_HOME ??
-  `${process.env.HOME ?? "~"}/.local/share`;
+  `${os.homedir()}/.local/share`;
 
 const DEFAULT_DATABASE_URL = `sqlite:///${XDG_DATA_HOME}/qoqa-compta/qoqa.db`;
 

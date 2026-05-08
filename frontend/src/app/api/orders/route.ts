@@ -48,10 +48,12 @@ export async function GET(request: NextRequest) {
       : Number.MAX_SAFE_INTEGER;
   const from = safeDate(searchParams.get("from"), "2000-01-01");
   const to = safeDate(searchParams.get("to"), "2099-12-31");
-  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+  const rawPage = parseInt(searchParams.get("page") ?? "1", 10);
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const rawPageSize = parseInt(searchParams.get("pageSize") ?? "20", 10);
   const pageSize = Math.min(
     100,
-    Math.max(1, parseInt(searchParams.get("pageSize") ?? "20", 10))
+    Number.isFinite(rawPageSize) && rawPageSize > 0 ? rawPageSize : 20
   );
 
   const filter = { search, minAmount, maxAmount, from, to, page, pageSize };

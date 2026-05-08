@@ -44,7 +44,7 @@ function yearOf(col: SQL): SQL<number> {
 function monthsAgo24(): SQL<string> {
   return isSqlite
     ? sql<string>`date('now', '-24 months')`
-    : sql<string>`NOW() - INTERVAL '24 months'`;
+    : sql<string>`CURRENT_DATE - INTERVAL '24 months'`;
 }
 
 // ── Query functions ───────────────────────────────────────────────────────────
