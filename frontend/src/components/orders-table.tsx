@@ -5,6 +5,14 @@
  */
 "use client";
 
+const CATEGORY_LABELS: Record<string, string> = {
+  alcohol: "Alcohol",
+  qspirits: "Spirits",
+  qwine: "Wine",
+  qwinegrandcru: "Grand Cru",
+  qwineprimeurs: "Primeurs",
+};
+
 import { useState, useCallback } from "react";
 import { Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -107,6 +115,9 @@ export function OrdersTable({
                   Date
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                  Category
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                   Offer
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
@@ -120,14 +131,14 @@ export function OrdersTable({
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                     Loading…
                   </td>
                 </tr>
               )}
               {!loading && orders.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                     No orders found.
                   </td>
                 </tr>
@@ -143,6 +154,15 @@ export function OrdersTable({
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {formatDate(order.order_date)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {order.offer_category ? (
+                        <Badge variant="outline" className="font-normal text-xs">
+                          {CATEGORY_LABELS[order.offer_category] ?? order.offer_category}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {order.offer_title ? (
