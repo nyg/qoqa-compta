@@ -7,6 +7,7 @@
  *   - Orders table with search/filters
  */
 import { Suspense } from "react";
+import { getTranslations } from "next-intl/server";
 import {
   fetchStats,
   fetchMonthlySpending,
@@ -33,6 +34,8 @@ async function fetchDashboardData() {
 }
 
 export default async function DashboardPage() {
+  const t = await getTranslations("Dashboard");
+
   let data;
   try {
     data = await fetchDashboardData();
@@ -41,10 +44,11 @@ export default async function DashboardPage() {
       <main className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-2">QoQa Compta</h1>
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive">
-          <p className="font-semibold">Unable to connect to the database.</p>
+          <p className="font-semibold">{t("errorTitle")}</p>
           <p className="text-sm mt-1">
-            Make sure <code className="font-mono">DATABASE_URL</code> is correctly
-            configured in <code className="font-mono">frontend/.env.local</code>.
+            {t.rich("errorDetail", {
+              code: (chunks) => <code className="font-mono">{chunks}</code>,
+            })}
           </p>
         </div>
       </main>
@@ -59,16 +63,18 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">QoQa Compta</h1>
         <p className="text-muted-foreground mt-1">
-          Your{" "}
-          <a
-            href="https://www.qoqa.ch/fr/my_account/orders"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-4 hover:text-foreground transition-colors"
-          >
-            QoQa.ch
-          </a>{" "}
-          spending dashboard
+          {t.rich("subtitle", {
+            link: (chunks) => (
+              <a
+                href="https://www.qoqa.ch/fr/my_account/orders"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-4 hover:text-foreground transition-colors"
+              >
+                {chunks}
+              </a>
+            ),
+          })}
         </p>
       </div>
 

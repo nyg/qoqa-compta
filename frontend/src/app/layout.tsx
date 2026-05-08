@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import "./globals.css";
 import { parseAcceptLanguage } from "@/lib/formatters";
 import { FormatterProvider } from "@/lib/formatter-context";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages, getLocale } from "next-intl/server";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,14 +20,18 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const hdrs = await headers();
-  const locale = parseAcceptLanguage(hdrs.get("accept-language"));
+  const formatLocale = parseAcceptLanguage(hdrs.get("accept-language"));
+  const locale = await getLocale();
+  const messages = await getMessages();
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body className={inter.className}>
-        <FormatterProvider locale={locale}>
-          <div className="min-h-screen bg-background">{children}</div>
-        </FormatterProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <FormatterProvider locale={formatLocale}>
+            <div className="min-h-screen bg-background">{children}</div>
+          </FormatterProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

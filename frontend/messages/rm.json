@@ -1,0 +1,45 @@
+{
+  "Dashboard": {
+    "subtitle": "Voss panel da spesas <link>QoQa.ch</link>",
+    "errorTitle": "Impossibel da connectar cun la banca da datas.",
+    "errorDetail": "Controllai che <code>DATABASE_URL</code> saja configurà correctamain en <code>frontend/.env.local</code>."
+  },
+  "StatsCards": {
+    "totalSpent": "Total spendì",
+    "totalSpentDesc": "Tut las ordinaziuns ensemen",
+    "orders": "Ordinaziuns",
+    "ordersDesc": "Dumber total d'ordinaziuns fatgas",
+    "averagePerOrder": "Media / ordinaziun",
+    "averagePerOrderDesc": "Import med per ordinaziun"
+  },
+  "OrdersTable": {
+    "title": "Tut las ordinaziuns ({count, number})",
+    "searchPlaceholder": "Tschertgar…",
+    "colOrderNumber": "Ordinaziun #",
+    "colDate": "Data",
+    "colCategory": "Categoria",
+    "colOffer": "Offerta",
+    "colItem": "Artitgel",
+    "colAmount": "Import",
+    "loading": "Chargiar…",
+    "noOrders": "Naginas ordinaziuns chattas.",
+    "pagination": "Pagina {current, number} / {total, number}",
+    "prevPage": "← Precedent",
+    "nextPage": "Suandant →",
+    "categories": {
+      "alcohol": "Alcohol",
+      "qspirits": "Spirituosas",
+      "qwine": "Vin",
+      "qwinegrandcru": "Grand Cru",
+      "qwineprimeurs": "Primeurs"
+    }
+  },
+  "SpendingChart": {
+    "monthlyTitle": "Spesas mensualas (24 mais)",
+    "yearlyTitle": "Spesas annualas",
+    "legendTotal": "Total (CHF)",
+    "legendOrders": "Ordinaziuns",
+    "tooltipTotal": "Total",
+    "tooltipOrders": "Ordinaziuns"
+  }
+}

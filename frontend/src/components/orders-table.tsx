@@ -5,21 +5,17 @@
  */
 "use client";
 
-const CATEGORY_LABELS: Record<string, string> = {
-  alcohol: "Alcohol",
-  qspirits: "Spirits",
-  qwine: "Wine",
-  qwinegrandcru: "Grand Cru",
-  qwineprimeurs: "Primeurs",
-};
-
 import { useState, useCallback } from "react";
 import { Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useFormatter } from "@/lib/formatter-context";
+import { useTranslations } from "next-intl";
 import type { QoqaOrder } from "@/types/order";
+
+type CategoryKey = "alcohol" | "qspirits" | "qwine" | "qwinegrandcru" | "qwineprimeurs";
+const KNOWN_CATEGORIES = new Set<string>(["alcohol", "qspirits", "qwine", "qwinegrandcru", "qwineprimeurs"]);
 
 interface Pagination {
   page: number;
@@ -43,6 +39,7 @@ export function OrdersTable({
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const { formatCHF, formatDate } = useFormatter();
+  const t = useTranslations("OrdersTable");
 
   const fetchOrders = useCallback(
     async (newSearch: string, page: number) => {
@@ -90,12 +87,12 @@ export function OrdersTable({
       <CardHeader>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base">
-            All orders ({pagination.total})
+            {t("title", { count: pagination.total })}
           </CardTitle>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search…"
+              placeholder={t("searchPlaceholder")}
               className="pl-9"
               value={search}
               onChange={handleSearch}
@@ -110,22 +107,22 @@ export function OrdersTable({
             <thead>
               <tr className="border-b bg-muted/50">
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Order #
+                  {t("colOrderNumber")}
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Date
+                  {t("colDate")}
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Category
+                  {t("colCategory")}
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Offer
+                  {t("colOffer")}
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Item
+                  {t("colItem")}
                 </th>
                 <th className="px-4 py-3 text-right font-medium text-muted-foreground">
-                  Amount
+                  {t("colAmount")}
                 </th>
               </tr>
             </thead>
@@ -133,14 +130,14 @@ export function OrdersTable({
               {loading && (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                    Loading…
+                    {t("loading")}
                   </td>
                 </tr>
               )}
               {!loading && orders.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                    No orders found.
+                    {t("noOrders")}
                   </td>
                 </tr>
               )}
@@ -159,7 +156,9 @@ export function OrdersTable({
                     <td className="px-4 py-3">
                       {order.offer_category ? (
                         <Badge variant="outline" className="font-normal text-xs">
-                          {CATEGORY_LABELS[order.offer_category] ?? order.offer_category}
+                          {KNOWN_CATEGORIES.has(order.offer_category ?? "")
+                            ? t(`categories.${order.offer_category as CategoryKey}`)
+                            : order.offer_category}
                         </Badge>
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -190,7 +189,7 @@ export function OrdersTable({
         {pagination.totalPages > 1 && (
           <div className="flex items-center justify-between border-t px-4 py-3">
             <span className="text-xs text-muted-foreground">
-              Page {currentPage} / {pagination.totalPages}
+              {t("pagination", { current: currentPage, total: pagination.totalPages })}
             </span>
             <div className="flex gap-2">
               <button
@@ -198,14 +197,14 @@ export function OrdersTable({
                 disabled={currentPage <= 1}
                 className="rounded-md border px-3 py-1 text-xs disabled:opacity-40 hover:bg-accent transition-colors"
               >
-                ← Previous
+                {t("prevPage")}
               </button>
               <button
                 onClick={() => handlePage(currentPage + 1)}
                 disabled={currentPage >= pagination.totalPages}
                 className="rounded-md border px-3 py-1 text-xs disabled:opacity-40 hover:bg-accent transition-colors"
               >
-                Next →
+                {t("nextPage")}
               </button>
             </div>
           </div>
@@ -214,3 +213,4 @@ export function OrdersTable({
     </Card>
   );
 }
+
