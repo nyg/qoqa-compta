@@ -1,7 +1,7 @@
 /**
  * Orders Table — filterable, paginated list of Qoqa orders.
  *
- * Filters: text search (order number / partner), amount range, date range.
+ * Filters: text search (order number / offer title / item description), amount range, date range.
  */
 "use client";
 
@@ -107,7 +107,10 @@ export function OrdersTable({
                   Date
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Partner
+                  Offer
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                  Item
                 </th>
                 <th className="px-4 py-3 text-right font-medium text-muted-foreground">
                   Amount
@@ -117,14 +120,14 @@ export function OrdersTable({
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                     Loading…
                   </td>
                 </tr>
               )}
               {!loading && orders.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                     No orders found.
                   </td>
                 </tr>
@@ -149,6 +152,9 @@ export function OrdersTable({
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground max-w-[260px] truncate">
+                      {order.item_description ?? <span className="opacity-40">—</span>}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">
                       {formatCHF(parseFloat(order.amount_chf))}
