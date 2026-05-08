@@ -4,7 +4,7 @@
 
 Monorepo with two independent components that share a PostgreSQL database (Neon.tech):
 
-- **`crawler/`** — Python CLI that automates Chrome via SeleniumBase to download invoice PDFs from Qoqa.ch, parses them with pdfplumber, and upserts structured data into PostgreSQL.
+- **`crawler/`** — Python CLI that logs in to Qoqa.ch through Chrome (SeleniumBase CDP) only to obtain a JWT, then uses the Qoqa REST API (`requests`) to fetch order JSON and download invoice PDFs. PDFs are parsed with pdfplumber and upserted into PostgreSQL.
 - **`frontend/`** — Next.js 16 (App Router) dashboard displaying spending stats, charts, and a searchable orders table. Deployed to Vercel Edge.
 
 Both connect to the same `qoqa_orders` table. The crawler writes; the frontend reads.
@@ -47,12 +47,18 @@ No test suite exists in either component.
 ### Crawler pipeline
 
 ```
-CLI (Typer)  →  browser.py (SeleniumBase CDP, reuses Chrome profile)
-             →  pdf_parser.py (pdfplumber + regex extraction)
-             →  db.py / models/order.py (SQLAlchemy 2.x upsert via ON CONFLICT)
+CLI (Typer, sync.py)
+  → browser.py (SeleniumBase CDP) — login only, extracts cookies → JWT
+  → api.py (requests) — fetches order list + downloads PDFs from Qoqa REST API
+  → utils/pdf_parser.py (pdfplumber + regex) — extracts structured fields
+  → db.py / models/order.py (SQLAlchemy 2.x) — upsert via ON CONFLICT
 ```
 
-The crawler reuses the user's Chrome profile for authentication (no stored credentials). Chrome must be closed before running.
+**Authentication has two modes** (see README):
+- *Credentials* (recommended): `QOQA_EMAIL` + `QOQA_PASSWORD` in `crawler/.env`; Chrome can stay open.
+- *Profile reuse*: `CHROME_USER_DATA_DIR` in `crawler/.env`; Chrome must be closed first.
+
+`BROWSER_PATH` can override the Chrome binary (e.g. for Chromium).
 
 ## Conventions
 
@@ -86,6 +92,6 @@ The crawler reuses the user's Chrome profile for authentication (no stored crede
 
 ### Environment
 
-- `crawler/.env` holds crawler vars (`DATABASE_URL`, `CHROME_USER_DATA_DIR`, `PDF_DOWNLOAD_DIR`)
+- `crawler/.env` holds crawler vars (`DATABASE_URL`, `QOQA_EMAIL`, `QOQA_PASSWORD`, `CHROME_USER_DATA_DIR`, `PDF_DOWNLOAD_DIR`, optional `BROWSER_PATH`)
 - `frontend/.env.local` holds frontend vars (`DATABASE_URL`)
 - Dependency updates managed by Renovate (config extends `github>nyg/renovate-presets`)

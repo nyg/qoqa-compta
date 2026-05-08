@@ -7,14 +7,13 @@ CLI usage:
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 import typer
 from rich.console import Console
 from rich.progress import track
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-
 from crawler.api import (
     OrderData,
     download_pdf,
@@ -24,7 +23,7 @@ from crawler.api import (
     parse_order_data,
 )
 from crawler.browser import get_pdf_download_dir, login_and_get_cookies
-from crawler.db import Base, SessionLocal, engine
+from crawler.db import Base, SessionLocal, engine, get_dialect_insert
 from crawler.models import QoqaOrder
 
 console = Console()
@@ -46,8 +45,10 @@ def _known_order_numbers() -> set[str]:
 
 def _upsert_order(session, order: OrderData) -> bool:
     """Insert or update one QoqaOrder row. Returns True if a new row was inserted."""
+    insert = get_dialect_insert()
+    now = datetime.now(tz=timezone.utc)
     stmt = (
-        pg_insert(QoqaOrder)
+        insert(QoqaOrder)
         .values(
             order_number=order.order_number,
             order_date=order.order_date,
@@ -64,6 +65,7 @@ def _upsert_order(session, order: OrderData) -> bool:
                 "partner_name": order.partner_name,
                 "pdf_filename": order.pdf_filename,
                 "raw_text": order.raw_json,
+                "updated_at": now,
             },
         )
     )

@@ -7,67 +7,29 @@
  *   - Orders table with search/filters
  */
 import { Suspense } from "react";
-import { sql } from "@/lib/db";
+import {
+  fetchStats,
+  fetchMonthlySpending,
+  fetchYearlySpending,
+  fetchInitialOrders,
+  fetchTotalCount,
+} from "@/lib/queries";
 import { StatsCards } from "@/components/stats-cards";
 import { SpendingChart } from "@/components/spending-chart";
 import { OrdersTable } from "@/components/orders-table";
-import type {
-  OrderStats,
-  MonthlySpending,
-  QoqaOrder,
-  YearlySpending,
-} from "@/types/order";
 
 // Revalidate this page every 5 minutes
 export const revalidate = 300;
 
 async function fetchDashboardData() {
-  const [statsRows, monthlyRows, yearlyRows, ordersRows, countRows] =
-    await Promise.all([
-      sql`
-        SELECT
-          COALESCE(SUM(amount_chf), 0)::float AS total_spent,
-          COUNT(*)::int                        AS order_count,
-          COALESCE(AVG(amount_chf), 0)::float  AS average_per_order
-        FROM qoqa_orders
-      `,
-      sql`
-        SELECT
-          TO_CHAR(order_date, 'YYYY-MM') AS month,
-          SUM(amount_chf)::float         AS total,
-          COUNT(*)::int                  AS count
-        FROM qoqa_orders
-        WHERE order_date >= NOW() - INTERVAL '24 months'
-        GROUP BY month
-        ORDER BY month
-      `,
-      sql`
-        SELECT
-          EXTRACT(YEAR FROM order_date)::int AS year,
-          SUM(amount_chf)::float             AS total,
-          COUNT(*)::int                      AS count
-        FROM qoqa_orders
-        GROUP BY year
-        ORDER BY year
-      `,
-      sql`
-        SELECT
-          id, order_number, order_date, amount_chf::float, partner_name,
-          pdf_filename, created_at, updated_at
-        FROM qoqa_orders
-        ORDER BY order_date DESC
-        LIMIT 20
-      `,
-      sql`SELECT COUNT(*)::int AS total FROM qoqa_orders`,
-    ]);
-
-  return {
-    stats: statsRows[0] as OrderStats,
-    monthly: monthlyRows as MonthlySpending[],
-    yearly: yearlyRows as YearlySpending[],
-    orders: ordersRows as QoqaOrder[],
-    total: (countRows[0] as { total: number }).total,
-  };
+  const [stats, monthly, yearly, orders, total] = await Promise.all([
+    fetchStats(),
+    fetchMonthlySpending(),
+    fetchYearlySpending(),
+    fetchInitialOrders(),
+    fetchTotalCount(),
+  ]);
+  return { stats, monthly, yearly, orders, total };
 }
 
 export default async function DashboardPage() {
