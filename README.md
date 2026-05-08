@@ -6,7 +6,7 @@
 
 ## Screenshot
 
-![Dashboard screenshot](demo.png)
+![Dashboard screenshot](docs/screenshot.png)
 
 ---
 
