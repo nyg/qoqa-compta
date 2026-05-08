@@ -1,5 +1,5 @@
 /**
- * Orders Table — filterable, paginated list of Qoqa orders.
+ * Orders Table — filterable, paginated list of QoQa orders.
  *
  * Filters: text search (order number / offer title / item description), amount range, date range.
  */

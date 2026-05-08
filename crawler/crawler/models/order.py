@@ -1,4 +1,4 @@
-"""SQLAlchemy model for a Qoqa order / invoice."""
+"""SQLAlchemy model for a QoQa order / invoice."""
 
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -10,7 +10,7 @@ from crawler.db import Base
 
 
 class QoqaOrder(Base):
-    """Represents one Qoqa.ch order from the Qoqa API."""
+    """Represents one QoQa.ch order from the QoQa API."""
 
     __tablename__ = "qoqa_orders"
     __table_args__ = (

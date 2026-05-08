@@ -27,7 +27,7 @@ from crawler.db import Base, SessionLocal, engine, get_dialect_insert
 from crawler.models import QoqaOrder
 
 console = Console()
-app = typer.Typer(help="Qoqa.ch invoice crawler & DB sync tool.")
+app = typer.Typer(help="QoQa.ch invoice crawler & DB sync tool.")
 
 
 def _ensure_schema() -> None:
@@ -118,14 +118,14 @@ def sync(
         help="Skip PDF download, only sync data to database.",
     ),
 ) -> None:
-    """Synchronise Qoqa invoices: fetch via API, upsert to DB, download PDFs."""
+    """Synchronise QoQa invoices: fetch via API, upsert to DB, download PDFs."""
 
     console.rule("[bold blue]qoqa-compta sync[/bold blue]")
 
     _ensure_schema()
 
     # ── Step 1: Authenticate ───────────────────────────────────────────────────
-    console.log("[cyan]→[/cyan] Logging in to Qoqa.ch…")
+    console.log("[cyan]→[/cyan] Logging in to QoQa.ch…")
     try:
         cookies = login_and_get_cookies()
     except Exception as exc:

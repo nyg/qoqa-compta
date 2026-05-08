@@ -8,8 +8,8 @@ import { FormatterProvider } from "@/lib/formatter-context";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Qoqa Compta — Dashboard",
-  description: "Qoqa.ch spending dashboard",
+  title: "QoQa Compta — Dashboard",
+  description: "QoQa.ch spending dashboard",
 };
 
 export default async function RootLayout({

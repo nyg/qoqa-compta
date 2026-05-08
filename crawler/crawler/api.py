@@ -1,6 +1,6 @@
-"""Qoqa.ch REST API client.
+"""QoQa.ch REST API client.
 
-Provides authenticated access to the Qoqa API for fetching purchases,
+Provides authenticated access to the QoQa API for fetching purchases,
 order details, and downloading invoice PDFs.
 
 Auth flow:
@@ -27,7 +27,7 @@ ORDER_URL = f"{API_BASE}/users/me/orders"
 
 @dataclass
 class OrderData:
-    """Structured order data extracted from the Qoqa API."""
+    """Structured order data extracted from the QoQa API."""
 
     order_number: str
     order_date: date

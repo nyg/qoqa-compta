@@ -1,5 +1,5 @@
 /**
- * TypeScript type definitions for Qoqa orders.
+ * TypeScript type definitions for QoQa orders.
  * Mirrors the qoqa_orders PostgreSQL table.
  */
 export interface QoqaOrder {

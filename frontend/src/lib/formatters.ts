@@ -1,5 +1,5 @@
 /**
- * Locale-aware formatters for the Qoqa Compta dashboard.
+ * Locale-aware formatters for the QoQa Compta dashboard.
  *
  * On the server the locale is derived from the Accept-Language header.
  * On the client the same value is reused via FormatterContext so that
