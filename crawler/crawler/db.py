@@ -11,9 +11,12 @@ If DATABASE_URL is unset, a local SQLite file is used at the XDG data home:
 """
 
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
+from rich.console import Console
+from rich.panel import Panel
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -37,9 +40,17 @@ def get_engine():
     database_url = os.environ.get("DATABASE_URL") or _DEFAULT_DATABASE_URL
 
     if _is_sqlite_url(database_url):
-        # Ensure the parent directory exists for the SQLite file
         db_path = Path(database_url[len("sqlite:///"):])
-        db_path.parent.mkdir(parents=True, exist_ok=True)
+        if not db_path.parent.exists():
+            Console().print(Panel(
+                f"[bold]SQLite directory not found:[/bold] {db_path.parent}\n\n"
+                "The database file is created by the crawler on first run.\n"
+                "Make sure [bold]DATABASE_URL[/bold] in [bold]crawler/.env[/bold] "
+                "points to a valid path for your OS.",
+                title="[red]Database Error[/red]",
+                border_style="red",
+            ))
+            sys.exit(1)
         eng = create_engine(database_url, echo=False)
         # Enable WAL mode and a busy timeout so concurrent reads/writes don't
         # deadlock when the crawler and frontend share the same file.

@@ -1,13 +1,14 @@
 # qoqa-compta
 
-> Personal open-source tool to automatically sync Qoqa.ch order data and PDF invoices to a local SQLite database (or PostgreSQL) and display a spending dashboard.
+> Web app & crawler to automatically sync your Qoqa.ch orders and PDF invoices to a local SQLite (or PostgreSQL) database and display a spending dashboard.
+
+![Dashboard screenshot](docs/screenshot.png)
 
 ---
 
 ## Table of contents
 
 - [Overview](#overview)
-- [Project structure](#project-structure)
 - [Prerequisites](#prerequisites)
 - [Environment variables](#environment-variables)
 - [Python crawler](#python-crawler)
@@ -16,137 +17,15 @@
 - [Next.js frontend](#nextjs-frontend)
   - [Installation](#frontend-installation)
   - [Running the frontend](#running-the-frontend)
-- [Database](#database)
 - [Contributing](#contributing)
 
 ---
 
 ## Overview
 
-The crawler logs in to Qoqa.ch via the browser (just for authentication), then
-uses the Qoqa REST API to fetch all order data and download PDF invoices.
+The crawler logs in to Qoqa.ch via the browser (just for authentication), then uses the Qoqa REST API to fetch all order data and download PDF invoices. Data is stored in a local SQLite database (or PostgreSQL) and displayed in a Next.js dashboard.
 
-```
-                          cookies           JWT token
-┌──────────┐  login  ┌──────────┐  auth  ┌──────────────┐
-│  Chrome   │ ──────► │ Cookies  │ ─────► │ Qoqa REST API│
-│ (CDP,10s) │        └──────────┘        │ api.qoqa.ch  │
-└──────────┘                              └──────┬───────┘
-                                                 │  JSON + PDF URLs
-                                          ┌──────▼───────┐
-                                          │ Python Sync   │
-                                          │ (requests)    │
-                                          └──┬────────┬──┘
-                                    upsert   │        │  download
-                                   ┌─────────▼──┐  ┌─▼──────────┐
-                                   │ SQLite /    │  │   PDFs/    │
-                                   │ PostgreSQL  │  │   (local)  │
-                                   └──────┬──────┘  └────────────┘
-                                          │
-                                   ┌──────▼──────┐
-                                   │  Dashboard  │
-                                   │ (Next.js 16)│
-                                   └─────────────┘
-```
-
----
-
-## Project structure
-
-```
-qoqa-compta/
-├── .gitignore
-├── renovate.json
-├── README.md
-├── crawler/                  # Python code
-│   ├── .env.example
-│   ├── requirements.txt
-│   ├── crawler/
-│   │   ├── __init__.py
-│   │   ├── __main__.py       # CLI entry point
-│   │   ├── sync.py           # Main synchronisation logic (CLI)
-│   │   ├── api.py            # Qoqa REST API client
-│   │   ├── browser.py        # Browser login only (SeleniumBase CDP)
-│   │   ├── db.py             # SQLAlchemy connection and session
-│   │   ├── models/
-│   │   │   ├── __init__.py
-│   │   │   └── order.py      # SQLAlchemy QoqaOrder model
-│   │   └── utils/
-│   │       ├── __init__.py
-│   │       └── pdf_parser.py # PDF parsing with pdfplumber
-└── frontend/                 # Next.js application
-    ├── .env.example
-    ├── package.json
-    ├── tsconfig.json
-    ├── next.config.ts
-    ├── components.json       # shadcn/ui config
-    └── src/
-        ├── app/
-        │   ├── layout.tsx
-        │   ├── page.tsx      # Main dashboard
-        │   └── api/
-        │       └── orders/
-        │           └── route.ts
-        ├── components/
-        │   ├── ui/           # shadcn/ui auto-generated
-        │   ├── stats-cards.tsx
-        │   ├── spending-chart.tsx
-        │   └── orders-table.tsx
-        ├── lib/
-        │   ├── db.ts         # Drizzle ORM connection (SQLite or PostgreSQL)
-        │   └── utils.ts
-        └── types/
-            └── order.ts
-```
-
----
-
-## Prerequisites
-
-- **Python 3.11+**
-- **Node.js 20+** and **pnpm**
-- **Google Chrome** or **Chromium** installed
-- A **Qoqa.ch** account with orders
-
-> **No database server required for local use.** By default, both the crawler
-> and the frontend use a local SQLite file at
-> `~/.local/share/qoqa-compta/qoqa.db` (XDG data home).
-> PostgreSQL (e.g. Neon.tech) is supported as an optional alternative — useful
-> if you want to deploy the frontend to Vercel.
-
----
-
-## Environment variables
-
-### Crawler
-
-Copy `crawler/.env.example` to `crawler/.env` and fill in:
-
-| Variable               | Description                                          | Example                                                                          |
-| ---------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `DATABASE_URL`         | Database URL (SQLite default, PostgreSQL optional)   | `sqlite:////home/user/.local/share/qoqa-compta/qoqa.db`                         |
-| `QOQA_EMAIL`           | Qoqa.ch login email *(recommended)*                 | `me@example.com`                                                                 |
-| `QOQA_PASSWORD`        | Qoqa.ch login password *(recommended)*              | `••••••••`                                                                       |
-| `CHROME_USER_DATA_DIR` | Chrome profile path *(alt. auth method)*             | `~/Library/Application Support/Google/Chrome` (macOS)                            |
-| `PDF_DOWNLOAD_DIR`     | PDF download folder                                  | `./pdfs`                                                                         |
-| `BROWSER_PATH`         | Custom browser binary *(optional)*                   | `/Applications/Chromium.app/Contents/MacOS/Chromium`                             |
-
-### Frontend
-
-Copy `frontend/.env.example` to `frontend/.env.local` and fill in:
-
-| Variable       | Description                                        | Example                                                                          |
-| -------------- | -------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `DATABASE_URL` | Database URL — must point to the **same file/DB** as the crawler | `sqlite:////home/user/.local/share/qoqa-compta/qoqa.db` |
-
-> **SQLite URL format**: use four slashes for an absolute path:
-> `sqlite:////absolute/path/to/qoqa.db` (three slashes for the scheme, one for the root `/`).
->
-> **PostgreSQL**: replace with your Neon.tech connection string:
-> `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/qoqa?sslmode=require`
->
-> **XDG note**: if `DATABASE_URL` is unset, the crawler defaults to
-> `$XDG_DATA_HOME/qoqa-compta/qoqa.db` (i.e. `~/.local/share/qoqa-compta/qoqa.db`).
+See [docs/architecture.md](docs/architecture.md) for the full architecture diagram, project structure, and database schema.
 
 ---
 
@@ -200,8 +79,6 @@ python -m crawler.sync --help
 
 ## Next.js frontend
 
-### Frontend installation
-
 ```bash
 cd frontend
 
@@ -211,57 +88,43 @@ pnpm install
 # Copy and configure environment variables
 cp .env.example .env.local
 # Edit .env.local with your DATABASE_URL
-```
 
-### Running the frontend
-
-```bash
-# Development mode
+# Start Next.js server
 pnpm dev
-
-# Production build
-pnpm build && pnpm start
 ```
 
 The dashboard will be available at [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Database
+## Environment variables
 
-The crawler automatically creates the `qoqa_orders` table on first run (via SQLAlchemy `create_all`).
+### Crawler
 
-### SQLite (default)
+Copy `crawler/.env.example` to `crawler/.env` and fill in:
 
-No setup required. The crawler creates the database file and its parent directory
-automatically. Both the crawler and frontend must point to the same absolute path.
+| Variable               | Description                                          | Example                                                                          |
+| ---------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `DATABASE_URL`         | Database URL (SQLite default, PostgreSQL optional)   | `sqlite:////home/user/.local/share/qoqa-compta/qoqa.db`                         |
+| `QOQA_EMAIL`           | Qoqa.ch login email *(recommended)*                 | `me@example.com`                                                                 |
+| `QOQA_PASSWORD`        | Qoqa.ch login password *(recommended)*              | `••••••••`                                                                       |
+| `CHROME_USER_DATA_DIR` | Chrome profile path *(alt. auth method)*             | `~/Library/Application Support/Google/Chrome` (macOS)                            |
+| `PDF_DOWNLOAD_DIR`     | PDF download folder                                  | `./pdfs`                                                                         |
+| `BROWSER_PATH`         | Custom browser binary *(optional)*                   | `/Applications/Chromium.app/Contents/MacOS/Chromium`                             |
 
-WAL mode and a 5-second busy timeout are enabled automatically so concurrent
-reads (frontend) and writes (crawler) don't deadlock.
+### Frontend
 
-### PostgreSQL (optional)
+Copy `frontend/.env.example` to `frontend/.env.local` and fill in:
 
-Set `DATABASE_URL` to a PostgreSQL connection string in both `crawler/.env` and
-`frontend/.env.local`. Useful when deploying the frontend to Vercel.
+| Variable       | Description                                        | Example                                                                          |
+| -------------- | -------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `DATABASE_URL` | Database URL — must point to the **same file/DB** as the crawler | `sqlite:////home/user/.local/share/qoqa-compta/qoqa.db` |
 
-Table structure:
-
-```sql
-CREATE TABLE qoqa_orders (
-    id              SERIAL PRIMARY KEY,
-    order_number    VARCHAR(64) UNIQUE NOT NULL,
-    order_date      DATE NOT NULL,
-    amount_chf      NUMERIC(10, 2) NOT NULL,
-    partner_name    VARCHAR(255),
-    pdf_filename    VARCHAR(255),
-    raw_text        TEXT,            -- JSON from the Qoqa API
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
----
-
-## Contributing
-
-This is a personal project but PRs are welcome. Please open an issue before submitting a major change.
+> **SQLite URL format**: use four slashes for an absolute path:
+> `sqlite:////absolute/path/to/qoqa.db` (three slashes for the scheme, one for the root `/`).
+>
+> **PostgreSQL**: replace with your Neon.tech connection string:
+> `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/qoqa?sslmode=require`
+>
+> **XDG note**: if `DATABASE_URL` is unset, the crawler defaults to
+> `$XDG_DATA_HOME/qoqa-compta/qoqa.db` (i.e. `~/.local/share/qoqa-compta/qoqa.db`).
