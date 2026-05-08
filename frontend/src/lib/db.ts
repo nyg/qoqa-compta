@@ -8,7 +8,9 @@
  * If DATABASE_URL is unset, defaults to SQLite at the XDG data home:
  *   $XDG_DATA_HOME/qoqa-compta/qoqa.db  (~/.local/share/qoqa-compta/qoqa.db)
  */
+import fs from "fs";
 import os from "os";
+import path from "path";
 import { createClient } from "@libsql/client";
 import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzleLibsql, LibSQLDatabase } from "drizzle-orm/libsql";
@@ -32,6 +34,13 @@ function createDb(): LibSQLDatabase<any> {
   if (isSqlite) {
     // @libsql/client uses "file:" scheme; convert from SQLAlchemy "sqlite:///" scheme
     const filePath = rawUrl.slice("sqlite:///".length);
+    if (!fs.existsSync(path.dirname(filePath))) {
+      throw new Error(
+        `SQLite directory not found: ${path.dirname(filePath)}. ` +
+          `Run the crawler first to create the database, or set DATABASE_URL ` +
+          `to an existing path in frontend/.env.local.`
+      );
+    }
     const client = createClient({ url: `file:${filePath}` });
     return drizzleLibsql(client, { schema: { qoqaOrders: qoqaOrdersSqlite } });
   }
