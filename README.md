@@ -93,6 +93,8 @@ pnpm dev
 
 The dashboard will be available at [http://localhost:3000](http://localhost:3000).
 
+The UI language is automatically detected from your browser's `Accept-Language` header. Supported languages: **English**, **French** (fr), **German** (de), **Italian** (it), and **Romansh** (rm).
+
 ---
 
 ## Environment variables
