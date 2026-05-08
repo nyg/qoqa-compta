@@ -17,6 +17,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useFormatter } from "@/lib/formatter-context";
 import type { MonthlySpending, YearlySpending } from "@/types/order";
 
 interface SpendingChartProps {
@@ -24,14 +25,8 @@ interface SpendingChartProps {
   yearly: YearlySpending[];
 }
 
-/** Format a "YYYY-MM" string as a short month label (e.g. "Jan 24"). */
-function formatMonth(ym: string): string {
-  const [year, month] = ym.split("-");
-  const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-  return date.toLocaleDateString("fr-CH", { month: "short", year: "2-digit" });
-}
-
 export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
+  const { formatCHF, formatCHFAxis, formatDecimal, formatMonth } = useFormatter();
   const monthlyData = monthly.map((m) => ({
     name: formatMonth(m.month),
     total: m.total,
@@ -63,14 +58,15 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
               <YAxis
                 yAxisId="left"
                 tick={{ fontSize: 11 }}
-                tickFormatter={(v) => `${v} CHF`}
+                width={90}
+                tickFormatter={formatCHFAxis}
               />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={formatDecimal} />
               <Tooltip
                 formatter={(value, name) =>
                   name === "total"
-                    ? [`${Number(value).toFixed(2)} CHF`, "Total"]
-                    : [value, "Orders"]
+                    ? [formatCHF(Number(value)), "Total"]
+                    : [formatDecimal(Number(value)), "Orders"]
                 }
               />
               <Legend />
@@ -108,14 +104,15 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
               <YAxis
                 yAxisId="left"
                 tick={{ fontSize: 11 }}
-                tickFormatter={(v) => `${v} CHF`}
+                width={90}
+                tickFormatter={formatCHFAxis}
               />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={formatDecimal} />
               <Tooltip
                 formatter={(value, name) =>
                   name === "total"
-                    ? [`${Number(value).toFixed(2)} CHF`, "Total"]
-                    : [value, "Orders"]
+                    ? [formatCHF(Number(value)), "Total"]
+                    : [formatDecimal(Number(value)), "Orders"]
                 }
               />
               <Legend />

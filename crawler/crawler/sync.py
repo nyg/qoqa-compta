@@ -27,7 +27,7 @@ from crawler.db import Base, SessionLocal, engine, get_dialect_insert
 from crawler.models import QoqaOrder
 
 console = Console()
-app = typer.Typer(help="Qoqa.ch invoice crawler & DB sync tool.")
+app = typer.Typer(help="QoQa.ch invoice crawler & DB sync tool.")
 
 
 def _ensure_schema() -> None:
@@ -53,18 +53,40 @@ def _upsert_order(session, order: OrderData) -> bool:
             order_number=order.order_number,
             order_date=order.order_date,
             amount_chf=order.amount_chf,
-            partner_name=order.partner_name,
+            status=order.status,
+            subtotal_chf=order.subtotal_chf,
+            discount_chf=order.discount_chf,
+            vat_chf=order.vat_chf,
+            delivery_on=order.delivery_on,
+            offer_id=order.offer_id,
+            offer_title=order.offer_title,
+            offer_subtitle=order.offer_subtitle,
+            offer_category=order.offer_category,
+            offer_subcategory=order.offer_subcategory,
+            item_description=order.item_description,
+            invoice_number=order.invoice_number,
             pdf_filename=order.pdf_filename,
-            raw_text=order.raw_json,
+            raw_json=order.raw_json,
         )
         .on_conflict_do_update(
             index_elements=["order_number"],
             set_={
                 "order_date": order.order_date,
                 "amount_chf": order.amount_chf,
-                "partner_name": order.partner_name,
+                "status": order.status,
+                "subtotal_chf": order.subtotal_chf,
+                "discount_chf": order.discount_chf,
+                "vat_chf": order.vat_chf,
+                "delivery_on": order.delivery_on,
+                "offer_id": order.offer_id,
+                "offer_title": order.offer_title,
+                "offer_subtitle": order.offer_subtitle,
+                "offer_category": order.offer_category,
+                "offer_subcategory": order.offer_subcategory,
+                "item_description": order.item_description,
+                "invoice_number": order.invoice_number,
                 "pdf_filename": order.pdf_filename,
-                "raw_text": order.raw_json,
+                "raw_json": order.raw_json,
                 "updated_at": now,
             },
         )
@@ -96,14 +118,14 @@ def sync(
         help="Skip PDF download, only sync data to database.",
     ),
 ) -> None:
-    """Synchronise Qoqa invoices: fetch via API, upsert to DB, download PDFs."""
+    """Synchronise QoQa invoices: fetch via API, upsert to DB, download PDFs."""
 
     console.rule("[bold blue]qoqa-compta sync[/bold blue]")
 
     _ensure_schema()
 
     # ── Step 1: Authenticate ───────────────────────────────────────────────────
-    console.log("[cyan]→[/cyan] Logging in to Qoqa.ch…")
+    console.log("[cyan]→[/cyan] Logging in to QoQa.ch…")
     try:
         cookies = login_and_get_cookies()
     except Exception as exc:

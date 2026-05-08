@@ -1,16 +1,24 @@
 /**
- * Orders Table — filterable, paginated list of Qoqa orders.
+ * Orders Table — filterable, paginated list of QoQa orders.
  *
- * Filters: text search (order number / partner), amount range, date range.
+ * Filters: text search (order number / offer title / item description), amount range, date range.
  */
 "use client";
+
+const CATEGORY_LABELS: Record<string, string> = {
+  alcohol: "Alcohol",
+  qspirits: "Spirits",
+  qwine: "Wine",
+  qwinegrandcru: "Grand Cru",
+  qwineprimeurs: "Primeurs",
+};
 
 import { useState, useCallback } from "react";
 import { Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { formatCHF, formatDate } from "@/lib/utils";
+import { useFormatter } from "@/lib/formatter-context";
 import type { QoqaOrder } from "@/types/order";
 
 interface Pagination {
@@ -34,6 +42,7 @@ export function OrdersTable({
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const { formatCHF, formatDate } = useFormatter();
 
   const fetchOrders = useCallback(
     async (newSearch: string, page: number) => {
@@ -107,7 +116,13 @@ export function OrdersTable({
                   Date
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Partner
+                  Category
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                  Offer
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                  Item
                 </th>
                 <th className="px-4 py-3 text-right font-medium text-muted-foreground">
                   Amount
@@ -117,14 +132,14 @@ export function OrdersTable({
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                     Loading…
                   </td>
                 </tr>
               )}
               {!loading && orders.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                     No orders found.
                   </td>
                 </tr>
@@ -142,13 +157,25 @@ export function OrdersTable({
                       {formatDate(order.order_date)}
                     </td>
                     <td className="px-4 py-3">
-                      {order.partner_name ? (
-                        <Badge variant="secondary" className="font-normal">
-                          {order.partner_name}
+                      {order.offer_category ? (
+                        <Badge variant="outline" className="font-normal text-xs">
+                          {CATEGORY_LABELS[order.offer_category] ?? order.offer_category}
                         </Badge>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {order.offer_title ? (
+                        <Badge variant="secondary" className="font-normal">
+                          {order.offer_title}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground max-w-[260px] truncate">
+                      {order.item_description ?? <span className="opacity-40">—</span>}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">
                       {formatCHF(parseFloat(order.amount_chf))}

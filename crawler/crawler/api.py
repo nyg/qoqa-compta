@@ -1,6 +1,6 @@
-"""Qoqa.ch REST API client.
+"""QoQa.ch REST API client.
 
-Provides authenticated access to the Qoqa API for fetching purchases,
+Provides authenticated access to the QoQa API for fetching purchases,
 order details, and downloading invoice PDFs.
 
 Auth flow:
@@ -27,12 +27,23 @@ ORDER_URL = f"{API_BASE}/users/me/orders"
 
 @dataclass
 class OrderData:
-    """Structured order data extracted from the Qoqa API."""
+    """Structured order data extracted from the QoQa API."""
 
     order_number: str
     order_date: date
     amount_chf: Decimal
-    partner_name: str | None
+    status: str | None
+    subtotal_chf: Decimal | None
+    discount_chf: Decimal | None
+    vat_chf: Decimal | None
+    delivery_on: date | None
+    offer_id: str | None
+    offer_title: str | None
+    offer_subtitle: str | None
+    offer_category: str | None
+    offer_subcategory: str | None
+    item_description: str | None
+    invoice_number: str | None
     pdf_url: str | None
     pdf_filename: str | None
     raw_json: str
@@ -117,6 +128,11 @@ def parse_order_data(detail: dict) -> OrderData:
     """Transform an API order-detail response into an OrderData instance."""
     reference = detail.get("reference", "")
     total = Decimal(str(detail.get("total", 0)))
+    subtotal = detail.get("subtotal")
+    subtotal_chf = Decimal(str(subtotal)) if subtotal is not None else None
+
+    discount_centimes = int(detail.get("discount_amount_to_centimes") or 0)
+    discount_chf = Decimal(discount_centimes) / 100 if discount_centimes else None
 
     created_at_str = detail.get("created_at", "")
     try:
@@ -124,20 +140,40 @@ def parse_order_data(detail: dict) -> OrderData:
     except (ValueError, TypeError):
         order_date = date.today()
 
-    # Partner name: use the offer title or the top-level title
+    # Offer
     offer = detail.get("offer") or {}
-    partner_name = offer.get("title") or detail.get("title")
+    offer_id = offer.get("id")
+    offer_title = offer.get("title") or detail.get("title")
+    offer_subtitle = offer.get("subtitle")
+    offer_category = offer.get("tracking_identifier")
+    subs = offer.get("sub_universe_tracking_identifiers") or []
+    offer_subcategory = subs[0] if subs else None
 
-    # PDF link: prefer accounting_documents, fall back to invoice_link
+    # Order items
+    items = detail.get("order_items") or []
+    item_description = items[0].get("full_name") if items else None
+    vat_centimes = sum(int(i.get("vat_amount_to_centimes") or 0) for i in items)
+    vat_chf = Decimal(vat_centimes) / 100 if vat_centimes else None
+
+    # Delivery
+    delivery_on_str = detail.get("delivery_on")
+    try:
+        delivery_on = date.fromisoformat(delivery_on_str) if delivery_on_str else None
+    except (ValueError, TypeError):
+        delivery_on = None
+
+    # PDF / invoice
     pdf_url = None
     pdf_filename = None
-    docs = detail.get("accounting_documents", [])
+    invoice_number = None
+    docs = detail.get("accounting_documents") or []
     if docs:
         pdf_url = docs[0].get("pdf_link")
+        title = docs[0].get("title") or ""
+        invoice_number = title.removeprefix("Facture ").strip() or None
     if not pdf_url:
         pdf_url = detail.get("invoice_link")
     if pdf_url:
-        # Extract filename from URL (before query params)
         path_part = pdf_url.split("?")[0]
         pdf_filename = path_part.split("/")[-1]
 
@@ -145,7 +181,18 @@ def parse_order_data(detail: dict) -> OrderData:
         order_number=reference,
         order_date=order_date,
         amount_chf=total,
-        partner_name=partner_name,
+        status=detail.get("status"),
+        subtotal_chf=subtotal_chf,
+        discount_chf=discount_chf,
+        vat_chf=vat_chf,
+        delivery_on=delivery_on,
+        offer_id=offer_id,
+        offer_title=offer_title,
+        offer_subtitle=offer_subtitle,
+        offer_category=offer_category,
+        offer_subcategory=offer_subcategory,
+        item_description=item_description,
+        invoice_number=invoice_number,
         pdf_url=pdf_url,
         pdf_filename=pdf_filename,
         raw_json=json.dumps(detail, ensure_ascii=False, default=str),

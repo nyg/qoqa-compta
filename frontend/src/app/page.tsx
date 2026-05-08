@@ -1,5 +1,5 @@
 /**
- * Main dashboard — home page of the Qoqa Compta application.
+ * Main dashboard — home page of the QoQa Compta application.
  *
  * Fetches data server-side via the /api/orders API route and renders:
  *   - Stats cards (total, count, average)
@@ -39,7 +39,7 @@ export default async function DashboardPage() {
   } catch {
     return (
       <main className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-2">Qoqa Compta</h1>
+        <h1 className="text-3xl font-bold mb-2">QoQa Compta</h1>
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive">
           <p className="font-semibold">Unable to connect to the database.</p>
           <p className="text-sm mt-1">
@@ -57,9 +57,18 @@ export default async function DashboardPage() {
     <main className="container mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Qoqa Compta</h1>
+        <h1 className="text-3xl font-bold tracking-tight">QoQa Compta</h1>
         <p className="text-muted-foreground mt-1">
-          Your Qoqa.ch spending dashboard
+          Your{" "}
+          <a
+            href="https://www.qoqa.ch/fr/my_account/orders"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-4 hover:text-foreground transition-colors"
+          >
+            QoQa.ch
+          </a>{" "}
+          spending dashboard
         </p>
       </div>
 

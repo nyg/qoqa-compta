@@ -4,7 +4,7 @@
 
 Monorepo with two independent components that share a PostgreSQL database (Neon.tech):
 
-- **`crawler/`** — Python CLI that logs in to Qoqa.ch through Chrome (SeleniumBase CDP) only to obtain a JWT, then uses the Qoqa REST API (`requests`) to fetch order JSON and download invoice PDFs. PDFs are parsed with pdfplumber and upserted into PostgreSQL.
+- **`crawler/`** — Python CLI that logs in to QoQa.ch through Chrome (SeleniumBase CDP) only to obtain a JWT, then uses the QoQa REST API (`requests`) to fetch order JSON and download invoice PDFs. PDFs are parsed with pdfplumber and upserted into PostgreSQL.
 - **`frontend/`** — Next.js 16 (App Router) dashboard displaying spending stats, charts, and a searchable orders table. Deployed to Vercel Edge.
 
 Both connect to the same `qoqa_orders` table. The crawler writes; the frontend reads.
@@ -49,7 +49,7 @@ No test suite exists in either component.
 ```
 CLI (Typer, sync.py)
   → browser.py (SeleniumBase CDP) — login only, extracts cookies → JWT
-  → api.py (requests) — fetches order list + downloads PDFs from Qoqa REST API
+  → api.py (requests) — fetches order list + downloads PDFs from QoQa REST API
   → utils/pdf_parser.py (pdfplumber + regex) — extracts structured fields
   → db.py / models/order.py (SQLAlchemy 2.x) — upsert via ON CONFLICT
 ```

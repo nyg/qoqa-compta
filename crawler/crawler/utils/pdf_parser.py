@@ -1,9 +1,9 @@
-"""PDF parsing utilities for Qoqa.ch invoice PDFs.
+"""PDF parsing utilities for QoQa.ch invoice PDFs.
 
 Uses pdfplumber — the most Pythonic library for extracting structured data
 (text, tables) from PDFs.
 
-Qoqa invoice structure (typical):
+QoQa invoice structure (typical):
     - Header: "Confirmation de commande No XXXXXX"
     - Date line: "Date : DD.MM.YYYY"
     - Partner/brand section (optional)
@@ -22,7 +22,7 @@ import pdfplumber
 
 @dataclass
 class ParsedInvoice:
-    """Structured data extracted from one Qoqa PDF invoice."""
+    """Structured data extracted from one QoQa PDF invoice."""
 
     order_number: str
     order_date: date
@@ -53,7 +53,7 @@ _RE_PARTNER = re.compile(
 
 
 def parse_invoice_pdf(pdf_path: Path) -> ParsedInvoice | None:
-    """Parse a Qoqa invoice PDF and return a ParsedInvoice or None on failure.
+    """Parse a QoQa invoice PDF and return a ParsedInvoice or None on failure.
 
     Args:
         pdf_path: Path to the PDF file.

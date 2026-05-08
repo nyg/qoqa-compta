@@ -8,7 +8,7 @@
  *   - orders: paginated list of orders (with optional filters)
  *
  * Query parameters:
- *   - search: string (order_number or partner_name, optional)
+ *   - search: string (order_number, offer_title, or item_description; optional)
  *   - minAmount: number (optional)
  *   - maxAmount: number (optional)
  *   - from: ISO date YYYY-MM-DD (optional)

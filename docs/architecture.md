@@ -2,14 +2,14 @@
 
 ## Overview
 
-The crawler logs in to Qoqa.ch via the browser (just for authentication), then
-uses the Qoqa REST API to fetch all order data and download PDF invoices.
+The crawler logs in to QoQa.ch via the browser (just for authentication), then
+uses the QoQa REST API to fetch all order data and download PDF invoices.
 
 ```mermaid
 flowchart TD
     Chrome["Chrome\n(CDP, ~10s)"]
     JWT["Cookies / JWT token"]
-    QoqaAPI["Qoqa REST API\napi.qoqa.ch"]
+    QoqaAPI["QoQa REST API\napi.qoqa.ch"]
     PythonSync["Python Sync\n(requests)"]
     DB["SQLite /\nPostgreSQL"]
     PDFs["PDFs\n(local)"]
@@ -41,7 +41,7 @@ qoqa-compta/
 │   │   ├── __init__.py
 │   │   ├── __main__.py       # CLI entry point
 │   │   ├── sync.py           # Main synchronisation logic (CLI)
-│   │   ├── api.py            # Qoqa REST API client
+│   │   ├── api.py            # QoQa REST API client
 │   │   ├── browser.py        # Browser login only (SeleniumBase CDP)
 │   │   ├── db.py             # SQLAlchemy connection and session
 │   │   ├── models/
@@ -104,7 +104,7 @@ CREATE TABLE qoqa_orders (
     amount_chf      NUMERIC(10, 2) NOT NULL,
     partner_name    VARCHAR(255),
     pdf_filename    VARCHAR(255),
-    raw_text        TEXT,            -- JSON from the Qoqa API
+    raw_text        TEXT,            -- JSON from the QoQa API
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
 );

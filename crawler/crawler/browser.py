@@ -1,6 +1,6 @@
 """Browser automation — login only.
 
-Opens a browser, logs in to Qoqa.ch, extracts session cookies, and closes
+Opens a browser, logs in to QoQa.ch, extracts session cookies, and closes
 the browser. The cookies are then used server-side to obtain a JWT token
 for API access.
 
@@ -21,7 +21,7 @@ load_dotenv()
 
 QOQA_BASE_URL = "https://www.qoqa.ch/fr"
 
-# Qoqa.ch login selectors (MUI-based Next.js SPA)
+# QoQa.ch login selectors (MUI-based Next.js SPA)
 _SEL_ACCOUNT_BTN = '[data-testid="login-status-not_logged"]'
 _SEL_LOGIN_BTN = '[data-testid="account-login-button"]'
 _SEL_USERNAME = 'input[name="login"]'
@@ -76,7 +76,7 @@ def _check_chrome_not_running(user_data_dir: str) -> None:
 
 
 def _login(sb, email: str, password: str) -> None:
-    """Log in to Qoqa.ch via the SPA login modal."""
+    """Log in to QoQa.ch via the SPA login modal."""
     sb.sleep(3)  # wait for SPA to hydrate
 
     sb.click(_SEL_ACCOUNT_BTN)
@@ -115,7 +115,7 @@ def _extract_cookies(sb) -> dict[str, str]:
 
 
 def login_and_get_cookies() -> dict[str, str]:
-    """Open a browser, authenticate to Qoqa.ch, and return session cookies.
+    """Open a browser, authenticate to QoQa.ch, and return session cookies.
 
     Returns:
         A dict of cookie name→value from the authenticated session.
