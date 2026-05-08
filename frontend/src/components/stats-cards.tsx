@@ -10,7 +10,7 @@
 
 import { ShoppingBag, TrendingUp, CreditCard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCHF } from "@/lib/utils";
+import { useFormatter } from "@/lib/formatter-context";
 import type { OrderStats } from "@/types/order";
 
 interface StatsCardsProps {
@@ -18,6 +18,7 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ stats }: StatsCardsProps) {
+  const { formatCHF } = useFormatter();
   const cards = [
     {
       title: "Total spent",

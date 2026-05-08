@@ -18,7 +18,7 @@ import { Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { formatCHF, formatDate } from "@/lib/utils";
+import { useFormatter } from "@/lib/formatter-context";
 import type { QoqaOrder } from "@/types/order";
 
 interface Pagination {
@@ -42,6 +42,7 @@ export function OrdersTable({
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const { formatCHF, formatDate } = useFormatter();
 
   const fetchOrders = useCallback(
     async (newSearch: string, page: number) => {
