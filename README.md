@@ -1,6 +1,6 @@
 # qoqa-compta
 
-> Personal open-source tool to automatically sync Qoqa.ch order data and PDF invoices to PostgreSQL (Neon.tech) and display a spending dashboard.
+> Personal open-source tool to automatically sync Qoqa.ch order data and PDF invoices to a local SQLite database (or PostgreSQL) and display a spending dashboard.
 
 ---
 
@@ -16,7 +16,7 @@
 - [Next.js frontend](#nextjs-frontend)
   - [Installation](#frontend-installation)
   - [Running the frontend](#running-the-frontend)
-- [Database (Neon.tech)](#database-neontech)
+- [Database](#database)
 - [Contributing](#contributing)
 
 ---
@@ -39,8 +39,8 @@ uses the Qoqa REST API to fetch all order data and download PDF invoices.
                                           └──┬────────┬──┘
                                     upsert   │        │  download
                                    ┌─────────▼──┐  ┌─▼──────────┐
-                                   │ PostgreSQL  │  │   PDFs/    │
-                                   │ (Neon.tech) │  │   (local)  │
+                                   │ SQLite /    │  │   PDFs/    │
+                                   │ PostgreSQL  │  │   (local)  │
                                    └──────┬──────┘  └────────────┘
                                           │
                                    ┌──────▼──────┐
@@ -93,7 +93,7 @@ qoqa-compta/
         │   ├── spending-chart.tsx
         │   └── orders-table.tsx
         ├── lib/
-        │   ├── db.ts         # Neon serverless connection
+        │   ├── db.ts         # Drizzle ORM connection (SQLite or PostgreSQL)
         │   └── utils.ts
         └── types/
             └── order.ts
@@ -106,8 +106,13 @@ qoqa-compta/
 - **Python 3.11+**
 - **Node.js 20+** and **pnpm**
 - **Google Chrome** or **Chromium** installed
-- A **Neon.tech** account with a PostgreSQL database (free tier is sufficient)
 - A **Qoqa.ch** account with orders
+
+> **No database server required for local use.** By default, both the crawler
+> and the frontend use a local SQLite file at
+> `~/.local/share/qoqa-compta/qoqa.db` (XDG data home).
+> PostgreSQL (e.g. Neon.tech) is supported as an optional alternative — useful
+> if you want to deploy the frontend to Vercel.
 
 ---
 
@@ -117,24 +122,31 @@ qoqa-compta/
 
 Copy `crawler/.env.example` to `crawler/.env` and fill in:
 
-| Variable               | Description                              | Example                                                                          |
-| ---------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
-| `DATABASE_URL`         | PostgreSQL connection URL (Neon.tech)    | `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/qoqa?sslmode=require` |
-| `QOQA_EMAIL`           | Qoqa.ch login email *(recommended)*     | `me@example.com`                                                                 |
-| `QOQA_PASSWORD`        | Qoqa.ch login password *(recommended)*  | `••••••••`                                                                       |
-| `CHROME_USER_DATA_DIR` | Chrome profile path *(alt. auth method)* | `~/Library/Application Support/Google/Chrome` (macOS)                            |
-| `PDF_DOWNLOAD_DIR`     | PDF download folder                      | `./pdfs`                                                                         |
-| `BROWSER_PATH`         | Custom browser binary *(optional)*       | `/Applications/Chromium.app/Contents/MacOS/Chromium`                             |
+| Variable               | Description                                          | Example                                                                          |
+| ---------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `DATABASE_URL`         | Database URL (SQLite default, PostgreSQL optional)   | `sqlite:////home/user/.local/share/qoqa-compta/qoqa.db`                         |
+| `QOQA_EMAIL`           | Qoqa.ch login email *(recommended)*                 | `me@example.com`                                                                 |
+| `QOQA_PASSWORD`        | Qoqa.ch login password *(recommended)*              | `••••••••`                                                                       |
+| `CHROME_USER_DATA_DIR` | Chrome profile path *(alt. auth method)*             | `~/Library/Application Support/Google/Chrome` (macOS)                            |
+| `PDF_DOWNLOAD_DIR`     | PDF download folder                                  | `./pdfs`                                                                         |
+| `BROWSER_PATH`         | Custom browser binary *(optional)*                   | `/Applications/Chromium.app/Contents/MacOS/Chromium`                             |
 
 ### Frontend
 
 Copy `frontend/.env.example` to `frontend/.env.local` and fill in:
 
-| Variable       | Description                              | Example                                                                          |
-| -------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
-| `DATABASE_URL` | PostgreSQL connection URL (Neon.tech)    | `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/qoqa?sslmode=require` |
+| Variable       | Description                                        | Example                                                                          |
+| -------------- | -------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `DATABASE_URL` | Database URL — must point to the **same file/DB** as the crawler | `sqlite:////home/user/.local/share/qoqa-compta/qoqa.db` |
 
-> **Neon.tech note**: your `DATABASE_URL` can be found in the Neon dashboard → your project → *Connection Details* → select the `psycopg` driver.
+> **SQLite URL format**: use four slashes for an absolute path:
+> `sqlite:////absolute/path/to/qoqa.db` (three slashes for the scheme, one for the root `/`).
+>
+> **PostgreSQL**: replace with your Neon.tech connection string:
+> `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/qoqa?sslmode=require`
+>
+> **XDG note**: if `DATABASE_URL` is unset, the crawler defaults to
+> `$XDG_DATA_HOME/qoqa-compta/qoqa.db` (i.e. `~/.local/share/qoqa-compta/qoqa.db`).
 
 ---
 
@@ -215,9 +227,22 @@ The dashboard will be available at [http://localhost:3000](http://localhost:3000
 
 ---
 
-## Database (Neon.tech)
+## Database
 
 The crawler automatically creates the `qoqa_orders` table on first run (via SQLAlchemy `create_all`).
+
+### SQLite (default)
+
+No setup required. The crawler creates the database file and its parent directory
+automatically. Both the crawler and frontend must point to the same absolute path.
+
+WAL mode and a 5-second busy timeout are enabled automatically so concurrent
+reads (frontend) and writes (crawler) don't deadlock.
+
+### PostgreSQL (optional)
+
+Set `DATABASE_URL` to a PostgreSQL connection string in both `crawler/.env` and
+`frontend/.env.local`. Useful when deploying the frontend to Vercel.
 
 Table structure:
 

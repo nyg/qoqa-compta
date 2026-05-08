@@ -11,15 +11,26 @@
  *   - search: string (order_number or partner_name, optional)
  *   - minAmount: number (optional)
  *   - maxAmount: number (optional)
- *   - from: ISO date (optional)
- *   - to: ISO date (optional)
+ *   - from: ISO date YYYY-MM-DD (optional)
+ *   - to: ISO date YYYY-MM-DD (optional)
  *   - page: number (default 1)
  *   - pageSize: number (default 20, max 100)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import {
+  fetchStats,
+  fetchMonthlySpending,
+  fetchYearlySpending,
+  fetchOrders,
+  fetchOrdersCount,
+} from "@/lib/queries";
 
-export const runtime = "edge";
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function safeDate(value: string | null, fallback: string): string {
+  if (value && ISO_DATE_RE.test(value)) return value;
+  return fallback;
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -27,91 +38,43 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get("search") ?? "";
   const minAmountParam = searchParams.get("minAmount");
   const maxAmountParam = searchParams.get("maxAmount");
-  const minAmount = minAmountParam !== null && !isNaN(parseFloat(minAmountParam))
-    ? parseFloat(minAmountParam)
-    : 0;
-  const maxAmount = maxAmountParam !== null && !isNaN(parseFloat(maxAmountParam))
-    ? parseFloat(maxAmountParam)
-    : Number.MAX_SAFE_INTEGER;
-  const from = searchParams.get("from") ?? "2000-01-01";
-  const to = searchParams.get("to") ?? "2099-12-31";
+  const minAmount =
+    minAmountParam !== null && !isNaN(parseFloat(minAmountParam))
+      ? parseFloat(minAmountParam)
+      : 0;
+  const maxAmount =
+    maxAmountParam !== null && !isNaN(parseFloat(maxAmountParam))
+      ? parseFloat(maxAmountParam)
+      : Number.MAX_SAFE_INTEGER;
+  const from = safeDate(searchParams.get("from"), "2000-01-01");
+  const to = safeDate(searchParams.get("to"), "2099-12-31");
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const pageSize = Math.min(
     100,
     Math.max(1, parseInt(searchParams.get("pageSize") ?? "20", 10))
   );
-  const offset = (page - 1) * pageSize;
 
-  const searchPattern = `%${search}%`;
+  const filter = { search, minAmount, maxAmount, from, to, page, pageSize };
 
   try {
-    // Aggregate stats
-    const [statsRow] = await sql`
-      SELECT
-        COALESCE(SUM(amount_chf), 0)::float  AS total_spent,
-        COUNT(*)::int                          AS order_count,
-        COALESCE(AVG(amount_chf), 0)::float   AS average_per_order
-      FROM qoqa_orders
-    `;
-
-    // Monthly spending (last 24 months)
-    const monthlyRows = await sql`
-      SELECT
-        TO_CHAR(order_date, 'YYYY-MM') AS month,
-        SUM(amount_chf)::float         AS total,
-        COUNT(*)::int                  AS count
-      FROM qoqa_orders
-      WHERE order_date >= NOW() - INTERVAL '24 months'
-      GROUP BY month
-      ORDER BY month
-    `;
-
-    // Yearly spending
-    const yearlyRows = await sql`
-      SELECT
-        EXTRACT(YEAR FROM order_date)::int AS year,
-        SUM(amount_chf)::float             AS total,
-        COUNT(*)::int                      AS count
-      FROM qoqa_orders
-      GROUP BY year
-      ORDER BY year
-    `;
-
-    // Filtered orders list
-    const orders = await sql`
-      SELECT
-        id, order_number, order_date, amount_chf::float, partner_name,
-        pdf_filename, created_at, updated_at
-      FROM qoqa_orders
-      WHERE
-        (order_number ILIKE ${searchPattern} OR partner_name ILIKE ${searchPattern})
-        AND amount_chf >= ${minAmount}
-        AND amount_chf <= ${maxAmount}
-        AND order_date BETWEEN ${from}::date AND ${to}::date
-      ORDER BY order_date DESC
-      LIMIT ${pageSize} OFFSET ${offset}
-    `;
-
-    const [countRow] = await sql`
-      SELECT COUNT(*)::int AS total
-      FROM qoqa_orders
-      WHERE
-        (order_number ILIKE ${searchPattern} OR partner_name ILIKE ${searchPattern})
-        AND amount_chf >= ${minAmount}
-        AND amount_chf <= ${maxAmount}
-        AND order_date BETWEEN ${from}::date AND ${to}::date
-    `;
+    const [stats, monthly, yearly, orders, total] = await Promise.all([
+      fetchStats(),
+      fetchMonthlySpending(),
+      fetchYearlySpending(),
+      fetchOrders(filter),
+      fetchOrdersCount(filter),
+    ]);
 
     return NextResponse.json({
-      stats: statsRow,
-      monthly: monthlyRows,
-      yearly: yearlyRows,
+      stats,
+      monthly,
+      yearly,
       orders,
       pagination: {
         page,
         pageSize,
-        total: countRow.total,
-        totalPages: Math.ceil(countRow.total / pageSize),
+        total,
+        totalPages: Math.ceil(total / pageSize),
       },
     });
   } catch (error) {
@@ -122,3 +85,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
