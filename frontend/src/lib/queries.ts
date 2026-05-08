@@ -109,10 +109,10 @@ function buildWhere(filter: OrdersFilter): SQL | undefined {
 
   const searchPattern = `%${search}%`;
 
-  // SQLite LIKE is case-insensitive for ASCII; note this differs from ILIKE for accented chars.
   const searchClause = or(
     sql`${qoqaOrders.order_number} LIKE ${searchPattern}`,
-    sql`${qoqaOrders.partner_name} LIKE ${searchPattern}`
+    sql`${qoqaOrders.offer_title} LIKE ${searchPattern}`,
+    sql`${qoqaOrders.item_description} LIKE ${searchPattern}`
   )!;
 
   return and(
@@ -173,7 +173,18 @@ function normalizeOrder(row: Record<string, unknown>): QoqaOrder {
     order_number: String(row.order_number),
     order_date: String(row.order_date),
     amount_chf: String(row.amount_chf),
-    partner_name: row.partner_name != null ? String(row.partner_name) : null,
+    status: row.status != null ? String(row.status) : null,
+    subtotal_chf: row.subtotal_chf != null ? String(row.subtotal_chf) : null,
+    discount_chf: row.discount_chf != null ? String(row.discount_chf) : null,
+    vat_chf: row.vat_chf != null ? String(row.vat_chf) : null,
+    delivery_on: row.delivery_on != null ? String(row.delivery_on) : null,
+    offer_id: row.offer_id != null ? String(row.offer_id) : null,
+    offer_title: row.offer_title != null ? String(row.offer_title) : null,
+    offer_subtitle: row.offer_subtitle != null ? String(row.offer_subtitle) : null,
+    offer_category: row.offer_category != null ? String(row.offer_category) : null,
+    offer_subcategory: row.offer_subcategory != null ? String(row.offer_subcategory) : null,
+    item_description: row.item_description != null ? String(row.item_description) : null,
+    invoice_number: row.invoice_number != null ? String(row.invoice_number) : null,
     pdf_filename: row.pdf_filename != null ? String(row.pdf_filename) : null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),

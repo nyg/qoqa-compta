@@ -142,9 +142,9 @@ export function OrdersTable({
                       {formatDate(order.order_date)}
                     </td>
                     <td className="px-4 py-3">
-                      {order.partner_name ? (
+                      {order.offer_title ? (
                         <Badge variant="secondary" className="font-normal">
-                          {order.partner_name}
+                          {order.offer_title}
                         </Badge>
                       ) : (
                         <span className="text-muted-foreground">—</span>
