@@ -5,22 +5,26 @@
  *   - Total spent (CHF)
  *   - Number of orders
  *   - Average spend per order (CHF)
+ *
+ * Server Component: formatting happens on the server to avoid hydration
+ * mismatches caused by differing ICU data between Node.js and the browser.
  */
-"use client";
 
 import { ShoppingBag, TrendingUp, CreditCard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useFormatter } from "@/lib/formatter-context";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
+import { headers } from "next/headers";
+import { parseAcceptLanguage, createFormatters } from "@/lib/formatters";
 import type { OrderStats } from "@/types/order";
 
 interface StatsCardsProps {
   stats: OrderStats;
 }
 
-export function StatsCards({ stats }: StatsCardsProps) {
-  const { formatCHF } = useFormatter();
-  const t = useTranslations("StatsCards");
+export async function StatsCards({ stats }: StatsCardsProps) {
+  const hdrs = await headers();
+  const { formatCHF } = createFormatters(parseAcceptLanguage(hdrs.get("accept-language")));
+  const t = await getTranslations("StatsCards");
   const cards = [
     {
       title: t("totalSpent"),
