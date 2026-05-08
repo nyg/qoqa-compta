@@ -59,7 +59,16 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">QoQa Compta</h1>
         <p className="text-muted-foreground mt-1">
-          Your QoQa.ch spending dashboard
+          Your{" "}
+          <a
+            href="https://www.qoqa.ch/fr/my_account/orders"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-4 hover:text-foreground transition-colors"
+          >
+            QoQa.ch
+          </a>{" "}
+          spending dashboard
         </p>
       </div>
 

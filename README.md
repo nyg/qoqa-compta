@@ -1,6 +1,6 @@
 # QoQa Compta
 
-> Web app & crawler to automatically sync your QoQa.ch orders and PDF invoices to a local SQLite (or PostgreSQL) database and display a spending dashboard.
+> Web app & crawler to automatically sync your [QoQa.ch](https://www.qoqa.ch) orders and PDF invoices to a local SQLite (or PostgreSQL) database and display a spending dashboard.
 
 ![Dashboard screenshot](docs/screenshot.png)
 
