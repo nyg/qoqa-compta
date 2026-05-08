@@ -6,7 +6,7 @@
  * SSR and hydration always match.
  */
 
-const DEFAULT_LOCALE = "fr-CH";
+const DEFAULT_LOCALE = "en";
 
 /**
  * Parse an Accept-Language header and return the preferred locale.
@@ -21,7 +21,10 @@ export function parseAcceptLanguage(header: string | null): string {
 
 /** Create a set of locale-bound formatter functions. */
 export function createFormatters(locale: string) {
-  const chf = new Intl.NumberFormat(locale, {
+  // Romansh has limited Intl support on Edge runtimes; use de-CH as a format fallback.
+  const formatLocale = locale.startsWith("rm") ? "de-CH" : locale;
+
+  const chf = new Intl.NumberFormat(formatLocale, {
     style: "currency",
     currency: "CHF",
     minimumFractionDigits: 2,
@@ -29,26 +32,26 @@ export function createFormatters(locale: string) {
   });
 
   // 0-decimal CHF used for compact chart axis ticks
-  const chfAxis = new Intl.NumberFormat(locale, {
+  const chfAxis = new Intl.NumberFormat(formatLocale, {
     style: "currency",
     currency: "CHF",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
 
-  const decimal = new Intl.NumberFormat(locale, {
+  const decimal = new Intl.NumberFormat(formatLocale, {
     style: "decimal",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
 
-  const dateFormatter = new Intl.DateTimeFormat(locale, {
+  const dateFormatter = new Intl.DateTimeFormat(formatLocale, {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
 
-  const monthYearFormatter = new Intl.DateTimeFormat(locale, {
+  const monthYearFormatter = new Intl.DateTimeFormat(formatLocale, {
     year: "2-digit",
     month: "short",
   });

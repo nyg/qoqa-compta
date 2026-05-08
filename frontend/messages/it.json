@@ -1,0 +1,45 @@
+{
+  "Dashboard": {
+    "subtitle": "Il tuo pannello di spesa <link>QoQa.ch</link>",
+    "errorTitle": "Impossibile connettersi al database.",
+    "errorDetail": "Assicurati che <code>DATABASE_URL</code> sia correttamente configurato in <code>frontend/.env.local</code>."
+  },
+  "StatsCards": {
+    "totalSpent": "Totale speso",
+    "totalSpentDesc": "Tutti gli ordini combinati",
+    "orders": "Ordini",
+    "ordersDesc": "Numero totale di ordini effettuati",
+    "averagePerOrder": "Media / ordine",
+    "averagePerOrderDesc": "Importo medio per ordine"
+  },
+  "OrdersTable": {
+    "title": "Tutti gli ordini ({count, number})",
+    "searchPlaceholder": "Cerca…",
+    "colOrderNumber": "Ordine #",
+    "colDate": "Data",
+    "colCategory": "Categoria",
+    "colOffer": "Offerta",
+    "colItem": "Articolo",
+    "colAmount": "Importo",
+    "loading": "Caricamento…",
+    "noOrders": "Nessun ordine trovato.",
+    "pagination": "Pagina {current, number} / {total, number}",
+    "prevPage": "← Precedente",
+    "nextPage": "Successivo →",
+    "categories": {
+      "alcohol": "Alcol",
+      "qspirits": "Distillati",
+      "qwine": "Vino",
+      "qwinegrandcru": "Grand Cru",
+      "qwineprimeurs": "Primeurs"
+    }
+  },
+  "SpendingChart": {
+    "monthlyTitle": "Spese mensili (24 mesi)",
+    "yearlyTitle": "Spese annuali",
+    "legendTotal": "Totale (CHF)",
+    "legendOrders": "Ordini",
+    "tooltipTotal": "Totale",
+    "tooltipOrders": "Ordini"
+  }
+}

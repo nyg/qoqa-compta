@@ -11,6 +11,7 @@
 import { ShoppingBag, TrendingUp, CreditCard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFormatter } from "@/lib/formatter-context";
+import { useTranslations } from "next-intl";
 import type { OrderStats } from "@/types/order";
 
 interface StatsCardsProps {
@@ -19,25 +20,26 @@ interface StatsCardsProps {
 
 export function StatsCards({ stats }: StatsCardsProps) {
   const { formatCHF } = useFormatter();
+  const t = useTranslations("StatsCards");
   const cards = [
     {
-      title: "Total spent",
+      title: t("totalSpent"),
       value: formatCHF(stats.total_spent),
-      description: "All orders combined",
+      description: t("totalSpentDesc"),
       icon: CreditCard,
       color: "text-blue-500",
     },
     {
-      title: "Orders",
+      title: t("orders"),
       value: stats.order_count.toString(),
-      description: "Total number of orders placed",
+      description: t("ordersDesc"),
       icon: ShoppingBag,
       color: "text-green-500",
     },
     {
-      title: "Average / order",
+      title: t("averagePerOrder"),
       value: formatCHF(stats.average_per_order),
-      description: "Average amount per order",
+      description: t("averagePerOrderDesc"),
       icon: TrendingUp,
       color: "text-orange-500",
     },

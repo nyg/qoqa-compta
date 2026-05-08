@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFormatter } from "@/lib/formatter-context";
+import { useTranslations } from "next-intl";
 import type { MonthlySpending, YearlySpending } from "@/types/order";
 
 interface SpendingChartProps {
@@ -27,6 +28,7 @@ interface SpendingChartProps {
 
 export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
   const { formatCHF, formatCHFAxis, formatDecimal, formatMonth } = useFormatter();
+  const t = useTranslations("SpendingChart");
   const monthlyData = monthly.map((m) => ({
     name: formatMonth(m.month),
     total: m.total,
@@ -44,7 +46,7 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
       {/* Monthly chart */}
       <Card className="col-span-1 md:col-span-1">
         <CardHeader>
-          <CardTitle className="text-base">Monthly spending (24 months)</CardTitle>
+          <CardTitle className="text-base">{t("monthlyTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={280}>
@@ -64,16 +66,16 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={formatDecimal} />
               <Tooltip
                 formatter={(value, name) =>
-                  name === "total"
-                    ? [formatCHF(Number(value)), "Total"]
-                    : [formatDecimal(Number(value)), "Orders"]
+                  name === t("legendTotal")
+                    ? [formatCHF(Number(value)), t("tooltipTotal")]
+                    : [formatDecimal(Number(value)), t("tooltipOrders")]
                 }
               />
               <Legend />
               <Bar
                 yAxisId="left"
                 dataKey="total"
-                name="Total (CHF)"
+                name={t("legendTotal")}
                 fill="hsl(var(--chart-1))"
                 radius={[4, 4, 0, 0]}
               />
@@ -81,7 +83,7 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
                 yAxisId="right"
                 type="monotone"
                 dataKey="orders"
-                name="Orders"
+                name={t("legendOrders")}
                 stroke="hsl(var(--chart-2))"
                 strokeWidth={2}
                 dot={false}
@@ -94,7 +96,7 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
       {/* Yearly chart */}
       <Card className="col-span-1 md:col-span-1">
         <CardHeader>
-          <CardTitle className="text-base">Yearly spending</CardTitle>
+          <CardTitle className="text-base">{t("yearlyTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={280}>
@@ -110,16 +112,16 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={formatDecimal} />
               <Tooltip
                 formatter={(value, name) =>
-                  name === "total"
-                    ? [formatCHF(Number(value)), "Total"]
-                    : [formatDecimal(Number(value)), "Orders"]
+                  name === t("legendTotal")
+                    ? [formatCHF(Number(value)), t("tooltipTotal")]
+                    : [formatDecimal(Number(value)), t("tooltipOrders")]
                 }
               />
               <Legend />
               <Bar
                 yAxisId="left"
                 dataKey="total"
-                name="Total (CHF)"
+                name={t("legendTotal")}
                 fill="hsl(var(--chart-3))"
                 radius={[4, 4, 0, 0]}
               />
@@ -127,7 +129,7 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
                 yAxisId="right"
                 type="monotone"
                 dataKey="orders"
-                name="Orders"
+                name={t("legendOrders")}
                 stroke="hsl(var(--chart-4))"
                 strokeWidth={2}
                 dot={{ r: 4 }}
