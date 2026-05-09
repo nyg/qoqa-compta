@@ -9,13 +9,13 @@ importers:
   .:
     dependencies:
       '@base-ui/react':
-        specifier: ^1.4.1
+        specifier: 1.4.1
         version: 1.4.1(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@hugeicons/core-free-icons':
-        specifier: ^4.1.2
+        specifier: 4.1.2
         version: 4.1.2
       '@hugeicons/react':
-        specifier: ^1.1.6
+        specifier: 1.1.6
         version: 1.1.6(react@19.2.5)
       '@libsql/client':
         specifier: 0.17.3
@@ -33,16 +33,16 @@ importers:
         specifier: 0.45.2
         version: 0.45.2(@libsql/client@0.17.3)(@neondatabase/serverless@1.1.0)
       lucide-react:
-        specifier: ^1.14.0
+        specifier: 1.14.0
         version: 1.14.0(react@19.2.5)
       next:
         specifier: 16.2.4
         version: 16.2.4(@babel/core@7.29.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       next-intl:
-        specifier: ^4.11.0
+        specifier: 4.11.0
         version: 4.11.0(next@16.2.4(@babel/core@7.29.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(typescript@6.0.3)
       next-themes:
-        specifier: ^0.4.6
+        specifier: 0.4.6
         version: 0.4.6(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
         specifier: 19.2.5
@@ -54,13 +54,13 @@ importers:
         specifier: 3.8.1
         version: 3.8.1(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react-is@16.13.1)(react@19.2.5)(redux@5.0.1)
       shadcn:
-        specifier: ^4.7.0
+        specifier: 4.7.0
         version: 4.7.0(@types/node@25.6.0)(typescript@6.0.3)
       tailwind-merge:
         specifier: 3.5.0
         version: 3.5.0
       tw-animate-css:
-        specifier: ^1.4.0
+        specifier: 1.4.0
         version: 1.4.0
     devDependencies:
       '@tailwindcss/postcss':
