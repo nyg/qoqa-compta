@@ -55,24 +55,35 @@ qoqa-compta/
     ├── package.json
     ├── tsconfig.json
     ├── next.config.ts
-    ├── components.json       # shadcn/ui config
+    ├── components.json       # shadcn/ui config (base-mira / Base UI preset)
+    ├── messages/             # next-intl message files (en, fr, de, it, rm)
     └── src/
         ├── app/
+        │   ├── globals.css
         │   ├── layout.tsx
-        │   ├── page.tsx      # Main dashboard
+        │   ├── page.tsx      # Main dashboard (dynamic, reads ?categories= param)
         │   └── api/
         │       └── orders/
-        │           └── route.ts
+        │           └── route.ts  # Paginated orders + aggregate data endpoint
         ├── components/
-        │   ├── ui/           # shadcn/ui auto-generated
-        │   ├── stats-cards.tsx
-        │   ├── spending-chart.tsx
-        │   └── orders-table.tsx
+        │   ├── ui/               # shadcn/ui primitives (Base UI wrappers)
+        │   ├── category-picker.tsx   # Multi-select category filter (client)
+        │   ├── orders-table.tsx      # Filterable, paginated orders table (client)
+        │   ├── spending-chart.tsx    # Monthly + yearly Recharts charts (client)
+        │   ├── stats-cards.tsx       # Aggregate stat cards (server)
+        │   ├── theme-provider.tsx
+        │   └── theme-toggle.tsx
+        ├── i18n/
+        │   └── request.ts    # next-intl locale detection from Accept-Language
         ├── lib/
-        │   ├── db.ts         # Drizzle ORM connection (SQLite or PostgreSQL)
-        │   └── utils.ts
+        │   ├── db.ts             # Drizzle ORM client (SQLite or PostgreSQL)
+        │   ├── formatter-context.tsx  # React context for fr-CH formatters
+        │   ├── formatters.ts     # formatCHF, formatDate, formatMonth helpers
+        │   ├── queries.ts        # All DB query functions (Drizzle ORM)
+        │   ├── schema.ts         # Drizzle schema (mirrors qoqa_orders table)
+        │   └── utils.ts          # cn() and other utilities
         └── types/
-            └── order.ts
+            └── order.ts          # QoqaOrder, OrderStats, MonthlySpending, YearlySpending
 ```
 
 ---
@@ -98,14 +109,25 @@ Set `DATABASE_URL` to a PostgreSQL connection string in both `crawler/.env` and
 
 ```sql
 CREATE TABLE qoqa_orders (
-    id              SERIAL PRIMARY KEY,
-    order_number    VARCHAR(64) UNIQUE NOT NULL,
-    order_date      DATE NOT NULL,
-    amount_chf      NUMERIC(10, 2) NOT NULL,
-    partner_name    VARCHAR(255),
-    pdf_filename    VARCHAR(255),
-    raw_text        TEXT,            -- JSON from the QoQa API
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
+    id               SERIAL PRIMARY KEY,
+    order_number     VARCHAR(64) UNIQUE NOT NULL,
+    order_date       DATE NOT NULL,
+    amount_chf       NUMERIC(10, 2) NOT NULL,
+    status           VARCHAR(32),
+    subtotal_chf     NUMERIC(10, 2),
+    discount_chf     NUMERIC(10, 2),
+    vat_chf          NUMERIC(10, 2),
+    delivery_on      DATE,
+    offer_id         VARCHAR(32),
+    offer_title      VARCHAR(255),
+    offer_subtitle   VARCHAR(255),
+    offer_category   VARCHAR(64),
+    offer_subcategory VARCHAR(64),
+    item_description TEXT,
+    invoice_number   VARCHAR(64),
+    pdf_filename     VARCHAR(255),
+    raw_json         TEXT,
+    created_at       TIMESTAMPTZ DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
 ```

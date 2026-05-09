@@ -40,9 +40,9 @@ No test suite exists in either component.
 
 ### Frontend data flow
 
-- **`page.tsx`** is a Server Component that fetches dashboard data via direct SQL (ISR, revalidates every 5 min).
-- **`/api/orders`** is an Edge Runtime route used by `OrdersTable` for client-side search and pagination.
-- Both use `@neondatabase/serverless` (the `sql` tagged template from `src/lib/db.ts`) — raw SQL, no ORM.
+- **`page.tsx`** is a fully dynamic Server Component that reads `searchParams` (selected categories) and fetches all dashboard data — stats, charts, initial orders — server-side with the active filter applied.
+- **`/api/orders`** is an API route used by `OrdersTable` for client-side search and pagination. It also accepts a `categories` query param to keep the table in sync with the active filter.
+- Both use Drizzle ORM (`src/lib/queries.ts`) which supports SQLite (via `@libsql/client`) and PostgreSQL (via `@neondatabase/serverless`).
 
 ### Crawler pipeline
 
@@ -73,18 +73,20 @@ CLI (Typer, sync.py)
 ### TypeScript (frontend)
 
 - `strict: true` in tsconfig; path alias `@/*` → `./src/*`
-- UI built with shadcn/ui (Radix primitives + CVA + `cn()` utility from `src/lib/utils.ts`)
+- UI built with shadcn/ui (Base UI primitives via `@base-ui/react`, base-mira style preset, CVA + `cn()` utility from `src/lib/utils.ts`)
 - Tailwind v4 with CSS-variable theming in `globals.css` (`@theme inline` directive) — no `tailwind.config.ts`
 - Charts use Recharts (`ComposedChart` with bar + line dual-axis)
-- All UI text is in English; number/date formatting uses `fr-CH` locale for Swiss conventions
-- Currency formatting via `formatCHF()` and date formatting via `formatDate()` in `src/lib/utils.ts`
+- UI text is fully internationalised with next-intl (5 locales: `en`, `fr`, `de`, `it`, `rm`); message files live in `frontend/messages/`
+- Locale is auto-detected from the `Accept-Language` header in `src/i18n/request.ts`; Romansh (`rm`) falls back to `de-CH` for `Intl` formatting
+- Number/date formatting uses `fr-CH` locale for Swiss conventions; helpers are in `src/lib/formatters.ts` + `src/lib/formatter-context.tsx`
 - Client components marked with `"use client"`; server components are the default
+- Category filter state is encoded in the URL (`?categories=qwine,alcohol`) — the `CategoryPicker` client component updates search params via `useRouter`
 
 ### Database
 
 - Single table `qoqa_orders` with `order_number` as the unique business key
 - Amounts stored as `NUMERIC(10, 2)` (CHF); represented as `Decimal` in Python, `string` in TypeScript
-- Crawler uses SQLAlchemy upsert (INSERT … ON CONFLICT UPDATE); frontend uses raw SQL via Neon driver
+- Crawler uses SQLAlchemy upsert (INSERT … ON CONFLICT UPDATE); frontend uses Drizzle ORM (`src/lib/queries.ts`)
 
 ### Git
 
