@@ -1,6 +1,6 @@
 /**
- * TypeScript type definitions for QoQa orders.
- * Mirrors the qoqa_orders PostgreSQL table.
+ * TypeScript type definitions for QoQa orders and universes.
+ * Mirrors the qoqa_orders and qoqa_universes PostgreSQL tables.
  */
 export interface QoqaOrder {
   id: number;
@@ -15,13 +15,25 @@ export interface QoqaOrder {
   offer_id: string | null;
   offer_title: string | null;
   offer_subtitle: string | null;
-  offer_category: string | null;
-  offer_subcategory: string | null;
+  universe: string | null;
+  subuniverse: string | null;
   item_description: string | null;
   invoice_number: string | null;
   pdf_filename: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface QoqaUniverse {
+  universe_tracking_identifier: string;
+  name_fr: string | null;
+  name_de: string | null;
+}
+
+/** A universe with its localized display name (or raw identifier as fallback). */
+export interface UniverseOption {
+  identifier: string;
+  name: string;
 }
 
 export interface OrderStats {

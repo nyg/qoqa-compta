@@ -37,8 +37,8 @@ class QoqaOrder(Base):
     offer_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     offer_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     offer_subtitle: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    offer_category: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    offer_subcategory: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    universe: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    subuniverse: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     # Item
     item_description: Mapped[str | None] = mapped_column(Text, nullable=True)

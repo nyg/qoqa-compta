@@ -16,24 +16,72 @@ from rich.progress import track
 from sqlalchemy import select
 from crawler.api import (
     OrderData,
+    UniverseData,
+    detect_locale,
     download_pdf,
+    fetch_universes,
     get_auth_token,
     get_order_details,
     list_all_purchases,
     parse_order_data,
 )
 from crawler.browser import get_pdf_download_dir, login_and_get_cookies
-from crawler.db import Base, SessionLocal, engine, get_dialect_insert
-from crawler.models import QoqaOrder
+from crawler.db import Base, SessionLocal, engine, get_dialect_insert, run_migrations
+from crawler.models import QoqaOrder, QoqaUniverse
 
 console = Console()
 app = typer.Typer(help="QoQa.ch invoice crawler & DB sync tool.")
 
 
 def _ensure_schema() -> None:
-    """Create the DB tables if they don't exist yet."""
+    """Run migrations then create any missing DB tables."""
+    run_migrations()
     Base.metadata.create_all(bind=engine)
     console.log("[green]✓[/green] Database schema is up to date.")
+
+
+def _sync_universes(token: str, locale: str) -> None:
+    """Fetch universes for both supported locales and upsert into qoqa_universes."""
+    insert = get_dialect_insert()
+
+    try:
+        rows_fr = fetch_universes("fr")
+        rows_de = fetch_universes("de")
+    except Exception as exc:
+        console.print(f"[yellow]⚠ Could not fetch universes: {exc}[/yellow]")
+        return
+
+    # Build a merged dict: identifier → {name_fr, name_de}
+    by_id: dict[str, dict] = {}
+    for row in rows_fr:
+        uid = row.get("universe_tracking_identifier")
+        if uid:
+            by_id.setdefault(uid, {})["name_fr"] = row.get("name")
+    for row in rows_de:
+        uid = row.get("universe_tracking_identifier")
+        if uid:
+            by_id.setdefault(uid, {})["name_de"] = row.get("name")
+
+    with SessionLocal() as session:
+        for uid, names in by_id.items():
+            stmt = (
+                insert(QoqaUniverse)
+                .values(
+                    universe_tracking_identifier=uid,
+                    name_fr=names.get("name_fr"),
+                    name_de=names.get("name_de"),
+                )
+                .on_conflict_do_update(
+                    index_elements=["universe_tracking_identifier"],
+                    set_={
+                        "name_fr": names.get("name_fr"),
+                        "name_de": names.get("name_de"),
+                    },
+                )
+            )
+            session.execute(stmt)
+        session.commit()
+    console.log(f"[green]✓[/green] Synced {len(by_id)} universe(s).")
 
 
 def _known_order_numbers() -> set[str]:
@@ -61,8 +109,8 @@ def _upsert_order(session, order: OrderData) -> bool:
             offer_id=order.offer_id,
             offer_title=order.offer_title,
             offer_subtitle=order.offer_subtitle,
-            offer_category=order.offer_category,
-            offer_subcategory=order.offer_subcategory,
+            universe=order.universe,
+            subuniverse=order.subuniverse,
             item_description=order.item_description,
             invoice_number=order.invoice_number,
             pdf_filename=order.pdf_filename,
@@ -81,8 +129,8 @@ def _upsert_order(session, order: OrderData) -> bool:
                 "offer_id": order.offer_id,
                 "offer_title": order.offer_title,
                 "offer_subtitle": order.offer_subtitle,
-                "offer_category": order.offer_category,
-                "offer_subcategory": order.offer_subcategory,
+                "universe": order.universe,
+                "subuniverse": order.subuniverse,
                 "item_description": order.item_description,
                 "invoice_number": order.invoice_number,
                 "pdf_filename": order.pdf_filename,
@@ -117,10 +165,22 @@ def sync(
         "--db-only",
         help="Skip PDF download, only sync data to database.",
     ),
+    locale: str = typer.Option(
+        None,
+        "--locale",
+        help=(
+            "Locale for QoQa API responses (fr or de). "
+            "Defaults to auto-detection from the system locale (LANG/LC_ALL env vars). "
+            "Falls back to 'fr' if detection fails."
+        ),
+    ),
 ) -> None:
     """Synchronise QoQa invoices: fetch via API, upsert to DB, download PDFs."""
 
     console.rule("[bold blue]qoqa-compta sync[/bold blue]")
+
+    resolved_locale = locale or detect_locale()
+    console.log(f"[cyan]→[/cyan] Using locale: [bold]{resolved_locale}[/bold]")
 
     _ensure_schema()
 
@@ -141,10 +201,14 @@ def sync(
         raise typer.Exit(code=1)
     console.log("[green]✓[/green] API token obtained.")
 
-    # ── Step 2: Fetch purchases ────────────────────────────────────────────────
+    # ── Step 2: Sync universes ─────────────────────────────────────────────────
+    console.log("[cyan]→[/cyan] Syncing universes…")
+    _sync_universes(token, resolved_locale)
+
+    # ── Step 3: Fetch purchases ────────────────────────────────────────────────
     console.log("[cyan]→[/cyan] Fetching purchases from API…")
     try:
-        purchases = list_all_purchases(token)
+        purchases = list_all_purchases(token, locale=resolved_locale)
     except Exception as exc:
         console.print(f"[red]✗ API error:[/red] {exc}")
         raise typer.Exit(code=1)
@@ -157,7 +221,7 @@ def sync(
     # In update mode, filter out already-known orders
     known = _known_order_numbers() if not full else set()
 
-    # ── Step 3: Get order details + sync ───────────────────────────────────────
+    # ── Step 4: Get order details + sync ───────────────────────────────────────
     pdf_dir = get_pdf_download_dir()
     counts = {"synced": 0, "downloaded": 0, "skipped": 0, "failed": 0}
 
@@ -173,7 +237,7 @@ def sync(
             continue
 
         try:
-            detail = get_order_details(token, purchase_id)
+            detail = get_order_details(token, purchase_id, locale=resolved_locale)
         except Exception as exc:
             console.print(f"[red]✗[/red] API error for {purchase_id}: {exc}")
             counts["failed"] += 1

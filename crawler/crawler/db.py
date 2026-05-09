@@ -17,7 +17,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text as sqlalchemy_text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 load_dotenv()
@@ -80,7 +80,47 @@ def get_dialect_insert():
     return insert
 
 
-is_sqlite: bool = _is_sqlite_url(os.environ.get("DATABASE_URL") or _DEFAULT_DATABASE_URL)
+def run_migrations() -> None:
+    """Apply idempotent schema migrations before ``create_all``.
+
+    Currently handles:
+    - Renaming ``offer_category`` → ``universe`` on ``qoqa_orders``
+    - Renaming ``offer_subcategory`` → ``subuniverse`` on ``qoqa_orders``
+
+    Both SQLite ≥ 3.25 and PostgreSQL support ``ALTER TABLE … RENAME COLUMN``
+    natively. The migration is a no-op when the columns have already been
+    renamed (checked via ``PRAGMA table_info`` / ``information_schema``).
+    """
+    _RENAMES = [
+        ("offer_category", "universe"),
+        ("offer_subcategory", "subuniverse"),
+    ]
+    with engine.connect() as conn:
+        for old_col, new_col in _RENAMES:
+            if engine.dialect.name == "sqlite":
+                result = conn.execute(
+                    sqlalchemy_text("PRAGMA table_info(qoqa_orders)")
+                )
+                columns = {row[1] for row in result}
+            else:
+                result = conn.execute(
+                    sqlalchemy_text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'qoqa_orders'"
+                    )
+                )
+                columns = {row[0] for row in result}
+
+            if old_col in columns:
+                conn.execute(
+                    sqlalchemy_text(
+                        f"ALTER TABLE qoqa_orders RENAME COLUMN {old_col} TO {new_col}"
+                    )
+                )
+                conn.commit()
+
+
+
 
 engine = get_engine()
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)

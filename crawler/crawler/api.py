@@ -12,6 +12,8 @@ Auth flow:
 from __future__ import annotations
 
 import json
+import locale as _locale_module
+import os
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
@@ -23,6 +25,33 @@ AUTH_TOKEN_URL = "https://auth.qoqa.ch/v2/token"
 API_BASE = "https://api.qoqa.ch/v2"
 PURCHASES_URL = f"{API_BASE}/users/me/purchases"
 ORDER_URL = f"{API_BASE}/users/me/orders"
+UNIVERSES_URL = f"{API_BASE}/universes"
+
+_SUPPORTED_LOCALES = {"fr", "de"}
+
+
+def detect_locale() -> str:
+    """Detect the system locale and map it to a QoQa-supported locale.
+
+    Checks ``LC_ALL``, ``LC_MESSAGES``, and ``LANG`` environment variables
+    in order, then falls back to Python's ``locale`` module. Maps any German
+    variant to ``"de"`` and any French variant to ``"fr"``; defaults to ``"fr"``.
+    """
+    for var in ("LC_ALL", "LC_MESSAGES", "LANG"):
+        lang = os.environ.get(var, "")
+        if lang.startswith("de"):
+            return "de"
+        if lang.startswith("fr"):
+            return "fr"
+    try:
+        lang_code = _locale_module.getlocale()[0] or ""
+        if lang_code.startswith("de"):
+            return "de"
+        if lang_code.startswith("fr"):
+            return "fr"
+    except Exception:
+        pass
+    return "fr"
 
 
 @dataclass
@@ -40,13 +69,22 @@ class OrderData:
     offer_id: str | None
     offer_title: str | None
     offer_subtitle: str | None
-    offer_category: str | None
-    offer_subcategory: str | None
+    universe: str | None
+    subuniverse: str | None
     item_description: str | None
     invoice_number: str | None
     pdf_url: str | None
     pdf_filename: str | None
     raw_json: str
+
+
+@dataclass
+class UniverseData:
+    """Structured universe data extracted from the QoQa API."""
+
+    universe_tracking_identifier: str
+    name_fr: str | None
+    name_de: str | None
 
 
 def get_auth_token(cookies: dict[str, str]) -> str:
@@ -77,11 +115,15 @@ def _api_headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Token bearer={token}"}
 
 
-def list_all_purchases(token: str) -> list[dict]:
+def list_all_purchases(token: str, locale: str = "fr") -> list[dict]:
     """Paginate through all purchases and return the combined list.
 
     Each purchase dict contains at least: id, reference, kind, title,
     purchased_at, state.
+
+    Args:
+        token: JWT bearer token.
+        locale: API locale for localised strings (``"fr"`` or ``"de"``).
     """
     headers = _api_headers(token)
     all_purchases: list[dict] = []
@@ -91,7 +133,7 @@ def list_all_purchases(token: str) -> list[dict]:
         resp = requests.get(
             PURCHASES_URL,
             headers=headers,
-            params={"locale": "fr", "page": page, "per_page": 50, "with_campaign": "false"},
+            params={"locale": locale, "page": page, "per_page": 50, "with_campaign": "false"},
             timeout=30,
         )
         resp.raise_for_status()
@@ -107,19 +149,38 @@ def list_all_purchases(token: str) -> list[dict]:
     return all_purchases
 
 
-def get_order_details(token: str, order_id: str) -> dict:
+def get_order_details(token: str, order_id: str, locale: str = "fr") -> dict:
     """Fetch full details for a single order.
 
     Returns the raw API response dict, which includes reference, total,
     created_at, invoice_link, accounting_documents, etc.
+
+    Args:
+        token: JWT bearer token.
+        order_id: The order/purchase ID.
+        locale: API locale for localised strings (``"fr"`` or ``"de"``).
     """
     headers = _api_headers(token)
     resp = requests.get(
         f"{ORDER_URL}/{order_id}",
         headers=headers,
-        params={"locale": "fr"},
+        params={"locale": locale},
         timeout=30,
     )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def fetch_universes(locale: str = "fr") -> list[dict]:
+    """Fetch all universes from the public QoQa API (no auth required).
+
+    Args:
+        locale: Locale for universe names (``"fr"`` or ``"de"``).
+
+    Returns:
+        List of universe dicts from the API.
+    """
+    resp = requests.get(UNIVERSES_URL, params={"locale": locale}, timeout=15)
     resp.raise_for_status()
     return resp.json()
 
@@ -145,9 +206,9 @@ def parse_order_data(detail: dict) -> OrderData:
     offer_id = offer.get("id")
     offer_title = offer.get("title") or detail.get("title")
     offer_subtitle = offer.get("subtitle")
-    offer_category = offer.get("tracking_identifier")
+    universe = offer.get("universe_tracking_identifier")
     subs = offer.get("sub_universe_tracking_identifiers") or []
-    offer_subcategory = subs[0] if subs else None
+    subuniverse = subs[0] if subs else None
 
     # Order items
     items = detail.get("order_items") or []
@@ -189,8 +250,8 @@ def parse_order_data(detail: dict) -> OrderData:
         offer_id=offer_id,
         offer_title=offer_title,
         offer_subtitle=offer_subtitle,
-        offer_category=offer_category,
-        offer_subcategory=offer_subcategory,
+        universe=universe,
+        subuniverse=subuniverse,
         item_description=item_description,
         invoice_number=invoice_number,
         pdf_url=pdf_url,

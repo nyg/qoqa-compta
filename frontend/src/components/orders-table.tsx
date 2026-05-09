@@ -14,9 +14,6 @@ import { useFormatter } from "@/lib/formatter-context";
 import { useTranslations } from "next-intl";
 import type { QoqaOrder } from "@/types/order";
 
-type CategoryKey = "alcohol" | "qspirits" | "qwine" | "qwinegrandcru" | "qwineprimeurs";
-const KNOWN_CATEGORIES = new Set<string>(["alcohol", "qspirits", "qwine", "qwinegrandcru", "qwineprimeurs"]);
-
 interface Pagination {
   page: number;
   pageSize: number;
@@ -27,13 +24,13 @@ interface Pagination {
 interface OrdersTableProps {
   initialOrders: QoqaOrder[];
   initialPagination: Pagination;
-  selectedCategories: string[];
+  selectedUniverses: string[];
 }
 
 export function OrdersTable({
   initialOrders,
   initialPagination,
-  selectedCategories,
+  selectedUniverses,
 }: OrdersTableProps) {
   const [orders, setOrders] = useState<QoqaOrder[]>(initialOrders);
   const [pagination, setPagination] = useState<Pagination>(initialPagination);
@@ -52,8 +49,8 @@ export function OrdersTable({
           page: page.toString(),
           pageSize: "20",
         });
-        if (selectedCategories.length > 0) {
-          params.set("categories", selectedCategories.join(","));
+        if (selectedUniverses.length > 0) {
+          params.set("universes", selectedUniverses.join(","));
         }
         const res = await fetch(`/api/orders?${params}`);
         const data = await res.json();
@@ -65,7 +62,7 @@ export function OrdersTable({
         setLoading(false);
       }
     },
-    [pagination, selectedCategories]
+    [pagination, selectedUniverses]
   );
 
   const handleSearch = useCallback(
@@ -118,7 +115,7 @@ export function OrdersTable({
                   {t("colDate")}
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  {t("colCategory")}
+                  {t("colUniverse")}
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                   {t("colOffer")}
@@ -159,11 +156,9 @@ export function OrdersTable({
                       {formatDate(order.order_date)}
                     </td>
                     <td className="px-4 py-3">
-                      {order.offer_category ? (
+                      {order.universe ? (
                         <Badge variant="outline" className="font-normal text-xs">
-                          {KNOWN_CATEGORIES.has(order.offer_category ?? "")
-                            ? t(`categories.${order.offer_category as CategoryKey}`)
-                            : order.offer_category}
+                          {order.universe}
                         </Badge>
                       ) : (
                         <span className="text-muted-foreground">—</span>

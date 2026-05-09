@@ -17,7 +17,7 @@
     "searchPlaceholder": "Tschertgar…",
     "colOrderNumber": "Ordinaziun #",
     "colDate": "Data",
-    "colCategory": "Categoria",
+    "colUniverse": "Univers",
     "colOffer": "Offerta",
     "colItem": "Artitgel",
     "colAmount": "Import",
@@ -25,26 +25,12 @@
     "noOrders": "Naginas ordinaziuns chattas.",
     "pagination": "Pagina {current, number} / {total, number}",
     "prevPage": "← Precedent",
-    "nextPage": "Suandant →",
-    "categories": {
-      "alcohol": "Alcohol",
-      "qspirits": "Spirituosas",
-      "qwine": "Vin",
-      "qwinegrandcru": "Grand Cru",
-      "qwineprimeurs": "Primeurs"
-    }
+    "nextPage": "Suandant →"
   },
-  "CategoryPicker": {
-    "allCategories": "Tut las categorias",
-    "label": "Filter per categoria",
-    "nSelected": "{count, number} tschernidas",
-    "categories": {
-      "alcohol": "Alcohol",
-      "qspirits": "Spirituosas",
-      "qwine": "Vin",
-      "qwinegrandcru": "Grand Cru",
-      "qwineprimeurs": "Primeurs"
-    }
+  "UniversePicker": {
+    "allUniverses": "Tut ils univers",
+    "label": "Filter per univers",
+    "nSelected": "{count, number} tschernids"
   },
   "SpendingChart": {
     "monthlyTitle": "Spesas mensualas (24 mais)",
