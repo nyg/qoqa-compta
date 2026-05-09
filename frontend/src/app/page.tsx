@@ -18,6 +18,7 @@ import {
 import { StatsCards } from "@/components/stats-cards";
 import { SpendingChart } from "@/components/spending-chart";
 import { OrdersTable } from "@/components/orders-table";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // Revalidate this page every 5 minutes
 export const revalidate = 300;
@@ -60,9 +61,10 @@ export default async function DashboardPage() {
   return (
     <main className="container mx-auto px-4 py-8 space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">QoQa Compta</h1>
-        <p className="text-muted-foreground mt-1">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">QoQa Compta</h1>
+          <p className="text-muted-foreground mt-1">
           {t.rich("subtitle", {
             link: (chunks) => (
               <a
@@ -75,7 +77,9 @@ export default async function DashboardPage() {
               </a>
             ),
           })}
-        </p>
+          </p>
+        </div>
+        <ThemeToggle />
       </div>
 
       {/* Stats cards */}

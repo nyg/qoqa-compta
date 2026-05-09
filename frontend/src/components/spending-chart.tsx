@@ -1,7 +1,7 @@
 /**
- * Spending Chart — bar + line chart of monthly spending.
+ * Spending Chart — bar (CHF) + line (orders) for monthly and yearly spending.
  *
- * Uses Recharts ComposedChart for a dual bar/line visualisation.
+ * Uses Recharts ComposedChart with theme-aware oklch chart tokens.
  */
 "use client";
 
@@ -26,9 +26,123 @@ interface SpendingChartProps {
   yearly: YearlySpending[];
 }
 
-export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
-  const { formatCHF, formatCHFAxis, formatDecimal, formatMonth } = useFormatter();
+interface ChartCardProps {
+  title: string;
+  data: { name: string; total: number; orders: number }[];
+  gradientId: string;
+  barColor: string;
+  lineColor: string;
+}
+
+function ChartCard({ title, data, gradientId, barColor, lineColor }: ChartCardProps) {
+  const { formatCHF, formatCHFAxis, formatDecimal } = useFormatter();
   const t = useTranslations("SpendingChart");
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={280}>
+          <ComposedChart
+            data={data}
+            margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+          >
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={barColor} stopOpacity={0.95} />
+                <stop offset="95%" stopColor={barColor} stopOpacity={0.55} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="var(--border)"
+            />
+            <XAxis
+              dataKey="name"
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              tickLine={false}
+              axisLine={{ stroke: "var(--border)" }}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              yAxisId="left"
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              tickLine={false}
+              axisLine={false}
+              width={70}
+              tickFormatter={formatCHFAxis}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              tickLine={false}
+              axisLine={false}
+              width={32}
+              tickFormatter={formatDecimal}
+              allowDecimals={false}
+            />
+            <Tooltip
+              cursor={{ fill: "var(--muted)", opacity: 0.4 }}
+              contentStyle={{
+                backgroundColor: "var(--popover)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                color: "var(--popover-foreground)",
+                fontSize: 12,
+                boxShadow: "0 4px 12px rgb(0 0 0 / 0.08)",
+              }}
+              labelStyle={{
+                color: "var(--foreground)",
+                fontWeight: 500,
+                marginBottom: 4,
+              }}
+              formatter={(value, name) =>
+                name === t("legendTotal")
+                  ? [formatCHF(Number(value)), t("tooltipTotal")]
+                  : [formatDecimal(Number(value)), t("tooltipOrders")]
+              }
+            />
+            <Legend
+              iconType="circle"
+              wrapperStyle={{
+                fontSize: 12,
+                color: "var(--muted-foreground)",
+                paddingTop: 8,
+              }}
+            />
+            <Bar
+              yAxisId="left"
+              dataKey="total"
+              name={t("legendTotal")}
+              fill={`url(#${gradientId})`}
+              radius={[6, 6, 0, 0]}
+              maxBarSize={36}
+            />
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="orders"
+              name={t("legendOrders")}
+              stroke={lineColor}
+              strokeWidth={2.5}
+              dot={{ r: 3, fill: lineColor, strokeWidth: 0 }}
+              activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--background)" }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
+  const { formatMonth } = useFormatter();
+  const t = useTranslations("SpendingChart");
+
   const monthlyData = monthly.map((m) => ({
     name: formatMonth(m.month),
     total: m.total,
@@ -43,101 +157,20 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {/* Monthly chart */}
-      <Card className="col-span-1 md:col-span-1">
-        <CardHeader>
-          <CardTitle className="text-base">{t("monthlyTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis
-                dataKey="name"
-                tick={{ fontSize: 11 }}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                yAxisId="left"
-                tick={{ fontSize: 11 }}
-                width={90}
-                tickFormatter={formatCHFAxis}
-              />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={formatDecimal} />
-              <Tooltip
-                formatter={(value, name) =>
-                  name === t("legendTotal")
-                    ? [formatCHF(Number(value)), t("tooltipTotal")]
-                    : [formatDecimal(Number(value)), t("tooltipOrders")]
-                }
-              />
-              <Legend />
-              <Bar
-                yAxisId="left"
-                dataKey="total"
-                name={t("legendTotal")}
-                fill="hsl(var(--chart-1))"
-                radius={[4, 4, 0, 0]}
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="orders"
-                name={t("legendOrders")}
-                stroke="hsl(var(--chart-2))"
-                strokeWidth={2}
-                dot={false}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Yearly chart */}
-      <Card className="col-span-1 md:col-span-1">
-        <CardHeader>
-          <CardTitle className="text-base">{t("yearlyTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={yearlyData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis
-                yAxisId="left"
-                tick={{ fontSize: 11 }}
-                width={90}
-                tickFormatter={formatCHFAxis}
-              />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={formatDecimal} />
-              <Tooltip
-                formatter={(value, name) =>
-                  name === t("legendTotal")
-                    ? [formatCHF(Number(value)), t("tooltipTotal")]
-                    : [formatDecimal(Number(value)), t("tooltipOrders")]
-                }
-              />
-              <Legend />
-              <Bar
-                yAxisId="left"
-                dataKey="total"
-                name={t("legendTotal")}
-                fill="hsl(var(--chart-3))"
-                radius={[4, 4, 0, 0]}
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="orders"
-                name={t("legendOrders")}
-                stroke="hsl(var(--chart-4))"
-                strokeWidth={2}
-                dot={{ r: 4 }}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      <ChartCard
+        title={t("monthlyTitle")}
+        data={monthlyData}
+        gradientId="spending-chart-monthly"
+        barColor="var(--chart-1)"
+        lineColor="var(--chart-2)"
+      />
+      <ChartCard
+        title={t("yearlyTitle")}
+        data={yearlyData}
+        gradientId="spending-chart-yearly"
+        barColor="var(--chart-3)"
+        lineColor="var(--chart-4)"
+      />
     </div>
   );
 }
