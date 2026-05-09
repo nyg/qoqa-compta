@@ -2,9 +2,13 @@
  * Main dashboard — home page of the QoQa Compta application.
  *
  * Fetches data server-side via the /api/orders API route and renders:
+ *   - Category picker (top-right header)
  *   - Stats cards (total, count, average)
  *   - Spending charts (monthly bar+line, yearly)
  *   - Orders table with search/filters
+ *
+ * The page is fully dynamic (no ISR) because it reads URL search params
+ * to apply the category filter across all dashboard data.
  */
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
@@ -14,32 +18,40 @@ import {
   fetchYearlySpending,
   fetchInitialOrders,
   fetchTotalCount,
+  fetchCategories,
 } from "@/lib/queries";
 import { StatsCards } from "@/components/stats-cards";
 import { SpendingChart } from "@/components/spending-chart";
 import { OrdersTable } from "@/components/orders-table";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { CategoryPicker } from "@/components/category-picker";
 
-// Revalidate this page every 5 minutes
-export const revalidate = 300;
-
-async function fetchDashboardData() {
-  const [stats, monthly, yearly, orders, total] = await Promise.all([
-    fetchStats(),
-    fetchMonthlySpending(),
-    fetchYearlySpending(),
-    fetchInitialOrders(),
-    fetchTotalCount(),
+async function fetchDashboardData(categories: string[]) {
+  const [stats, monthly, yearly, orders, total, availableCategories] = await Promise.all([
+    fetchStats(categories),
+    fetchMonthlySpending(categories),
+    fetchYearlySpending(categories),
+    fetchInitialOrders(categories),
+    fetchTotalCount(categories),
+    fetchCategories(),
   ]);
-  return { stats, monthly, yearly, orders, total };
+  return { stats, monthly, yearly, orders, total, availableCategories };
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ categories?: string }>;
+}) {
   const t = await getTranslations("Dashboard");
+  const { categories: categoriesParam } = await searchParams;
+  const selectedCategories = categoriesParam
+    ? categoriesParam.split(",").filter(Boolean)
+    : [];
 
   let data;
   try {
-    data = await fetchDashboardData();
+    data = await fetchDashboardData(selectedCategories);
   } catch {
     return (
       <main className="container mx-auto px-4 py-8">
@@ -56,7 +68,7 @@ export default async function DashboardPage() {
     );
   }
 
-  const { stats, monthly, yearly, orders, total } = data;
+  const { stats, monthly, yearly, orders, total, availableCategories } = data;
 
   return (
     <main className="container mx-auto px-4 py-8 space-y-8">
@@ -79,7 +91,15 @@ export default async function DashboardPage() {
           })}
           </p>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <Suspense>
+            <CategoryPicker
+              available={availableCategories}
+              selected={selectedCategories}
+            />
+          </Suspense>
+          <ThemeToggle />
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -95,6 +115,7 @@ export default async function DashboardPage() {
       {/* Orders table */}
       <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" />}>
         <OrdersTable
+          key={selectedCategories.join(",")}
           initialOrders={orders}
           initialPagination={{
             page: 1,
@@ -102,6 +123,7 @@ export default async function DashboardPage() {
             total,
             totalPages: Math.ceil(total / 20),
           }}
+          selectedCategories={selectedCategories}
         />
       </Suspense>
     </main>

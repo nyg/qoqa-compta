@@ -34,6 +34,18 @@
       "qwineprimeurs": "Primeurs"
     }
   },
+  "CategoryPicker": {
+    "allCategories": "All categories",
+    "label": "Category filter",
+    "nSelected": "{count, number} selected",
+    "categories": {
+      "alcohol": "Alcohol",
+      "qspirits": "Spirits",
+      "qwine": "Wine",
+      "qwinegrandcru": "Grand Cru",
+      "qwineprimeurs": "Primeurs"
+    }
+  },
   "SpendingChart": {
     "monthlyTitle": "Monthly spending (24 months)",
     "yearlyTitle": "Yearly spending",

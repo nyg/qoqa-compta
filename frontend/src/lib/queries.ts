@@ -10,7 +10,7 @@
  *  - date('now', '-24 months') instead of NOW() - INTERVAL '24 months'
  *  - No ::float / ::int casts — CAST(x AS REAL/INTEGER) used instead
  */
-import { and, between, count, eq, gte, lte, or, sql, SQL } from "drizzle-orm";
+import { and, between, gte, inArray, lte, or, sql, SQL } from "drizzle-orm";
 import { db, isSqlite, qoqaOrders } from "./db";
 import type { OrderStats, MonthlySpending, YearlySpending } from "@/types/order";
 import type { QoqaOrder } from "@/types/order";
@@ -49,20 +49,33 @@ function monthsAgo24(): SQL<string> {
 
 // ── Query functions ───────────────────────────────────────────────────────────
 
-export async function fetchStats(): Promise<OrderStats> {
+/** Returns distinct, non-null offer_category values sorted alphabetically. */
+export async function fetchCategories(): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ category: qoqaOrders.offer_category })
+    .from(qoqaOrders)
+    .where(sql`${qoqaOrders.offer_category} IS NOT NULL`)
+    .orderBy(qoqaOrders.offer_category);
+  return rows.map((r) => r.category as string);
+}
+
+export async function fetchStats(categories: string[] = []): Promise<OrderStats> {
   const col = qoqaOrders.amount_chf;
+  const where = categories.length > 0 ? inArray(qoqaOrders.offer_category, categories) : undefined;
   const [row] = await db
     .select({
       total_spent: asFloat(sql`COALESCE(SUM(${col}), 0)`),
       order_count: asInt(sql`COUNT(*)`),
       average_per_order: asFloat(sql`COALESCE(AVG(${col}), 0)`),
     })
-    .from(qoqaOrders);
+    .from(qoqaOrders)
+    .where(where);
   return row as OrderStats;
 }
 
-export async function fetchMonthlySpending(): Promise<MonthlySpending[]> {
+export async function fetchMonthlySpending(categories: string[] = []): Promise<MonthlySpending[]> {
   const month = yearMonth(sql`${qoqaOrders.order_date}`);
+  const catClause = categories.length > 0 ? inArray(qoqaOrders.offer_category, categories) : undefined;
   return db
     .select({
       month,
@@ -70,13 +83,14 @@ export async function fetchMonthlySpending(): Promise<MonthlySpending[]> {
       count: asInt(sql`COUNT(*)`),
     })
     .from(qoqaOrders)
-    .where(sql`${qoqaOrders.order_date} >= ${monthsAgo24()}`)
+    .where(and(sql`${qoqaOrders.order_date} >= ${monthsAgo24()}`, catClause))
     .groupBy(month)
     .orderBy(month) as Promise<MonthlySpending[]>;
 }
 
-export async function fetchYearlySpending(): Promise<YearlySpending[]> {
+export async function fetchYearlySpending(categories: string[] = []): Promise<YearlySpending[]> {
   const year = yearOf(sql`${qoqaOrders.order_date}`);
+  const where = categories.length > 0 ? inArray(qoqaOrders.offer_category, categories) : undefined;
   return db
     .select({
       year,
@@ -84,6 +98,7 @@ export async function fetchYearlySpending(): Promise<YearlySpending[]> {
       count: asInt(sql`COUNT(*)`),
     })
     .from(qoqaOrders)
+    .where(where)
     .groupBy(year)
     .orderBy(year) as Promise<YearlySpending[]>;
 }
@@ -94,6 +109,7 @@ export interface OrdersFilter {
   maxAmount?: number;
   from?: string; // YYYY-MM-DD
   to?: string; // YYYY-MM-DD
+  categories?: string[];
   page?: number;
   pageSize?: number;
 }
@@ -105,6 +121,7 @@ function buildWhere(filter: OrdersFilter): SQL | undefined {
     maxAmount = Number.MAX_SAFE_INTEGER,
     from = "2000-01-01",
     to = "2099-12-31",
+    categories = [],
   } = filter;
 
   const searchPattern = `%${search}%`;
@@ -115,11 +132,15 @@ function buildWhere(filter: OrdersFilter): SQL | undefined {
     sql`${qoqaOrders.item_description} LIKE ${searchPattern}`
   )!;
 
+  const categoryClause =
+    categories.length > 0 ? inArray(qoqaOrders.offer_category, categories) : undefined;
+
   return and(
     searchClause,
     gte(qoqaOrders.amount_chf, String(minAmount)),
     lte(qoqaOrders.amount_chf, String(maxAmount)),
-    between(qoqaOrders.order_date, from, to)
+    between(qoqaOrders.order_date, from, to),
+    categoryClause
   );
 }
 
@@ -150,17 +171,20 @@ export async function fetchOrdersCount(filter: OrdersFilter = {}): Promise<numbe
   return row.total;
 }
 
-export async function fetchInitialOrders(): Promise<QoqaOrder[]> {
+export async function fetchInitialOrders(categories: string[] = []): Promise<QoqaOrder[]> {
+  const where = categories.length > 0 ? inArray(qoqaOrders.offer_category, categories) : undefined;
   const rows = await db
     .select()
     .from(qoqaOrders)
+    .where(where)
     .orderBy(sql`${qoqaOrders.order_date} DESC`)
     .limit(20);
   return rows.map(normalizeOrder);
 }
 
-export async function fetchTotalCount(): Promise<number> {
-  const [row] = await db.select({ total: asInt(sql`COUNT(*)`) }).from(qoqaOrders);
+export async function fetchTotalCount(categories: string[] = []): Promise<number> {
+  const where = categories.length > 0 ? inArray(qoqaOrders.offer_category, categories) : undefined;
+  const [row] = await db.select({ total: asInt(sql`COUNT(*)`) }).from(qoqaOrders).where(where);
   return row.total;
 }
 
