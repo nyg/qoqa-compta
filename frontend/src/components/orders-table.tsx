@@ -158,7 +158,7 @@ export function OrdersTable({
                     <td className="px-4 py-3">
                       {order.universe ? (
                         <Badge variant="outline" className="font-normal text-xs">
-                          {order.universe}
+                          {order.universe_name ?? order.universe}
                         </Badge>
                       ) : (
                         <span className="text-muted-foreground">—</span>

@@ -11,11 +11,10 @@ from crawler.db import Base
 class QoqaUniverse(Base):
     """Represents one QoQa.ch universe (top-level offer category).
 
-    Populated from the public ``/v2/universes`` API endpoint.
-    Localized names are stored for the two supported QoQa locales (fr, de).
-    Temporary or legacy universes that appear in orders but not in the API
-    response will not have a row here; consumers should fall back to the raw
-    ``universe_tracking_identifier`` value.
+    Populated from the public ``/v2/universes`` API endpoint using the locale
+    resolved at crawler run time. Temporary or legacy universes that appear in
+    orders but not in the API response will not have a row here; consumers
+    should fall back to the raw ``universe_tracking_identifier`` value.
     """
 
     __tablename__ = "qoqa_universes"
@@ -30,8 +29,7 @@ class QoqaUniverse(Base):
     universe_tracking_identifier: Mapped[str] = mapped_column(
         String(64), nullable=False, index=True
     )
-    name_fr: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    name_de: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -43,5 +41,5 @@ class QoqaUniverse(Base):
     def __repr__(self) -> str:
         return (
             f"<QoqaUniverse identifier={self.universe_tracking_identifier!r} "
-            f"name_fr={self.name_fr!r}>"
+            f"name={self.name!r}>"
         )

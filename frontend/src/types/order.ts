@@ -17,6 +17,7 @@ export interface QoqaOrder {
   offer_subtitle: string | null;
   universe: string | null;
   subuniverse: string | null;
+  universe_name: string | null;
   item_description: string | null;
   invoice_number: string | null;
   pdf_filename: string | null;
@@ -26,8 +27,7 @@ export interface QoqaOrder {
 
 export interface QoqaUniverse {
   universe_tracking_identifier: string;
-  name_fr: string | null;
-  name_de: string | null;
+  name: string | null;
 }
 
 /** A universe with its localized display name (or raw identifier as fallback). */

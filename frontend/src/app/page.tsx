@@ -11,7 +11,7 @@
  * to apply the universe filter across all dashboard data.
  */
 import { Suspense } from "react";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import {
   fetchStats,
   fetchMonthlySpending,
@@ -26,14 +26,14 @@ import { OrdersTable } from "@/components/orders-table";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UniversePicker } from "@/components/universe-picker";
 
-async function fetchDashboardData(universes: string[], locale: string) {
+async function fetchDashboardData(universes: string[]) {
   const [stats, monthly, yearly, orders, total, availableUniverses] = await Promise.all([
     fetchStats(universes),
     fetchMonthlySpending(universes),
     fetchYearlySpending(universes),
     fetchInitialOrders(universes),
     fetchTotalCount(universes),
-    fetchUniverses(locale),
+    fetchUniverses(),
   ]);
   return { stats, monthly, yearly, orders, total, availableUniverses };
 }
@@ -44,7 +44,6 @@ export default async function DashboardPage({
   searchParams: Promise<{ universes?: string }>;
 }) {
   const t = await getTranslations("Dashboard");
-  const locale = await getLocale();
   const { universes: universesParam } = await searchParams;
   const selectedUniverses = universesParam
     ? universesParam.split(",").filter(Boolean)
@@ -52,7 +51,7 @@ export default async function DashboardPage({
 
   let data;
   try {
-    data = await fetchDashboardData(selectedUniverses, locale);
+    data = await fetchDashboardData(selectedUniverses);
   } catch {
     return (
       <main className="container mx-auto px-4 py-8">

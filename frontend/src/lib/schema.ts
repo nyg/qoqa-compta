@@ -3,8 +3,7 @@
  * created by the crawler.
  *
  * This file is the TypeScript source of truth for column names and types.
- * Schema migrations are owned by the crawler (SQLAlchemy create_all +
- * run_migrations).
+ * Schema migrations are owned by the crawler (SQLAlchemy create_all).
  */
 import { sql } from "drizzle-orm";
 import { integer, numeric, sqliteTable, text } from "drizzle-orm/sqlite-core";
@@ -45,8 +44,7 @@ export const qoqaOrdersSqlite = sqliteTable("qoqa_orders", {
 export const qoqaUniversesSqlite = sqliteTable("qoqa_universes", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   universe_tracking_identifier: text("universe_tracking_identifier").notNull(),
-  name_fr: text("name_fr"),
-  name_de: text("name_de"),
+  name: text("name"),
   updated_at: text("updated_at").default(sql`(datetime('now'))`).notNull(),
 });
 
@@ -78,8 +76,7 @@ export const qoqaOrdersPg = pgTable("qoqa_orders", {
 export const qoqaUniversesPg = pgTable("qoqa_universes", {
   id: serial("id").primaryKey(),
   universe_tracking_identifier: varchar("universe_tracking_identifier", { length: 64 }).notNull(),
-  name_fr: varchar("name_fr", { length: 255 }),
-  name_de: varchar("name_de", { length: 255 }),
+  name: varchar("name", { length: 255 }),
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

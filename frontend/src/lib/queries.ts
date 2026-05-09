@@ -10,7 +10,7 @@
  *  - date('now', '-24 months') instead of NOW() - INTERVAL '24 months'
  *  - No ::float / ::int casts — CAST(x AS REAL/INTEGER) used instead
  */
-import { and, between, gte, inArray, lte, or, sql, SQL } from "drizzle-orm";
+import { and, between, getTableColumns, gte, inArray, lte, or, sql, SQL } from "drizzle-orm";
 import { db, isSqlite, qoqaOrders, qoqaUniverses } from "./db";
 import type { OrderStats, MonthlySpending, UniverseOption, YearlySpending } from "@/types/order";
 import type { QoqaOrder } from "@/types/order";
@@ -53,14 +53,9 @@ function monthsAgo24(): SQL<string> {
  * Returns distinct universe options sorted by localized name.
  * Joins with qoqa_universes to get the localized name; falls back to the
  * raw universe_tracking_identifier for temporary universes not in that table.
- *
- * @param locale - The user's locale (e.g. "de-CH"). Maps to name_de when it
- *   starts with "de", otherwise name_fr.
  */
-export async function fetchUniverses(locale: string): Promise<UniverseOption[]> {
-  const nameCol = locale.startsWith("de")
-    ? sql`COALESCE(${qoqaUniverses.name_de}, ${qoqaOrders.universe})`
-    : sql`COALESCE(${qoqaUniverses.name_fr}, ${qoqaOrders.universe})`;
+export async function fetchUniverses(): Promise<UniverseOption[]> {
+  const nameCol = sql`COALESCE(${qoqaUniverses.name}, ${qoqaOrders.universe})`;
 
   const rows = await db
     .selectDistinct({
@@ -174,8 +169,15 @@ export async function fetchOrders(
   const where = buildWhere(filter);
 
   const rows = await db
-    .select()
+    .select({
+      ...getTableColumns(qoqaOrders),
+      universe_name: qoqaUniverses.name,
+    })
     .from(qoqaOrders)
+    .leftJoin(
+      qoqaUniverses,
+      sql`${qoqaOrders.universe} = ${qoqaUniverses.universe_tracking_identifier}`
+    )
     .where(where)
     .orderBy(sql`${qoqaOrders.order_date} DESC`)
     .limit(pageSize)
@@ -196,8 +198,15 @@ export async function fetchOrdersCount(filter: OrdersFilter = {}): Promise<numbe
 export async function fetchInitialOrders(universes: string[] = []): Promise<QoqaOrder[]> {
   const where = universes.length > 0 ? inArray(qoqaOrders.universe, universes) : undefined;
   const rows = await db
-    .select()
+    .select({
+      ...getTableColumns(qoqaOrders),
+      universe_name: qoqaUniverses.name,
+    })
     .from(qoqaOrders)
+    .leftJoin(
+      qoqaUniverses,
+      sql`${qoqaOrders.universe} = ${qoqaUniverses.universe_tracking_identifier}`
+    )
     .where(where)
     .orderBy(sql`${qoqaOrders.order_date} DESC`)
     .limit(20);
@@ -229,6 +238,7 @@ function normalizeOrder(row: Record<string, unknown>): QoqaOrder {
     offer_subtitle: row.offer_subtitle != null ? String(row.offer_subtitle) : null,
     universe: row.universe != null ? String(row.universe) : null,
     subuniverse: row.subuniverse != null ? String(row.subuniverse) : null,
+    universe_name: row.universe_name != null ? String(row.universe_name) : null,
     item_description: row.item_description != null ? String(row.item_description) : null,
     invoice_number: row.invoice_number != null ? String(row.invoice_number) : null,
     pdf_filename: row.pdf_filename != null ? String(row.pdf_filename) : null,

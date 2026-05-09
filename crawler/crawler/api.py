@@ -83,8 +83,7 @@ class UniverseData:
     """Structured universe data extracted from the QoQa API."""
 
     universe_tracking_identifier: str
-    name_fr: str | None
-    name_de: str | None
+    name: str | None
 
 
 def get_auth_token(cookies: dict[str, str]) -> str:

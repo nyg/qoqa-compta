@@ -26,7 +26,7 @@ from crawler.api import (
     parse_order_data,
 )
 from crawler.browser import get_pdf_download_dir, login_and_get_cookies
-from crawler.db import Base, SessionLocal, engine, get_dialect_insert, run_migrations
+from crawler.db import Base, SessionLocal, engine, get_dialect_insert
 from crawler.models import QoqaOrder, QoqaUniverse
 
 console = Console()
@@ -34,54 +34,40 @@ app = typer.Typer(help="QoQa.ch invoice crawler & DB sync tool.")
 
 
 def _ensure_schema() -> None:
-    """Run migrations then create any missing DB tables."""
-    run_migrations()
+    """Create any missing DB tables."""
     Base.metadata.create_all(bind=engine)
     console.log("[green]✓[/green] Database schema is up to date.")
 
 
-def _sync_universes(token: str, locale: str) -> None:
-    """Fetch universes for both supported locales and upsert into qoqa_universes."""
+def _sync_universes(locale: str) -> None:
+    """Fetch universes for the resolved locale and upsert into qoqa_universes."""
     insert = get_dialect_insert()
 
     try:
-        rows_fr = fetch_universes("fr")
-        rows_de = fetch_universes("de")
+        rows = fetch_universes(locale)
     except Exception as exc:
         console.print(f"[yellow]⚠ Could not fetch universes: {exc}[/yellow]")
         return
 
-    # Build a merged dict: identifier → {name_fr, name_de}
-    by_id: dict[str, dict] = {}
-    for row in rows_fr:
-        uid = row.get("universe_tracking_identifier")
-        if uid:
-            by_id.setdefault(uid, {})["name_fr"] = row.get("name")
-    for row in rows_de:
-        uid = row.get("universe_tracking_identifier")
-        if uid:
-            by_id.setdefault(uid, {})["name_de"] = row.get("name")
-
     with SessionLocal() as session:
-        for uid, names in by_id.items():
+        for row in rows:
+            uid = row.get("universe_tracking_identifier")
+            if not uid:
+                continue
             stmt = (
                 insert(QoqaUniverse)
                 .values(
                     universe_tracking_identifier=uid,
-                    name_fr=names.get("name_fr"),
-                    name_de=names.get("name_de"),
+                    name=row.get("name"),
                 )
                 .on_conflict_do_update(
                     index_elements=["universe_tracking_identifier"],
-                    set_={
-                        "name_fr": names.get("name_fr"),
-                        "name_de": names.get("name_de"),
-                    },
+                    set_={"name": row.get("name")},
                 )
             )
             session.execute(stmt)
         session.commit()
-    console.log(f"[green]✓[/green] Synced {len(by_id)} universe(s).")
+    console.log(f"[green]✓[/green] Synced {len(rows)} universe(s).")
 
 
 def _known_order_numbers() -> set[str]:
@@ -203,7 +189,7 @@ def sync(
 
     # ── Step 2: Sync universes ─────────────────────────────────────────────────
     console.log("[cyan]→[/cyan] Syncing universes…")
-    _sync_universes(token, resolved_locale)
+    _sync_universes(resolved_locale)
 
     # ── Step 3: Fetch purchases ────────────────────────────────────────────────
     console.log("[cyan]→[/cyan] Fetching purchases from API…")
