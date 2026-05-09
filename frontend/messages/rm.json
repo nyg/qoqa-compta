@@ -34,6 +34,18 @@
       "qwineprimeurs": "Primeurs"
     }
   },
+  "CategoryPicker": {
+    "allCategories": "Tut las categorias",
+    "label": "Filter per categoria",
+    "nSelected": "{count, number} tschernidas",
+    "categories": {
+      "alcohol": "Alcohol",
+      "qspirits": "Spirituosas",
+      "qwine": "Vin",
+      "qwinegrandcru": "Grand Cru",
+      "qwineprimeurs": "Primeurs"
+    }
+  },
   "SpendingChart": {
     "monthlyTitle": "Spesas mensualas (24 mais)",
     "yearlyTitle": "Spesas annualas",

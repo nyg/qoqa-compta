@@ -27,11 +27,13 @@ interface Pagination {
 interface OrdersTableProps {
   initialOrders: QoqaOrder[];
   initialPagination: Pagination;
+  selectedCategories: string[];
 }
 
 export function OrdersTable({
   initialOrders,
   initialPagination,
+  selectedCategories,
 }: OrdersTableProps) {
   const [orders, setOrders] = useState<QoqaOrder[]>(initialOrders);
   const [pagination, setPagination] = useState<Pagination>(initialPagination);
@@ -50,6 +52,9 @@ export function OrdersTable({
           page: page.toString(),
           pageSize: "20",
         });
+        if (selectedCategories.length > 0) {
+          params.set("categories", selectedCategories.join(","));
+        }
         const res = await fetch(`/api/orders?${params}`);
         const data = await res.json();
         setOrders(data.orders ?? []);
@@ -60,7 +65,7 @@ export function OrdersTable({
         setLoading(false);
       }
     },
-    [pagination]
+    [pagination, selectedCategories]
   );
 
   const handleSearch = useCallback(

@@ -95,6 +95,12 @@ The dashboard will be available at [http://localhost:3000](http://localhost:3000
 
 The UI language is automatically detected from your browser's `Accept-Language` header. Supported languages: **English**, **French** (fr), **German** (de), **Italian** (it), and **Romansh** (rm).
 
+Dashboard features:
+- **Stats cards** — total spent, number of orders, average per order
+- **Spending charts** — monthly (last 24 months) and yearly bar + line charts
+- **Orders table** — searchable, paginated list of all orders
+- **Category filter** — multi-select dropdown (top-right) to filter all dashboard data by order category; selection is encoded in the URL for shareable links
+
 ---
 
 ## Environment variables
