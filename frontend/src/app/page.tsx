@@ -58,11 +58,7 @@ export default async function DashboardPage({
         <h1 className="text-3xl font-bold mb-2">QoQa Compta</h1>
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive">
           <p className="font-semibold">{t("errorTitle")}</p>
-          <p className="text-sm mt-1">
-            {t.rich("errorDetail", {
-              code: (chunks) => <code className="font-mono">{chunks}</code>,
-            })}
-          </p>
+          <p className="text-sm mt-1">{t.rich("errorDetail", { code: (c) => <code>{c}</code> })}</p>
         </div>
       </main>
     );
