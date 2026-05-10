@@ -11,8 +11,6 @@
   },
   "dependencies": {
     "@base-ui/react": "1.4.1",
-    "@hugeicons/core-free-icons": "4.1.2",
-    "@hugeicons/react": "1.1.6",
     "@libsql/client": "0.17.3",
     "@neondatabase/serverless": "1.1.0",
     "class-variance-authority": "0.7.1",
