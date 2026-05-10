@@ -41,7 +41,7 @@
     "nSelected": "{count, number} sélectionné(s)"
   },
   "SpendingChart": {
-    "monthlyTitle": "Dépenses mensuelles (24 mois)",
+    "monthlyTitle": "Dépenses mensuelles",
     "yearlyTitle": "Dépenses annuelles",
     "legendTotal": "Total (CHF)",
     "legendOrders": "Commandes",

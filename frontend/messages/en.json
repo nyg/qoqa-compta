@@ -41,7 +41,7 @@
     "nSelected": "{count, number} selected"
   },
   "SpendingChart": {
-    "monthlyTitle": "Monthly spending (24 months)",
+    "monthlyTitle": "Monthly spending",
     "yearlyTitle": "Yearly spending",
     "legendTotal": "Total (CHF)",
     "legendOrders": "Orders",

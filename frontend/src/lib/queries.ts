@@ -7,7 +7,7 @@
  * SQLite caveats vs PostgreSQL:
  *  - LIKE instead of ILIKE (case-insensitive for ASCII only)
  *  - strftime() instead of TO_CHAR() / EXTRACT()
- *  - date('now', '-24 months') instead of NOW() - INTERVAL '24 months'
+ *  - date('now', '-N months') instead of NOW() - INTERVAL 'N months'
  *  - No ::float / ::int casts — CAST(x AS REAL/INTEGER) used instead
  */
 import { and, between, eq, getTableColumns, gte, inArray, lte, or, sql, SQL } from "drizzle-orm";
