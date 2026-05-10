@@ -112,7 +112,15 @@ export function OrdersTable({
 
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col className="w-28" />
+              <col className="w-24" />
+              <col className="w-44" />
+              <col className="w-36" />
+              <col />
+              <col className="w-24" />
+            </colgroup>
             <thead>
               <tr className="border-b bg-muted/50">
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
@@ -187,7 +195,7 @@ export function OrdersTable({
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-[260px] truncate">
+                    <td className="px-4 py-3 text-muted-foreground truncate">
                       {order.item_description ?? <span className="opacity-40">—</span>}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">
