@@ -17,7 +17,7 @@
     "searchPlaceholder": "Cerca…",
     "colOrderNumber": "Ordine #",
     "colDate": "Data",
-    "colCategory": "Categoria",
+    "colUniverse": "Universo",
     "colOffer": "Offerta",
     "colItem": "Articolo",
     "colAmount": "Importo",
@@ -25,26 +25,12 @@
     "noOrders": "Nessun ordine trovato.",
     "pagination": "Pagina {current, number} / {total, number}",
     "prevPage": "← Precedente",
-    "nextPage": "Successivo →",
-    "categories": {
-      "alcohol": "Alcol",
-      "qspirits": "Distillati",
-      "qwine": "Vino",
-      "qwinegrandcru": "Grand Cru",
-      "qwineprimeurs": "Primeurs"
-    }
+    "nextPage": "Successivo →"
   },
-  "CategoryPicker": {
-    "allCategories": "Tutte le categorie",
-    "label": "Filtro per categoria",
-    "nSelected": "{count, number} selezionate",
-    "categories": {
-      "alcohol": "Alcol",
-      "qspirits": "Distillati",
-      "qwine": "Vino",
-      "qwinegrandcru": "Grand Cru",
-      "qwineprimeurs": "Primeurs"
-    }
+  "UniversePicker": {
+    "allUniverses": "Tutti gli universi",
+    "label": "Filtro per universo",
+    "nSelected": "{count, number} selezionati"
   },
   "SpendingChart": {
     "monthlyTitle": "Spese mensili (24 mesi)",

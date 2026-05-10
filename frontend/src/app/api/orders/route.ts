@@ -13,7 +13,7 @@
  *   - maxAmount: number (optional)
  *   - from: ISO date YYYY-MM-DD (optional)
  *   - to: ISO date YYYY-MM-DD (optional)
- *   - categories: comma-separated list of offer_category values (optional)
+ *   - universes: comma-separated list of universe_tracking_identifier values (optional)
  *   - page: number (default 1)
  *   - pageSize: number (default 20, max 100)
  */
@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
       : Number.MAX_SAFE_INTEGER;
   const from = safeDate(searchParams.get("from"), "2000-01-01");
   const to = safeDate(searchParams.get("to"), "2099-12-31");
-  const categoriesParam = searchParams.get("categories");
-  const categories = categoriesParam ? categoriesParam.split(",").filter(Boolean) : [];
+  const universesParam = searchParams.get("universes");
+  const universes = universesParam ? universesParam.split(",").filter(Boolean) : [];
   const rawPage = parseInt(searchParams.get("page") ?? "1", 10);
   const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
   const rawPageSize = parseInt(searchParams.get("pageSize") ?? "20", 10);
@@ -59,13 +59,13 @@ export async function GET(request: NextRequest) {
     Number.isFinite(rawPageSize) && rawPageSize > 0 ? rawPageSize : 20
   );
 
-  const filter = { search, minAmount, maxAmount, from, to, categories, page, pageSize };
+  const filter = { search, minAmount, maxAmount, from, to, universes, page, pageSize };
 
   try {
     const [stats, monthly, yearly, orders, total] = await Promise.all([
-      fetchStats(categories),
-      fetchMonthlySpending(categories),
-      fetchYearlySpending(categories),
+      fetchStats(universes),
+      fetchMonthlySpending(universes),
+      fetchYearlySpending(universes),
       fetchOrders(filter),
       fetchOrdersCount(filter),
     ]);

@@ -17,7 +17,7 @@
     "searchPlaceholder": "Suchen…",
     "colOrderNumber": "Bestellung #",
     "colDate": "Datum",
-    "colCategory": "Kategorie",
+    "colUniverse": "Universum",
     "colOffer": "Angebot",
     "colItem": "Artikel",
     "colAmount": "Betrag",
@@ -25,26 +25,12 @@
     "noOrders": "Keine Bestellungen gefunden.",
     "pagination": "Seite {current, number} / {total, number}",
     "prevPage": "← Zurück",
-    "nextPage": "Weiter →",
-    "categories": {
-      "alcohol": "Alkohol",
-      "qspirits": "Spirituosen",
-      "qwine": "Wein",
-      "qwinegrandcru": "Grand Cru",
-      "qwineprimeurs": "Primeurs"
-    }
+    "nextPage": "Weiter →"
   },
-  "CategoryPicker": {
-    "allCategories": "Alle Kategorien",
-    "label": "Kategoriefilter",
-    "nSelected": "{count, number} ausgewählt",
-    "categories": {
-      "alcohol": "Alkohol",
-      "qspirits": "Spirituosen",
-      "qwine": "Wein",
-      "qwinegrandcru": "Grand Cru",
-      "qwineprimeurs": "Primeurs"
-    }
+  "UniversePicker": {
+    "allUniverses": "Alle Universen",
+    "label": "Universum-Filter",
+    "nSelected": "{count, number} ausgewählt"
   },
   "SpendingChart": {
     "monthlyTitle": "Monatliche Ausgaben (24 Monate)",

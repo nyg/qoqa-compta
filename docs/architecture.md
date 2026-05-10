@@ -46,7 +46,8 @@ qoqa-compta/
 │   │   ├── db.py             # SQLAlchemy connection and session
 │   │   ├── models/
 │   │   │   ├── __init__.py
-│   │   │   └── order.py      # SQLAlchemy QoqaOrder model
+│   │   │   ├── order.py      # SQLAlchemy QoqaOrder model
+│   │   │   └── universe.py   # SQLAlchemy QoqaUniverse model
 │   │   └── utils/
 │   │       ├── __init__.py
 │   │       └── pdf_parser.py # PDF parsing with pdfplumber
@@ -61,13 +62,13 @@ qoqa-compta/
         ├── app/
         │   ├── globals.css
         │   ├── layout.tsx
-        │   ├── page.tsx      # Main dashboard (dynamic, reads ?categories= param)
+        │   ├── page.tsx      # Main dashboard (dynamic, reads ?universes= param)
         │   └── api/
         │       └── orders/
         │           └── route.ts  # Paginated orders + aggregate data endpoint
         ├── components/
         │   ├── ui/               # shadcn/ui primitives (Base UI wrappers)
-        │   ├── category-picker.tsx   # Multi-select category filter (client)
+        │   ├── universe-picker.tsx   # Multi-select universe filter (client)
         │   ├── orders-table.tsx      # Filterable, paginated orders table (client)
         │   ├── spending-chart.tsx    # Monthly + yearly Recharts charts (client)
         │   ├── stats-cards.tsx       # Aggregate stat cards (server)
@@ -80,17 +81,18 @@ qoqa-compta/
         │   ├── formatter-context.tsx  # React context for fr-CH formatters
         │   ├── formatters.ts     # formatCHF, formatDate, formatMonth helpers
         │   ├── queries.ts        # All DB query functions (Drizzle ORM)
-        │   ├── schema.ts         # Drizzle schema (mirrors qoqa_orders table)
+        │   ├── schema.ts         # Drizzle schema (mirrors qoqa_orders + qoqa_universes)
         │   └── utils.ts          # cn() and other utilities
         └── types/
-            └── order.ts          # QoqaOrder, OrderStats, MonthlySpending, YearlySpending
+            └── order.ts          # QoqaOrder, QoqaUniverse, OrderStats, MonthlySpending, YearlySpending
 ```
 
 ---
 
 ## Database
 
-The crawler automatically creates the `qoqa_orders` table on first run (via SQLAlchemy `create_all`).
+The crawler automatically creates the tables on first run (via SQLAlchemy `create_all`)
+and runs idempotent migrations (column renames) via `run_migrations()` before `create_all`.
 
 ### SQLite (default)
 
@@ -121,13 +123,21 @@ CREATE TABLE qoqa_orders (
     offer_id         VARCHAR(32),
     offer_title      VARCHAR(255),
     offer_subtitle   VARCHAR(255),
-    offer_category   VARCHAR(64),
-    offer_subcategory VARCHAR(64),
+    universe         VARCHAR(64),   -- universe_tracking_identifier
+    subuniverse      VARCHAR(64),
     item_description TEXT,
     invoice_number   VARCHAR(64),
     pdf_filename     VARCHAR(255),
     raw_json         TEXT,
     created_at       TIMESTAMPTZ DEFAULT NOW(),
     updated_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE qoqa_universes (
+    id                           SERIAL PRIMARY KEY,
+    universe_tracking_identifier VARCHAR(64) UNIQUE NOT NULL,
+    name_fr                      VARCHAR(255),
+    name_de                      VARCHAR(255),
+    updated_at                   TIMESTAMPTZ DEFAULT NOW()
 );
 ```

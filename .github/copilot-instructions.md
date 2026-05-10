@@ -40,8 +40,8 @@ No test suite exists in either component.
 
 ### Frontend data flow
 
-- **`page.tsx`** is a fully dynamic Server Component that reads `searchParams` (selected categories) and fetches all dashboard data — stats, charts, initial orders — server-side with the active filter applied.
-- **`/api/orders`** is an API route used by `OrdersTable` for client-side search and pagination. It also accepts a `categories` query param to keep the table in sync with the active filter.
+- **`page.tsx`** is a fully dynamic Server Component that reads `searchParams` (selected universes) and fetches all dashboard data — stats, charts, initial orders — server-side with the active filter applied.
+- **`/api/orders`** is an API route used by `OrdersTable` for client-side search and pagination. It also accepts a `universes` query param to keep the table in sync with the active filter.
 - Both use Drizzle ORM (`src/lib/queries.ts`) which supports SQLite (via `@libsql/client`) and PostgreSQL (via `@neondatabase/serverless`).
 
 ### Crawler pipeline
@@ -49,9 +49,9 @@ No test suite exists in either component.
 ```
 CLI (Typer, sync.py)
   → browser.py (SeleniumBase CDP) — login only, extracts cookies → JWT
-  → api.py (requests) — fetches order list + downloads PDFs from QoQa REST API
+  → api.py (requests) — fetches universes list + order list + downloads PDFs from QoQa REST API
   → utils/pdf_parser.py (pdfplumber + regex) — extracts structured fields
-  → db.py / models/order.py (SQLAlchemy 2.x) — upsert via ON CONFLICT
+  → db.py / models/order.py + models/universe.py (SQLAlchemy 2.x) — upsert via ON CONFLICT
 ```
 
 **Authentication has two modes** (see README):
@@ -80,11 +80,12 @@ CLI (Typer, sync.py)
 - Locale is auto-detected from the `Accept-Language` header in `src/i18n/request.ts`; Romansh (`rm`) falls back to `de-CH` for `Intl` formatting
 - Number/date formatting uses `fr-CH` locale for Swiss conventions; helpers are in `src/lib/formatters.ts` + `src/lib/formatter-context.tsx`
 - Client components marked with `"use client"`; server components are the default
-- Category filter state is encoded in the URL (`?categories=qwine,alcohol`) — the `CategoryPicker` client component updates search params via `useRouter`
+- Category filter state is encoded in the URL (`?universes=qwine,alcohol`) — the `UniversePicker` client component updates search params via `useRouter`
 
 ### Database
 
-- Single table `qoqa_orders` with `order_number` as the unique business key
+- `qoqa_orders` table with `order_number` as the unique business key; `universe` (formerly `offer_category`) and `subuniverse` (formerly `offer_subcategory`) store the QoQa universe tracking identifier
+- `qoqa_universes` lookup table: `universe_tracking_identifier` (unique), `name_fr`, `name_de`, `updated_at` — populated by the crawler from the public `/v2/universes` API on every run
 - Amounts stored as `NUMERIC(10, 2)` (CHF); represented as `Decimal` in Python, `string` in TypeScript
 - Crawler uses SQLAlchemy upsert (INSERT … ON CONFLICT UPDATE); frontend uses Drizzle ORM (`src/lib/queries.ts`)
 

@@ -1,8 +1,10 @@
 /**
- * CategoryPicker — multi-select dropdown for filtering by offer_category.
+ * UniversePicker — multi-select dropdown for filtering by universe.
  *
- * Selected categories are encoded in the URL as ?categories=cat1,cat2.
- * An empty selection means "all categories" (no filter applied).
+ * Selected universes are encoded in the URL as ?universes=id1,id2.
+ * An empty selection means "all universes" (no filter applied).
+ * Display names come from the qoqa_universes DB table (via the `available` prop);
+ * temporary universes not in that table fall back to their raw identifier.
  */
 "use client";
 
@@ -12,29 +14,20 @@ import { Check, ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import type { UniverseOption } from "@/types/order";
 
-const KNOWN_CATEGORIES = new Set([
-  "alcohol",
-  "qspirits",
-  "qwine",
-  "qwinegrandcru",
-  "qwineprimeurs",
-]);
-
-type KnownCategory = "alcohol" | "qspirits" | "qwine" | "qwinegrandcru" | "qwineprimeurs";
-
-interface CategoryPickerProps {
-  available: string[];
+interface UniversePickerProps {
+  available: UniverseOption[];
   selected: string[];
 }
 
-export function CategoryPicker({ available, selected }: CategoryPickerProps) {
+export function UniversePicker({ available, selected }: UniversePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const t = useTranslations("CategoryPicker");
+  const t = useTranslations("UniversePicker");
 
   useEffect(() => {
     if (!open) return;
@@ -47,16 +40,16 @@ export function CategoryPicker({ available, selected }: CategoryPickerProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  const toggle = (cat: string) => {
+  const toggle = (identifier: string) => {
     const next = new Set(selected);
-    if (next.has(cat)) next.delete(cat);
-    else next.add(cat);
+    if (next.has(identifier)) next.delete(identifier);
+    else next.add(identifier);
 
     const params = new URLSearchParams(searchParams.toString());
     if (next.size === 0) {
-      params.delete("categories");
+      params.delete("universes");
     } else {
-      params.set("categories", [...next].join(","));
+      params.set("universes", [...next].join(","));
     }
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
@@ -64,7 +57,7 @@ export function CategoryPicker({ available, selected }: CategoryPickerProps) {
 
   const label =
     selected.length === 0
-      ? t("allCategories")
+      ? t("allUniverses")
       : t("nSelected", { count: selected.length });
 
   return (
@@ -93,18 +86,14 @@ export function CategoryPicker({ available, selected }: CategoryPickerProps) {
           aria-label={t("label")}
           className="absolute right-0 top-full z-50 mt-1 min-w-[11rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md"
         >
-          {available.map((cat) => {
-            const isSelected = selected.includes(cat);
-            const catLabel = KNOWN_CATEGORIES.has(cat)
-              ? t(`categories.${cat as KnownCategory}`)
-              : cat;
-
+          {available.map(({ identifier, name }) => {
+            const isSelected = selected.includes(identifier);
             return (
               <button
-                key={cat}
+                key={identifier}
                 role="option"
                 aria-selected={isSelected}
-                onClick={() => toggle(cat)}
+                onClick={() => toggle(identifier)}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
               >
                 <span
@@ -117,7 +106,7 @@ export function CategoryPicker({ available, selected }: CategoryPickerProps) {
                 >
                   {isSelected && <Check className="h-3 w-3" />}
                 </span>
-                <span>{catLabel}</span>
+                <span>{name}</span>
               </button>
             );
           })}

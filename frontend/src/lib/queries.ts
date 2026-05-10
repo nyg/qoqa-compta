@@ -10,9 +10,9 @@
  *  - date('now', '-24 months') instead of NOW() - INTERVAL '24 months'
  *  - No ::float / ::int casts — CAST(x AS REAL/INTEGER) used instead
  */
-import { and, between, gte, inArray, lte, or, sql, SQL } from "drizzle-orm";
-import { db, isSqlite, qoqaOrders } from "./db";
-import type { OrderStats, MonthlySpending, YearlySpending } from "@/types/order";
+import { and, between, getTableColumns, gte, inArray, lte, or, sql, SQL } from "drizzle-orm";
+import { db, isSqlite, qoqaOrders, qoqaUniverses } from "./db";
+import type { OrderStats, MonthlySpending, UniverseOption, YearlySpending } from "@/types/order";
 import type { QoqaOrder } from "@/types/order";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -49,19 +49,36 @@ function monthsAgo24(): SQL<string> {
 
 // ── Query functions ───────────────────────────────────────────────────────────
 
-/** Returns distinct, non-null offer_category values sorted alphabetically. */
-export async function fetchCategories(): Promise<string[]> {
+/**
+ * Returns distinct universe options sorted by localized name.
+ * Joins with qoqa_universes to get the localized name; falls back to the
+ * raw universe_tracking_identifier for temporary universes not in that table.
+ */
+export async function fetchUniverses(): Promise<UniverseOption[]> {
+  const nameCol = sql`COALESCE(${qoqaUniverses.name}, ${qoqaOrders.universe})`;
+
   const rows = await db
-    .selectDistinct({ category: qoqaOrders.offer_category })
+    .selectDistinct({
+      identifier: qoqaOrders.universe,
+      name: nameCol,
+    })
     .from(qoqaOrders)
-    .where(sql`${qoqaOrders.offer_category} IS NOT NULL`)
-    .orderBy(qoqaOrders.offer_category);
-  return rows.map((r) => r.category as string);
+    .leftJoin(
+      qoqaUniverses,
+      sql`${qoqaOrders.universe} = ${qoqaUniverses.universe_tracking_identifier}`
+    )
+    .where(sql`${qoqaOrders.universe} IS NOT NULL`)
+    .orderBy(nameCol);
+
+  return rows.map((r) => ({
+    identifier: r.identifier as string,
+    name: (r.name as string) ?? (r.identifier as string),
+  }));
 }
 
-export async function fetchStats(categories: string[] = []): Promise<OrderStats> {
+export async function fetchStats(universes: string[] = []): Promise<OrderStats> {
   const col = qoqaOrders.amount_chf;
-  const where = categories.length > 0 ? inArray(qoqaOrders.offer_category, categories) : undefined;
+  const where = universes.length > 0 ? inArray(qoqaOrders.universe, universes) : undefined;
   const [row] = await db
     .select({
       total_spent: asFloat(sql`COALESCE(SUM(${col}), 0)`),
@@ -73,9 +90,9 @@ export async function fetchStats(categories: string[] = []): Promise<OrderStats>
   return row as OrderStats;
 }
 
-export async function fetchMonthlySpending(categories: string[] = []): Promise<MonthlySpending[]> {
+export async function fetchMonthlySpending(universes: string[] = []): Promise<MonthlySpending[]> {
   const month = yearMonth(sql`${qoqaOrders.order_date}`);
-  const catClause = categories.length > 0 ? inArray(qoqaOrders.offer_category, categories) : undefined;
+  const catClause = universes.length > 0 ? inArray(qoqaOrders.universe, universes) : undefined;
   return db
     .select({
       month,
@@ -88,9 +105,9 @@ export async function fetchMonthlySpending(categories: string[] = []): Promise<M
     .orderBy(month) as Promise<MonthlySpending[]>;
 }
 
-export async function fetchYearlySpending(categories: string[] = []): Promise<YearlySpending[]> {
+export async function fetchYearlySpending(universes: string[] = []): Promise<YearlySpending[]> {
   const year = yearOf(sql`${qoqaOrders.order_date}`);
-  const where = categories.length > 0 ? inArray(qoqaOrders.offer_category, categories) : undefined;
+  const where = universes.length > 0 ? inArray(qoqaOrders.universe, universes) : undefined;
   return db
     .select({
       year,
@@ -109,7 +126,7 @@ export interface OrdersFilter {
   maxAmount?: number;
   from?: string; // YYYY-MM-DD
   to?: string; // YYYY-MM-DD
-  categories?: string[];
+  universes?: string[];
   page?: number;
   pageSize?: number;
 }
@@ -121,7 +138,7 @@ function buildWhere(filter: OrdersFilter): SQL | undefined {
     maxAmount = Number.MAX_SAFE_INTEGER,
     from = "2000-01-01",
     to = "2099-12-31",
-    categories = [],
+    universes = [],
   } = filter;
 
   const searchPattern = `%${search}%`;
@@ -132,15 +149,15 @@ function buildWhere(filter: OrdersFilter): SQL | undefined {
     sql`${qoqaOrders.item_description} LIKE ${searchPattern}`
   )!;
 
-  const categoryClause =
-    categories.length > 0 ? inArray(qoqaOrders.offer_category, categories) : undefined;
+  const universeClause =
+    universes.length > 0 ? inArray(qoqaOrders.universe, universes) : undefined;
 
   return and(
     searchClause,
     gte(qoqaOrders.amount_chf, String(minAmount)),
     lte(qoqaOrders.amount_chf, String(maxAmount)),
     between(qoqaOrders.order_date, from, to),
-    categoryClause
+    universeClause
   );
 }
 
@@ -152,8 +169,15 @@ export async function fetchOrders(
   const where = buildWhere(filter);
 
   const rows = await db
-    .select()
+    .select({
+      ...getTableColumns(qoqaOrders),
+      universe_name: qoqaUniverses.name,
+    })
     .from(qoqaOrders)
+    .leftJoin(
+      qoqaUniverses,
+      sql`${qoqaOrders.universe} = ${qoqaUniverses.universe_tracking_identifier}`
+    )
     .where(where)
     .orderBy(sql`${qoqaOrders.order_date} DESC`)
     .limit(pageSize)
@@ -171,19 +195,26 @@ export async function fetchOrdersCount(filter: OrdersFilter = {}): Promise<numbe
   return row.total;
 }
 
-export async function fetchInitialOrders(categories: string[] = []): Promise<QoqaOrder[]> {
-  const where = categories.length > 0 ? inArray(qoqaOrders.offer_category, categories) : undefined;
+export async function fetchInitialOrders(universes: string[] = []): Promise<QoqaOrder[]> {
+  const where = universes.length > 0 ? inArray(qoqaOrders.universe, universes) : undefined;
   const rows = await db
-    .select()
+    .select({
+      ...getTableColumns(qoqaOrders),
+      universe_name: qoqaUniverses.name,
+    })
     .from(qoqaOrders)
+    .leftJoin(
+      qoqaUniverses,
+      sql`${qoqaOrders.universe} = ${qoqaUniverses.universe_tracking_identifier}`
+    )
     .where(where)
     .orderBy(sql`${qoqaOrders.order_date} DESC`)
     .limit(20);
   return rows.map(normalizeOrder);
 }
 
-export async function fetchTotalCount(categories: string[] = []): Promise<number> {
-  const where = categories.length > 0 ? inArray(qoqaOrders.offer_category, categories) : undefined;
+export async function fetchTotalCount(universes: string[] = []): Promise<number> {
+  const where = universes.length > 0 ? inArray(qoqaOrders.universe, universes) : undefined;
   const [row] = await db.select({ total: asInt(sql`COUNT(*)`) }).from(qoqaOrders).where(where);
   return row.total;
 }
@@ -205,8 +236,9 @@ function normalizeOrder(row: Record<string, unknown>): QoqaOrder {
     offer_id: row.offer_id != null ? String(row.offer_id) : null,
     offer_title: row.offer_title != null ? String(row.offer_title) : null,
     offer_subtitle: row.offer_subtitle != null ? String(row.offer_subtitle) : null,
-    offer_category: row.offer_category != null ? String(row.offer_category) : null,
-    offer_subcategory: row.offer_subcategory != null ? String(row.offer_subcategory) : null,
+    universe: row.universe != null ? String(row.universe) : null,
+    subuniverse: row.subuniverse != null ? String(row.subuniverse) : null,
+    universe_name: row.universe_name != null ? String(row.universe_name) : null,
     item_description: row.item_description != null ? String(row.item_description) : null,
     invoice_number: row.invoice_number != null ? String(row.invoice_number) : null,
     pdf_filename: row.pdf_filename != null ? String(row.pdf_filename) : null,

@@ -80,8 +80,6 @@ def get_dialect_insert():
     return insert
 
 
-is_sqlite: bool = _is_sqlite_url(os.environ.get("DATABASE_URL") or _DEFAULT_DATABASE_URL)
-
 engine = get_engine()
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 

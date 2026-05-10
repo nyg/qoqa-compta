@@ -17,7 +17,7 @@
     "searchPlaceholder": "Search…",
     "colOrderNumber": "Order #",
     "colDate": "Date",
-    "colCategory": "Category",
+    "colUniverse": "Universe",
     "colOffer": "Offer",
     "colItem": "Item",
     "colAmount": "Amount",
@@ -25,26 +25,12 @@
     "noOrders": "No orders found.",
     "pagination": "Page {current, number} / {total, number}",
     "prevPage": "← Previous",
-    "nextPage": "Next →",
-    "categories": {
-      "alcohol": "Alcohol",
-      "qspirits": "Spirits",
-      "qwine": "Wine",
-      "qwinegrandcru": "Grand Cru",
-      "qwineprimeurs": "Primeurs"
-    }
+    "nextPage": "Next →"
   },
-  "CategoryPicker": {
-    "allCategories": "All categories",
-    "label": "Category filter",
-    "nSelected": "{count, number} selected",
-    "categories": {
-      "alcohol": "Alcohol",
-      "qspirits": "Spirits",
-      "qwine": "Wine",
-      "qwinegrandcru": "Grand Cru",
-      "qwineprimeurs": "Primeurs"
-    }
+  "UniversePicker": {
+    "allUniverses": "All universes",
+    "label": "Universe filter",
+    "nSelected": "{count, number} selected"
   },
   "SpendingChart": {
     "monthlyTitle": "Monthly spending (24 months)",

@@ -17,7 +17,7 @@
     "searchPlaceholder": "Rechercher…",
     "colOrderNumber": "Commande #",
     "colDate": "Date",
-    "colCategory": "Catégorie",
+    "colUniverse": "Univers",
     "colOffer": "Offre",
     "colItem": "Article",
     "colAmount": "Montant",
@@ -25,26 +25,12 @@
     "noOrders": "Aucune commande trouvée.",
     "pagination": "Page {current, number} / {total, number}",
     "prevPage": "← Précédent",
-    "nextPage": "Suivant →",
-    "categories": {
-      "alcohol": "Alcool",
-      "qspirits": "Spiritueux",
-      "qwine": "Vin",
-      "qwinegrandcru": "Grand Cru",
-      "qwineprimeurs": "Primeurs"
-    }
+    "nextPage": "Suivant →"
   },
-  "CategoryPicker": {
-    "allCategories": "Toutes les catégories",
-    "label": "Filtre par catégorie",
-    "nSelected": "{count, number} sélectionnée(s)",
-    "categories": {
-      "alcohol": "Alcool",
-      "qspirits": "Spiritueux",
-      "qwine": "Vin",
-      "qwinegrandcru": "Grand Cru",
-      "qwineprimeurs": "Primeurs"
-    }
+  "UniversePicker": {
+    "allUniverses": "Tous les univers",
+    "label": "Filtre par univers",
+    "nSelected": "{count, number} sélectionné(s)"
   },
   "SpendingChart": {
     "monthlyTitle": "Dépenses mensuelles (24 mois)",

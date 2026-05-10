@@ -1,5 +1,6 @@
 /**
- * Drizzle ORM schema — mirrors the qoqa_orders table created by the crawler.
+ * Drizzle ORM schema — mirrors the qoqa_orders and qoqa_universes tables
+ * created by the crawler.
  *
  * This file is the TypeScript source of truth for column names and types.
  * Schema migrations are owned by the crawler (SQLAlchemy create_all).
@@ -29,13 +30,21 @@ export const qoqaOrdersSqlite = sqliteTable("qoqa_orders", {
   offer_id: text("offer_id"),
   offer_title: text("offer_title"),
   offer_subtitle: text("offer_subtitle"),
-  offer_category: text("offer_category"),
-  offer_subcategory: text("offer_subcategory"),
+  universe: text("universe"),
+  subuniverse: text("subuniverse"),
   item_description: text("item_description"),
   invoice_number: text("invoice_number"),
   pdf_filename: text("pdf_filename"),
   raw_json: text("raw_json"),
   created_at: text("created_at").default(sql`(datetime('now'))`).notNull(),
+  updated_at: text("updated_at").default(sql`(datetime('now'))`).notNull(),
+});
+
+/** SQLite version of qoqa_universes */
+export const qoqaUniversesSqlite = sqliteTable("qoqa_universes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  universe_tracking_identifier: text("universe_tracking_identifier").notNull(),
+  name: text("name"),
   updated_at: text("updated_at").default(sql`(datetime('now'))`).notNull(),
 });
 
@@ -53,13 +62,21 @@ export const qoqaOrdersPg = pgTable("qoqa_orders", {
   offer_id: varchar("offer_id", { length: 32 }),
   offer_title: varchar("offer_title", { length: 255 }),
   offer_subtitle: varchar("offer_subtitle", { length: 255 }),
-  offer_category: varchar("offer_category", { length: 64 }),
-  offer_subcategory: varchar("offer_subcategory", { length: 64 }),
+  universe: varchar("universe", { length: 64 }),
+  subuniverse: varchar("subuniverse", { length: 64 }),
   item_description: pgText("item_description"),
   invoice_number: varchar("invoice_number", { length: 64 }),
   pdf_filename: varchar("pdf_filename", { length: 255 }),
   raw_json: pgText("raw_json"),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** PostgreSQL version of qoqa_universes */
+export const qoqaUniversesPg = pgTable("qoqa_universes", {
+  id: serial("id").primaryKey(),
+  universe_tracking_identifier: varchar("universe_tracking_identifier", { length: 64 }).notNull(),
+  name: varchar("name", { length: 255 }),
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
