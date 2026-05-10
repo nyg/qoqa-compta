@@ -41,12 +41,6 @@ function yearOf(col: SQL): SQL<number> {
     : sql<number>`EXTRACT(YEAR FROM ${col})::int`;
 }
 
-function monthsAgo24(): SQL<string> {
-  return isSqlite
-    ? sql<string>`date('now', '-24 months')`
-    : sql<string>`CURRENT_DATE - INTERVAL '24 months'`;
-}
-
 /**
  * Builds a WHERE clause that filters by universe AND/OR subuniverse.
  * Returns FALSE when both lists are empty — callers must expand an empty
@@ -177,7 +171,7 @@ export async function fetchMonthlySpending(
       count: asInt(sql`COUNT(*)`),
     })
     .from(qoqaOrders)
-    .where(and(sql`${qoqaOrders.order_date} >= ${monthsAgo24()}`, catClause))
+    .where(catClause)
     .groupBy(month)
     .orderBy(month) as Promise<MonthlySpending[]>;
 }
