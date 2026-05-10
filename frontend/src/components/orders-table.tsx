@@ -99,7 +99,7 @@ export function OrdersTable({
             {t("title", { count: pagination.total })}
           </CardTitle>
           <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder={t("searchPlaceholder")}
               className="pl-9"
@@ -164,7 +164,7 @@ export function OrdersTable({
                     </td>
                     <td className="px-4 py-3">
                       {order.universe ? (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-nowrap gap-1">
                           <Badge variant="outline" className="font-normal text-xs">
                             {order.universe_name ?? order.universe}
                           </Badge>
