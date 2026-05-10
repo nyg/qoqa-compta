@@ -97,7 +97,7 @@ The UI language is automatically detected from your browser's `Accept-Language` 
 
 Dashboard features:
 - **Stats cards** — total spent, number of orders, average per order
-- **Spending charts** — monthly (last 24 months) and yearly bar + line charts
+- **Spending charts** — monthly and yearly bar + line charts
 - **Orders table** — searchable, paginated list of all orders
 - **Invoice PDF viewer** — every order with a stored invoice exposes a "View
   invoice" button that opens the PDF in an in-app popup using the browser's

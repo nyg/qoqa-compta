@@ -63,3 +63,9 @@ export interface YearlySpending {
   total: number;
   count: number;
 }
+
+export interface SpendingByGroup {
+  identifier: string;
+  name: string;
+  total: number;
+}

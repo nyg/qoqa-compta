@@ -41,11 +41,13 @@
     "nSelected": "{count, number} selected"
   },
   "SpendingChart": {
-    "monthlyTitle": "Monthly spending (24 months)",
+    "monthlyTitle": "Monthly spending",
     "yearlyTitle": "Yearly spending",
     "legendTotal": "Total (CHF)",
     "legendOrders": "Orders",
     "tooltipTotal": "Total",
-    "tooltipOrders": "Orders"
+    "tooltipOrders": "Orders",
+    "pieByUniverseTitle": "Spending by universe",
+    "pieBySubuniverseTitle": "Spending by sub-universe"
   }
 }

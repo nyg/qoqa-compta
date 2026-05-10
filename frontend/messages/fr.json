@@ -41,11 +41,13 @@
     "nSelected": "{count, number} sélectionné(s)"
   },
   "SpendingChart": {
-    "monthlyTitle": "Dépenses mensuelles (24 mois)",
+    "monthlyTitle": "Dépenses mensuelles",
     "yearlyTitle": "Dépenses annuelles",
     "legendTotal": "Total (CHF)",
     "legendOrders": "Commandes",
     "tooltipTotal": "Total",
-    "tooltipOrders": "Commandes"
+    "tooltipOrders": "Commandes",
+    "pieByUniverseTitle": "Dépenses par univers",
+    "pieBySubuniverseTitle": "Dépenses par sous-univers"
   }
 }

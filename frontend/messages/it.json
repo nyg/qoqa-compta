@@ -41,11 +41,13 @@
     "nSelected": "{count, number} selezionati"
   },
   "SpendingChart": {
-    "monthlyTitle": "Spese mensili (24 mesi)",
+    "monthlyTitle": "Spese mensili",
     "yearlyTitle": "Spese annuali",
     "legendTotal": "Totale (CHF)",
     "legendOrders": "Ordini",
     "tooltipTotal": "Totale",
-    "tooltipOrders": "Ordini"
+    "tooltipOrders": "Ordini",
+    "pieByUniverseTitle": "Spese per universo",
+    "pieBySubuniverseTitle": "Spese per sotto-universo"
   }
 }

@@ -1,15 +1,3 @@
-/**
- * Main dashboard — home page of the QoQa Compta application.
- *
- * Fetches data server-side via the /api/orders API route and renders:
- *   - Universe picker (top-right header)
- *   - Stats cards (total, count, average)
- *   - Spending charts (monthly bar+line, yearly)
- *   - Orders table with search/filters
- *
- * The page is fully dynamic (no ISR) because it reads URL search params
- * to apply the universe filter across all dashboard data.
- */
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 import {
@@ -19,24 +7,13 @@ import {
   fetchInitialOrders,
   fetchTotalCount,
   fetchUniverses,
+  fetchSpendingByGroup,
 } from "@/lib/queries";
 import { StatsCards } from "@/components/stats-cards";
 import { SpendingChart } from "@/components/spending-chart";
 import { OrdersTable } from "@/components/orders-table";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UniversePicker } from "@/components/universe-picker";
-
-async function fetchDashboardData(universes: string[], subuniverses: string[]) {
-  const [stats, monthly, yearly, orders, total, availableUniverses] = await Promise.all([
-    fetchStats(universes, subuniverses),
-    fetchMonthlySpending(universes, subuniverses),
-    fetchYearlySpending(universes, subuniverses),
-    fetchInitialOrders(universes, subuniverses),
-    fetchTotalCount(universes, subuniverses),
-    fetchUniverses(),
-  ]);
-  return { stats, monthly, yearly, orders, total, availableUniverses };
-}
 
 export default async function DashboardPage({
   searchParams,
@@ -54,7 +31,49 @@ export default async function DashboardPage({
 
   let data;
   try {
-    data = await fetchDashboardData(selectedUniverses, selectedSubuniverses);
+    // Fetch universe metadata first — needed to resolve sub-universe parent
+    // universes and determine which pie chart mode to use.
+    const availableUniverses = await fetchUniverses();
+
+    // When nothing is selected, treat it as "all universes selected" so that
+    // every downstream query sees a concrete IN-list and returns all rows.
+    const effectiveUniverses =
+      selectedUniverses.length === 0 && selectedSubuniverses.length === 0
+        ? availableUniverses.map((u) => u.identifier)
+        : selectedUniverses;
+    const effectiveSubuniverses = selectedSubuniverses;
+
+    // Build a subuniverse→universe map to count distinct parent universes.
+    const subToUniverse = new Map(
+      availableUniverses.flatMap((u) =>
+        u.subuniverses.map((s) => [s.identifier, u.identifier])
+      )
+    );
+    const activeUniverseIds = new Set([
+      ...effectiveUniverses,
+      ...effectiveSubuniverses
+        .map((s) => subToUniverse.get(s))
+        .filter((v): v is string => v !== undefined),
+    ]);
+    const pieMode: "universe" | "subuniverse" | null =
+      activeUniverseIds.size === 0
+        ? null
+        : activeUniverseIds.size === 1
+        ? "subuniverse"
+        : "universe";
+
+    const [stats, monthly, yearly, orders, total, pieData] = await Promise.all([
+      fetchStats(effectiveUniverses, effectiveSubuniverses),
+      fetchMonthlySpending(effectiveUniverses, effectiveSubuniverses),
+      fetchYearlySpending(effectiveUniverses, effectiveSubuniverses),
+      fetchInitialOrders(effectiveUniverses, effectiveSubuniverses),
+      fetchTotalCount(effectiveUniverses, effectiveSubuniverses),
+      pieMode !== null
+        ? fetchSpendingByGroup(pieMode, effectiveUniverses, effectiveSubuniverses)
+        : Promise.resolve(null),
+    ]);
+
+    data = { stats, monthly, yearly, orders, total, availableUniverses, pieData, pieMode };
   } catch {
     return (
       <main className="container mx-auto px-4 py-8">
@@ -67,7 +86,7 @@ export default async function DashboardPage({
     );
   }
 
-  const { stats, monthly, yearly, orders, total, availableUniverses } = data;
+  const { stats, monthly, yearly, orders, total, availableUniverses, pieData, pieMode } = data;
 
   const subuniverseNames: Record<string, string> = Object.fromEntries(
     availableUniverses.flatMap((u) => u.subuniverses.map((s) => [s.identifier, s.name]))
@@ -113,7 +132,7 @@ export default async function DashboardPage({
 
       {/* Spending charts */}
       <Suspense fallback={<div className="h-72 animate-pulse rounded-xl bg-muted" />}>
-        <SpendingChart monthly={monthly} yearly={yearly} />
+        <SpendingChart monthly={monthly} yearly={yearly} pieData={pieData} pieMode={pieMode} />
       </Suspense>
 
       {/* Orders table */}

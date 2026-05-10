@@ -41,11 +41,13 @@
     "nSelected": "{count, number} tschernids"
   },
   "SpendingChart": {
-    "monthlyTitle": "Spesas mensualas (24 mais)",
+    "monthlyTitle": "Spesas mensualas",
     "yearlyTitle": "Spesas annualas",
     "legendTotal": "Total (CHF)",
     "legendOrders": "Ordinaziuns",
     "tooltipTotal": "Total",
-    "tooltipOrders": "Ordinaziuns"
+    "tooltipOrders": "Ordinaziuns",
+    "pieByUniverseTitle": "Spesas per univers",
+    "pieBySubuniverseTitle": "Spesas per suot-univers"
   }
 }

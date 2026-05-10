@@ -7,12 +7,12 @@
  * SQLite caveats vs PostgreSQL:
  *  - LIKE instead of ILIKE (case-insensitive for ASCII only)
  *  - strftime() instead of TO_CHAR() / EXTRACT()
- *  - date('now', '-24 months') instead of NOW() - INTERVAL '24 months'
+ *  - date('now', '-N months') instead of NOW() - INTERVAL 'N months'
  *  - No ::float / ::int casts — CAST(x AS REAL/INTEGER) used instead
  */
 import { and, between, eq, getTableColumns, gte, inArray, lte, or, sql, SQL } from "drizzle-orm";
 import { db, isSqlite, qoqaOrders, qoqaSubuniverses, qoqaUniverses } from "./db";
-import type { OrderStats, MonthlySpending, SubuniverseOption, UniverseOption, YearlySpending } from "@/types/order";
+import type { OrderStats, MonthlySpending, SpendingByGroup, SubuniverseOption, UniverseOption, YearlySpending } from "@/types/order";
 import type { QoqaOrder } from "@/types/order";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -41,15 +41,10 @@ function yearOf(col: SQL): SQL<number> {
     : sql<number>`EXTRACT(YEAR FROM ${col})::int`;
 }
 
-function monthsAgo24(): SQL<string> {
-  return isSqlite
-    ? sql<string>`date('now', '-24 months')`
-    : sql<string>`CURRENT_DATE - INTERVAL '24 months'`;
-}
-
 /**
  * Builds a WHERE clause that filters by universe AND/OR subuniverse.
- * Returns FALSE when both lists are empty (no selection = zero results).
+ * Returns FALSE when both lists are empty — callers must expand an empty
+ * selection to the full list of identifiers before calling this function.
  *
  * - universes: filter orders where universe IN [...]
  * - subuniverses: filter orders where subuniverse IN [...]
@@ -176,7 +171,7 @@ export async function fetchMonthlySpending(
       count: asInt(sql`COUNT(*)`),
     })
     .from(qoqaOrders)
-    .where(and(sql`${qoqaOrders.order_date} >= ${monthsAgo24()}`, catClause))
+    .where(catClause)
     .groupBy(month)
     .orderBy(month) as Promise<MonthlySpending[]>;
 }
@@ -197,6 +192,57 @@ export async function fetchYearlySpending(
     .where(where)
     .groupBy(year)
     .orderBy(year) as Promise<YearlySpending[]>;
+}
+
+/**
+ * Returns spending totals grouped by universe or subuniverse for the pie chart.
+ *
+ * - mode "universe":    one row per universe, useful when multiple universes are selected
+ * - mode "subuniverse": one row per subuniverse, useful when a single universe is in scope
+ *
+ * The WHERE clause is the same as other queries (universe IN [...] OR subuniverse IN [...]).
+ * Results are ordered by total descending (largest slice first).
+ */
+export async function fetchSpendingByGroup(
+  mode: "universe" | "subuniverse",
+  universes: string[],
+  subuniverses: string[]
+): Promise<SpendingByGroup[]> {
+  const where = buildUniverseWhereClause(universes, subuniverses);
+
+  if (mode === "subuniverse") {
+    const rows = await db
+      .select({
+        identifier: sql<string>`${qoqaOrders.subuniverse}`,
+        name: sql<string>`COALESCE(${qoqaSubuniverses.name}, ${qoqaOrders.subuniverse})`,
+        total: asFloat(sql`SUM(${qoqaOrders.amount_chf})`),
+      })
+      .from(qoqaOrders)
+      .leftJoin(
+        qoqaSubuniverses,
+        sql`${qoqaOrders.subuniverse} = ${qoqaSubuniverses.identifier}`
+      )
+      .where(and(where, sql`${qoqaOrders.subuniverse} IS NOT NULL`))
+      .groupBy(sql`${qoqaOrders.subuniverse}`, sql`${qoqaSubuniverses.name}`)
+      .orderBy(sql`SUM(${qoqaOrders.amount_chf}) DESC`);
+    return rows as SpendingByGroup[];
+  }
+
+  const rows = await db
+    .select({
+      identifier: sql<string>`${qoqaOrders.universe}`,
+      name: sql<string>`COALESCE(${qoqaUniverses.name}, ${qoqaOrders.universe})`,
+      total: asFloat(sql`SUM(${qoqaOrders.amount_chf})`),
+    })
+    .from(qoqaOrders)
+    .leftJoin(
+      qoqaUniverses,
+      sql`${qoqaOrders.universe} = ${qoqaUniverses.universe_tracking_identifier}`
+    )
+    .where(and(where, sql`${qoqaOrders.universe} IS NOT NULL`))
+    .groupBy(sql`${qoqaOrders.universe}`, sql`${qoqaUniverses.name}`)
+    .orderBy(sql`SUM(${qoqaOrders.amount_chf}) DESC`);
+  return rows as SpendingByGroup[];
 }
 
 export interface OrdersFilter {
