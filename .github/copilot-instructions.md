@@ -92,6 +92,7 @@ CLI (Typer, sync.py)
 ### Git
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/) for all commit messages (e.g., `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`)
+- Always create PRs against `master` using a dedicated feature branch. If the current branch is `master` or does not exist remotely (i.e. is new/untracked), create a new branch (e.g. `feat/short-description`) before committing, push it, then open the PR. If the current branch already exists on the remote and is not deleted, use it directly.
 
 ### Environment
 
