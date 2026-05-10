@@ -99,7 +99,17 @@ Dashboard features:
 - **Stats cards** — total spent, number of orders, average per order
 - **Spending charts** — monthly (last 24 months) and yearly bar + line charts
 - **Orders table** — searchable, paginated list of all orders
+- **Invoice PDF viewer** — every order with a stored invoice exposes a "View
+  invoice" button that opens the PDF in an in-app popup using the browser's
+  native PDF viewer (with a download fallback)
 - **Category filter** — multi-select dropdown (top-right) to filter all dashboard data by order category; selection is encoded in the URL for shareable links
+
+> Invoice PDFs are stored twice by the crawler: as files under
+> `crawler/pdfs/` for offline access, and inline in `qoqa_orders.pdf_data`
+> (`BLOB` on SQLite, `BYTEA` on PostgreSQL) so the frontend can serve them
+> through `/api/orders/[orderNumber]/pdf` without sharing a filesystem with
+> the crawler. Pre-existing databases get the new column added automatically
+> on the next `python -m crawler.sync` run.
 
 ---
 

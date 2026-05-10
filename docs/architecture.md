@@ -18,10 +18,29 @@ flowchart TD
     Chrome -->|login| JWT
     JWT -->|auth| QoqaAPI
     QoqaAPI -->|"JSON + PDF URLs"| PythonSync
-    PythonSync -->|upsert| DB
+    PythonSync -->|upsert + PDF bytes| DB
     PythonSync -->|download| PDFs
     DB --> Dashboard
+    DB -->|"PDF bytes via /api/orders/[n]/pdf"| Dashboard
 ```
+
+### Invoice PDFs
+
+Each row in `qoqa_orders` carries the raw invoice PDF in a `pdf_data` column
+(`BYTEA` on PostgreSQL, `BLOB` on SQLite). The crawler writes the bytes during
+the same upsert that creates / updates an order, so the data and its invoice
+travel together.
+
+The frontend exposes the PDFs through a dedicated route:
+
+- `GET /api/orders/[orderNumber]/pdf` → streams the bytes with
+  `Content-Type: application/pdf` and `Content-Disposition: inline`.
+- The orders table displays a per-row "View invoice" icon button that opens a
+  Base UI `Dialog` containing an `<iframe>` pointing at that route, so users
+  see the PDF in the browser's native viewer without leaving the page.
+- List queries (`fetchOrders`, `fetchInitialOrders`) **never** select
+  `pdf_data`; instead they project a `has_pdf` boolean (`pdf_data IS NOT NULL`)
+  to keep the orders endpoint cheap.
 
 ---
 
@@ -40,13 +59,13 @@ qoqa-compta/
 │   ├── crawler/
 │   │   ├── __init__.py
 │   │   ├── __main__.py       # CLI entry point
-│   │   ├── sync.py           # Main synchronisation logic (CLI)
+│   │   ├── sync.py           # Main synchronisation logic + idempotent migrations
 │   │   ├── api.py            # QoQa REST API client
 │   │   ├── browser.py        # Browser login only (SeleniumBase CDP)
 │   │   ├── db.py             # SQLAlchemy connection and session
 │   │   ├── models/
 │   │   │   ├── __init__.py
-│   │   │   ├── order.py      # SQLAlchemy QoqaOrder model
+│   │   │   ├── order.py      # SQLAlchemy QoqaOrder model (with pdf_data BLOB)
 │   │   │   ├── universe.py   # SQLAlchemy QoqaUniverse model
 │   │   │   └── subuniverse.py  # SQLAlchemy QoqaSubuniverse model
 │   │   └── utils/
@@ -70,11 +89,15 @@ qoqa-compta/
         │   ├── page.tsx      # Main dashboard (dynamic, reads ?universes= + ?subuniverses= params)
         │   └── api/
         │       └── orders/
-        │           └── route.ts  # Paginated orders + aggregate data endpoint
+        │           ├── route.ts                        # Paginated orders + aggregate data endpoint
+        │           └── [orderNumber]/
+        │               └── pdf/
+        │                   └── route.ts                # Streams stored invoice PDF bytes
         ├── components/
         │   ├── ui/               # shadcn/ui primitives (Base UI wrappers)
         │   ├── universe-picker.tsx   # Hierarchical universe+subuniverse filter (client)
         │   ├── orders-table.tsx      # Filterable, paginated orders table (client)
+        │   ├── order-pdf-dialog.tsx  # Invoice PDF popup (Base UI Dialog + iframe)
         │   ├── spending-chart.tsx    # Monthly + yearly Recharts charts (client)
         │   ├── stats-cards.tsx       # Aggregate stat cards (server)
         │   ├── theme-provider.tsx
@@ -97,7 +120,9 @@ qoqa-compta/
 ## Database
 
 The crawler automatically creates the tables on first run (via SQLAlchemy `create_all`)
-and runs idempotent migrations (column renames) via `run_migrations()` before `create_all`.
+and runs idempotent migrations (column adds, column renames) via `_run_migrations()`
+before `create_all`. New columns added to existing models — like `pdf_data` — are
+backfilled into pre-existing tables with `ALTER TABLE … ADD COLUMN`.
 
 ### SQLite (default)
 
@@ -133,6 +158,7 @@ CREATE TABLE qoqa_orders (
     item_description TEXT,
     invoice_number   VARCHAR(64),
     pdf_filename     VARCHAR(255),
+    pdf_data         BYTEA,         -- raw invoice PDF bytes (BLOB on SQLite)
     raw_json         TEXT,
     created_at       TIMESTAMPTZ DEFAULT NOW(),
     updated_at       TIMESTAMPTZ DEFAULT NOW()
