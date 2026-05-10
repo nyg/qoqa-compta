@@ -166,9 +166,9 @@ export function OrdersTable({
                           <Badge variant="outline" className="font-normal text-xs">
                             {order.universe_name ?? order.universe}
                           </Badge>
-                          {order.subuniverse_name && (
+                          {(order.subuniverse_name ?? order.subuniverse) && (
                             <Badge variant="secondary" className="font-normal text-xs">
-                              {order.subuniverse_name}
+                              {order.subuniverse_name ?? order.subuniverse}
                             </Badge>
                           )}
                         </div>

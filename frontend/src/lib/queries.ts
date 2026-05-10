@@ -70,27 +70,43 @@ function buildUniverseWhereClause(
 // ── Query functions ───────────────────────────────────────────────────────────
 
 /**
- * Returns all universe options in hierarchical form, sorted by localized name.
- * Each universe includes its list of sub-universes.
- * Queries qoqa_universes and qoqa_subuniverses tables directly.
+ * Returns universe options present in existing orders, in hierarchical form.
+ * Only universes/sub-universes that appear in qoqa_orders are included.
+ * Names come from the lookup tables; raw identifiers are used as fallback.
  */
 export async function fetchUniverses(): Promise<UniverseOption[]> {
   const [universeRows, subRows] = await Promise.all([
     db
       .select({
-        identifier: sql<string>`${qoqaUniverses.universe_tracking_identifier}`,
+        identifier: sql<string>`${qoqaOrders.universe}`,
         name: sql<string | null>`${qoqaUniverses.name}`,
       })
-      .from(qoqaUniverses)
-      .orderBy(sql`${qoqaUniverses.name}`),
+      .from(qoqaOrders)
+      .leftJoin(
+        qoqaUniverses,
+        sql`${qoqaOrders.universe} = ${qoqaUniverses.universe_tracking_identifier}`
+      )
+      .where(sql`${qoqaOrders.universe} IS NOT NULL`)
+      .groupBy(sql`${qoqaOrders.universe}`, sql`${qoqaUniverses.name}`)
+      .orderBy(sql`COALESCE(${qoqaUniverses.name}, ${qoqaOrders.universe})`),
     db
       .select({
-        identifier: sql<string>`${qoqaSubuniverses.identifier}`,
+        identifier: sql<string>`${qoqaOrders.subuniverse}`,
         name: sql<string | null>`${qoqaSubuniverses.name}`,
-        universe_tracking_identifier: sql<string>`${qoqaSubuniverses.universe_tracking_identifier}`,
+        universe_tracking_identifier: sql<string>`${qoqaOrders.universe}`,
       })
-      .from(qoqaSubuniverses)
-      .orderBy(sql`${qoqaSubuniverses.name}`),
+      .from(qoqaOrders)
+      .leftJoin(
+        qoqaSubuniverses,
+        sql`${qoqaOrders.subuniverse} = ${qoqaSubuniverses.identifier}`
+      )
+      .where(sql`${qoqaOrders.subuniverse} IS NOT NULL AND ${qoqaOrders.universe} IS NOT NULL`)
+      .groupBy(
+        sql`${qoqaOrders.subuniverse}`,
+        sql`${qoqaSubuniverses.name}`,
+        sql`${qoqaOrders.universe}`
+      )
+      .orderBy(sql`COALESCE(${qoqaSubuniverses.name}, ${qoqaOrders.subuniverse})`),
   ]);
 
   const subsByUniverse = new Map<string, SubuniverseOption[]>();
