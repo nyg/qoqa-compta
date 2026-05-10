@@ -21,11 +21,19 @@
     "colOffer": "Offerta",
     "colItem": "Articolo",
     "colAmount": "Importo",
+    "colInvoice": "Fattura",
+    "viewInvoice": "Visualizza fattura",
+    "noInvoice": "Nessuna fattura disponibile",
     "loading": "Caricamento…",
     "noOrders": "Nessun ordine trovato.",
     "pagination": "Pagina {current, number} / {total, number}",
     "prevPage": "← Precedente",
     "nextPage": "Successivo →"
+  },
+  "PdfDialog": {
+    "title": "Fattura {orderNumber}",
+    "close": "Chiudi",
+    "download": "Scarica PDF"
   },
   "UniversePicker": {
     "allUniverses": "Tutti gli universi",

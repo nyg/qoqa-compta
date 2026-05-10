@@ -21,11 +21,19 @@
     "colOffer": "Offre",
     "colItem": "Article",
     "colAmount": "Montant",
+    "colInvoice": "Facture",
+    "viewInvoice": "Voir la facture",
+    "noInvoice": "Aucune facture disponible",
     "loading": "Chargement…",
     "noOrders": "Aucune commande trouvée.",
     "pagination": "Page {current, number} / {total, number}",
     "prevPage": "← Précédent",
     "nextPage": "Suivant →"
+  },
+  "PdfDialog": {
+    "title": "Facture {orderNumber}",
+    "close": "Fermer",
+    "download": "Télécharger le PDF"
   },
   "UniversePicker": {
     "allUniverses": "Tous les univers",

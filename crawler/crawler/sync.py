@@ -13,7 +13,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 from rich.progress import track
-from sqlalchemy import select
+from sqlalchemy import select, text
 from crawler.api import (
     OrderData,
     UniverseData,
@@ -33,8 +33,56 @@ console = Console()
 app = typer.Typer(help="QoQa.ch invoice crawler & DB sync tool.")
 
 
+def _run_migrations() -> None:
+    """Apply idempotent schema migrations not covered by ``create_all``.
+
+    ``create_all`` only creates missing tables; it never adds missing columns
+    to existing tables. New columns added to existing models must be migrated
+    explicitly here.
+    """
+    is_sqlite = engine.dialect.name == "sqlite"
+    blob_type = "BLOB" if is_sqlite else "BYTEA"
+
+    with engine.begin() as conn:
+        # Detect existence of qoqa_orders.pdf_data and add it if missing.
+        if is_sqlite:
+            cols = {
+                row[1]
+                for row in conn.exec_driver_sql(
+                    "PRAGMA table_info(qoqa_orders)"
+                ).fetchall()
+            }
+            table_exists = bool(cols)
+            has_pdf_data = "pdf_data" in cols
+        else:
+            table_exists = bool(
+                conn.execute(
+                    text(
+                        "SELECT 1 FROM information_schema.tables "
+                        "WHERE table_name = 'qoqa_orders' LIMIT 1"
+                    )
+                ).first()
+            )
+            has_pdf_data = bool(
+                conn.execute(
+                    text(
+                        "SELECT 1 FROM information_schema.columns "
+                        "WHERE table_name = 'qoqa_orders' "
+                        "AND column_name = 'pdf_data' LIMIT 1"
+                    )
+                ).first()
+            )
+
+        if table_exists and not has_pdf_data:
+            conn.exec_driver_sql(
+                f"ALTER TABLE qoqa_orders ADD COLUMN pdf_data {blob_type}"
+            )
+            console.log("[green]✓[/green] Added column qoqa_orders.pdf_data.")
+
+
 def _ensure_schema() -> None:
-    """Create any missing DB tables."""
+    """Create any missing DB tables and apply schema migrations."""
+    _run_migrations()
     Base.metadata.create_all(bind=engine)
     console.log("[green]✓[/green] Database schema is up to date.")
 
@@ -99,52 +147,51 @@ def _known_order_numbers() -> set[str]:
         return set(rows)
 
 
-def _upsert_order(session, order: OrderData) -> bool:
-    """Insert or update one QoqaOrder row. Returns True if a new row was inserted."""
+def _upsert_order(
+    session, order: OrderData, pdf_bytes: bytes | None = None
+) -> bool:
+    """Insert or update one QoqaOrder row. Returns True if a new row was inserted.
+
+    When ``pdf_bytes`` is provided, the bytes are written to the ``pdf_data``
+    column. When it is ``None`` the column is left untouched on update so that
+    a previously-stored PDF is not overwritten with NULL.
+    """
     insert = get_dialect_insert()
     now = datetime.now(tz=timezone.utc)
+
+    base_values = dict(
+        order_number=order.order_number,
+        order_date=order.order_date,
+        amount_chf=order.amount_chf,
+        status=order.status,
+        subtotal_chf=order.subtotal_chf,
+        discount_chf=order.discount_chf,
+        vat_chf=order.vat_chf,
+        delivery_on=order.delivery_on,
+        offer_id=order.offer_id,
+        offer_title=order.offer_title,
+        offer_subtitle=order.offer_subtitle,
+        universe=order.universe,
+        subuniverse=order.subuniverse,
+        item_description=order.item_description,
+        invoice_number=order.invoice_number,
+        pdf_filename=order.pdf_filename,
+        raw_json=order.raw_json,
+    )
+
+    update_values = {k: v for k, v in base_values.items() if k != "order_number"}
+    update_values["updated_at"] = now
+
+    if pdf_bytes is not None:
+        base_values["pdf_data"] = pdf_bytes
+        update_values["pdf_data"] = pdf_bytes
+
     stmt = (
         insert(QoqaOrder)
-        .values(
-            order_number=order.order_number,
-            order_date=order.order_date,
-            amount_chf=order.amount_chf,
-            status=order.status,
-            subtotal_chf=order.subtotal_chf,
-            discount_chf=order.discount_chf,
-            vat_chf=order.vat_chf,
-            delivery_on=order.delivery_on,
-            offer_id=order.offer_id,
-            offer_title=order.offer_title,
-            offer_subtitle=order.offer_subtitle,
-            universe=order.universe,
-            subuniverse=order.subuniverse,
-            item_description=order.item_description,
-            invoice_number=order.invoice_number,
-            pdf_filename=order.pdf_filename,
-            raw_json=order.raw_json,
-        )
+        .values(**base_values)
         .on_conflict_do_update(
             index_elements=["order_number"],
-            set_={
-                "order_date": order.order_date,
-                "amount_chf": order.amount_chf,
-                "status": order.status,
-                "subtotal_chf": order.subtotal_chf,
-                "discount_chf": order.discount_chf,
-                "vat_chf": order.vat_chf,
-                "delivery_on": order.delivery_on,
-                "offer_id": order.offer_id,
-                "offer_title": order.offer_title,
-                "offer_subtitle": order.offer_subtitle,
-                "universe": order.universe,
-                "subuniverse": order.subuniverse,
-                "item_description": order.item_description,
-                "invoice_number": order.invoice_number,
-                "pdf_filename": order.pdf_filename,
-                "raw_json": order.raw_json,
-                "updated_at": now,
-            },
+            set_=update_values,
         )
     )
     result = session.execute(stmt)
@@ -253,19 +300,8 @@ def sync(
 
         order = parse_order_data(detail)
 
-        # Upsert to DB
-        if not pdf_only:
-            try:
-                with SessionLocal() as session:
-                    _upsert_order(session, order)
-                    session.commit()
-                counts["synced"] += 1
-            except Exception as exc:
-                console.print(f"[red]✗[/red] DB error for {order.order_number}: {exc}")
-                counts["failed"] += 1
-                continue
-
-        # Download PDF
+        # Download PDF first so its bytes can be persisted alongside the order.
+        pdf_bytes: bytes | None = None
         if not db_only and order.pdf_url:
             dest = pdf_dir / (order.pdf_filename or f"{order.order_number}.pdf")
             if full or not dest.exists():
@@ -274,6 +310,25 @@ def sync(
                     counts["downloaded"] += 1
                 except Exception as exc:
                     console.print(f"[red]✗[/red] PDF error for {order.order_number}: {exc}")
+            if dest.exists():
+                try:
+                    pdf_bytes = dest.read_bytes()
+                except Exception as exc:
+                    console.print(
+                        f"[yellow]⚠[/yellow] Could not read {dest.name} for DB storage: {exc}"
+                    )
+
+        # Upsert to DB
+        if not pdf_only:
+            try:
+                with SessionLocal() as session:
+                    _upsert_order(session, order, pdf_bytes=pdf_bytes)
+                    session.commit()
+                counts["synced"] += 1
+            except Exception as exc:
+                console.print(f"[red]✗[/red] DB error for {order.order_number}: {exc}")
+                counts["failed"] += 1
+                continue
 
     console.rule("[bold green]Done[/bold green]")
     console.print(

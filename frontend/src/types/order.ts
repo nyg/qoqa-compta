@@ -22,6 +22,8 @@ export interface QoqaOrder {
   item_description: string | null;
   invoice_number: string | null;
   pdf_filename: string | null;
+  /** True when the row has a stored PDF blob available for download/preview. */
+  has_pdf: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -10,6 +10,7 @@ import { Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { OrderPdfDialog } from "@/components/order-pdf-dialog";
 import { useFormatter } from "@/lib/formatter-context";
 import { useTranslations } from "next-intl";
 import type { QoqaOrder } from "@/types/order";
@@ -133,19 +134,22 @@ export function OrdersTable({
                 <th className="px-4 py-3 text-right font-medium text-muted-foreground whitespace-nowrap">
                   {t("colAmount")}
                 </th>
+                <th className="px-4 py-3 text-right font-medium text-muted-foreground whitespace-nowrap">
+                  <span className="sr-only">{t("colInvoice")}</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                     {t("loading")}
                   </td>
                 </tr>
               )}
               {!loading && orders.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                     {t("noOrders")}
                   </td>
                 </tr>
@@ -192,6 +196,12 @@ export function OrdersTable({
                     </td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums whitespace-nowrap">
                       {formatCHF(parseFloat(order.amount_chf))}
+                    </td>
+                    <td className="px-2 py-3 text-right">
+                      <OrderPdfDialog
+                        orderNumber={order.order_number}
+                        disabled={!order.has_pdf}
+                      />
                     </td>
                   </tr>
                 ))}

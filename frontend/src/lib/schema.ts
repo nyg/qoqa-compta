@@ -6,8 +6,9 @@
  * Schema migrations are owned by the crawler (SQLAlchemy create_all).
  */
 import { sql } from "drizzle-orm";
-import { integer, numeric, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { blob, integer, numeric, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import {
+  customType,
   numeric as pgNumeric,
   pgTable,
   serial,
@@ -15,6 +16,17 @@ import {
   timestamp,
   varchar,
 } from "drizzle-orm/pg-core";
+
+/**
+ * PostgreSQL ``bytea`` column. drizzle-orm's pg-core doesn't ship a built-in
+ * bytea type, so we declare one via ``customType``. Returned as a Node Buffer
+ * by the driver — convert to ``Uint8Array`` at the boundary when needed.
+ */
+const bytea = customType<{ data: Buffer; default: false }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 /** SQLite version of qoqa_orders */
 export const qoqaOrdersSqlite = sqliteTable("qoqa_orders", {
@@ -35,6 +47,10 @@ export const qoqaOrdersSqlite = sqliteTable("qoqa_orders", {
   item_description: text("item_description"),
   invoice_number: text("invoice_number"),
   pdf_filename: text("pdf_filename"),
+  // SQLite BLOB. Never select this in list queries — use `pdf_data IS NOT NULL`
+  // to expose a `has_pdf` boolean instead, and only read the bytes via the
+  // dedicated /api/orders/[orderNumber]/pdf route.
+  pdf_data: blob("pdf_data", { mode: "buffer" }),
   raw_json: text("raw_json"),
   created_at: text("created_at").default(sql`(datetime('now'))`).notNull(),
   updated_at: text("updated_at").default(sql`(datetime('now'))`).notNull(),
@@ -76,6 +92,8 @@ export const qoqaOrdersPg = pgTable("qoqa_orders", {
   item_description: pgText("item_description"),
   invoice_number: varchar("invoice_number", { length: 64 }),
   pdf_filename: varchar("pdf_filename", { length: 255 }),
+  // PostgreSQL BYTEA. Same caveat as the SQLite version — never select in lists.
+  pdf_data: bytea("pdf_data"),
   raw_json: pgText("raw_json"),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
