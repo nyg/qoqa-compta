@@ -47,7 +47,8 @@ qoqa-compta/
 │   │   ├── models/
 │   │   │   ├── __init__.py
 │   │   │   ├── order.py      # SQLAlchemy QoqaOrder model
-│   │   │   └── universe.py   # SQLAlchemy QoqaUniverse model
+│   │   │   ├── universe.py   # SQLAlchemy QoqaUniverse model
+│   │   │   └── subuniverse.py  # SQLAlchemy QoqaSubuniverse model
 │   │   └── utils/
 │   │       ├── __init__.py
 │   │       └── pdf_parser.py # PDF parsing with pdfplumber
@@ -56,19 +57,23 @@ qoqa-compta/
     ├── package.json
     ├── tsconfig.json
     ├── next.config.ts
+    ├── playwright.config.ts  # Playwright E2E test configuration
     ├── components.json       # shadcn/ui config (base-mira / Base UI preset)
     ├── messages/             # next-intl message files (en, fr, de, it, rm)
+    ├── tests/
+    │   ├── universe-picker.spec.ts  # E2E: hierarchical picker behaviour
+    │   └── orders-table.spec.ts     # E2E: two-pill universe display
     └── src/
         ├── app/
         │   ├── globals.css
         │   ├── layout.tsx
-        │   ├── page.tsx      # Main dashboard (dynamic, reads ?universes= param)
+        │   ├── page.tsx      # Main dashboard (dynamic, reads ?universes= + ?subuniverses= params)
         │   └── api/
         │       └── orders/
         │           └── route.ts  # Paginated orders + aggregate data endpoint
         ├── components/
         │   ├── ui/               # shadcn/ui primitives (Base UI wrappers)
-        │   ├── universe-picker.tsx   # Multi-select universe filter (client)
+        │   ├── universe-picker.tsx   # Hierarchical universe+subuniverse filter (client)
         │   ├── orders-table.tsx      # Filterable, paginated orders table (client)
         │   ├── spending-chart.tsx    # Monthly + yearly Recharts charts (client)
         │   ├── stats-cards.tsx       # Aggregate stat cards (server)
@@ -81,10 +86,10 @@ qoqa-compta/
         │   ├── formatter-context.tsx  # React context for fr-CH formatters
         │   ├── formatters.ts     # formatCHF, formatDate, formatMonth helpers
         │   ├── queries.ts        # All DB query functions (Drizzle ORM)
-        │   ├── schema.ts         # Drizzle schema (mirrors qoqa_orders + qoqa_universes)
+        │   ├── schema.ts         # Drizzle schema (qoqa_orders + qoqa_universes + qoqa_subuniverses)
         │   └── utils.ts          # cn() and other utilities
         └── types/
-            └── order.ts          # QoqaOrder, QoqaUniverse, OrderStats, MonthlySpending, YearlySpending
+            └── order.ts          # QoqaOrder, UniverseOption, SubuniverseOption, OrderStats, MonthlySpending, YearlySpending
 ```
 
 ---
@@ -123,8 +128,8 @@ CREATE TABLE qoqa_orders (
     offer_id         VARCHAR(32),
     offer_title      VARCHAR(255),
     offer_subtitle   VARCHAR(255),
-    universe         VARCHAR(64),   -- universe_tracking_identifier
-    subuniverse      VARCHAR(64),
+    universe         VARCHAR(64),   -- universe_tracking_identifier (FK → qoqa_universes)
+    subuniverse      VARCHAR(64),   -- cleaned identifier (FK → qoqa_subuniverses)
     item_description TEXT,
     invoice_number   VARCHAR(64),
     pdf_filename     VARCHAR(255),
@@ -133,11 +138,22 @@ CREATE TABLE qoqa_orders (
     updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Populated from the authenticated /v2/alerts?locale=fr&sub_universe=true endpoint.
+-- The universe name is stored in the `name` column (locale = fr from the API response).
 CREATE TABLE qoqa_universes (
     id                           SERIAL PRIMARY KEY,
     universe_tracking_identifier VARCHAR(64) UNIQUE NOT NULL,
-    name_fr                      VARCHAR(255),
-    name_de                      VARCHAR(255),
+    name                         VARCHAR(255),
+    updated_at                   TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Sub-universes extracted from the push_topics field of each universe in the alerts API.
+-- Identifiers are cleaned at parse time: strip subuniverse_/q prefix and qoqach suffix.
+CREATE TABLE qoqa_subuniverses (
+    id                           SERIAL PRIMARY KEY,
+    identifier                   VARCHAR(64) UNIQUE NOT NULL,
+    name                         VARCHAR(255),
+    universe_tracking_identifier VARCHAR(64) NOT NULL,  -- FK → qoqa_universes
     updated_at                   TIMESTAMPTZ DEFAULT NOW()
 );
 ```

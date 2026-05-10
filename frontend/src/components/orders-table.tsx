@@ -25,12 +25,14 @@ interface OrdersTableProps {
   initialOrders: QoqaOrder[];
   initialPagination: Pagination;
   selectedUniverses: string[];
+  selectedSubuniverses: string[];
 }
 
 export function OrdersTable({
   initialOrders,
   initialPagination,
   selectedUniverses,
+  selectedSubuniverses,
 }: OrdersTableProps) {
   const [orders, setOrders] = useState<QoqaOrder[]>(initialOrders);
   const [pagination, setPagination] = useState<Pagination>(initialPagination);
@@ -52,6 +54,9 @@ export function OrdersTable({
         if (selectedUniverses.length > 0) {
           params.set("universes", selectedUniverses.join(","));
         }
+        if (selectedSubuniverses.length > 0) {
+          params.set("subuniverses", selectedSubuniverses.join(","));
+        }
         const res = await fetch(`/api/orders?${params}`);
         const data = await res.json();
         setOrders(data.orders ?? []);
@@ -62,7 +67,7 @@ export function OrdersTable({
         setLoading(false);
       }
     },
-    [pagination, selectedUniverses]
+    [pagination, selectedUniverses, selectedSubuniverses]
   );
 
   const handleSearch = useCallback(
@@ -157,9 +162,16 @@ export function OrdersTable({
                     </td>
                     <td className="px-4 py-3">
                       {order.universe ? (
-                        <Badge variant="outline" className="font-normal text-xs">
-                          {order.universe_name ?? order.universe}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant="outline" className="font-normal text-xs">
+                            {order.universe_name ?? order.universe}
+                          </Badge>
+                          {order.subuniverse_name && (
+                            <Badge variant="secondary" className="font-normal text-xs">
+                              {order.subuniverse_name}
+                            </Badge>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}

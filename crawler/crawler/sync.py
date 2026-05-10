@@ -27,7 +27,7 @@ from crawler.api import (
 )
 from crawler.browser import get_pdf_download_dir, login_and_get_cookies
 from crawler.db import Base, SessionLocal, engine, get_dialect_insert
-from crawler.models import QoqaOrder, QoqaUniverse
+from crawler.models import QoqaOrder, QoqaSubuniverse, QoqaUniverse
 
 console = Console()
 app = typer.Typer(help="QoQa.ch invoice crawler & DB sync tool.")
@@ -39,35 +39,57 @@ def _ensure_schema() -> None:
     console.log("[green]✓[/green] Database schema is up to date.")
 
 
-def _sync_universes(locale: str) -> None:
-    """Fetch universes for the resolved locale and upsert into qoqa_universes."""
+def _sync_universes(token: str, locale: str) -> None:
+    """Fetch universes (and their sub-universes) and upsert into the database."""
     insert = get_dialect_insert()
 
     try:
-        rows = fetch_universes(locale)
+        universe_data = fetch_universes(token, locale)
     except Exception as exc:
         console.print(f"[yellow]⚠ Could not fetch universes: {exc}[/yellow]")
         return
 
     with SessionLocal() as session:
-        for row in rows:
-            uid = row.get("universe_tracking_identifier")
-            if not uid:
-                continue
+        for ud in universe_data:
+            uid = ud.universe_tracking_identifier
             stmt = (
                 insert(QoqaUniverse)
                 .values(
                     universe_tracking_identifier=uid,
-                    name=row.get("name"),
+                    name=ud.name,
                 )
                 .on_conflict_do_update(
                     index_elements=["universe_tracking_identifier"],
-                    set_={"name": row.get("name")},
+                    set_={"name": ud.name},
                 )
             )
             session.execute(stmt)
+
+            for sub in ud.subuniverses:
+                sub_stmt = (
+                    insert(QoqaSubuniverse)
+                    .values(
+                        identifier=sub.identifier,
+                        name=sub.name,
+                        universe_tracking_identifier=uid,
+                    )
+                    .on_conflict_do_update(
+                        index_elements=["identifier"],
+                        set_={
+                            "name": sub.name,
+                            "universe_tracking_identifier": uid,
+                        },
+                    )
+                )
+                session.execute(sub_stmt)
+
         session.commit()
-    console.log(f"[green]✓[/green] Synced {len(rows)} universe(s).")
+
+    total_subs = sum(len(ud.subuniverses) for ud in universe_data)
+    console.log(
+        f"[green]✓[/green] Synced {len(universe_data)} universe(s) "
+        f"and {total_subs} sub-universe(s)."
+    )
 
 
 def _known_order_numbers() -> set[str]:
@@ -189,7 +211,7 @@ def sync(
 
     # ── Step 2: Sync universes ─────────────────────────────────────────────────
     console.log("[cyan]→[/cyan] Syncing universes…")
-    _sync_universes(resolved_locale)
+    _sync_universes(token, resolved_locale)
 
     # ── Step 3: Fetch purchases ────────────────────────────────────────────────
     console.log("[cyan]→[/cyan] Fetching purchases from API…")

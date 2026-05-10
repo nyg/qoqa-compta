@@ -26,13 +26,13 @@ import { OrdersTable } from "@/components/orders-table";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UniversePicker } from "@/components/universe-picker";
 
-async function fetchDashboardData(universes: string[]) {
+async function fetchDashboardData(universes: string[], subuniverses: string[]) {
   const [stats, monthly, yearly, orders, total, availableUniverses] = await Promise.all([
-    fetchStats(universes),
-    fetchMonthlySpending(universes),
-    fetchYearlySpending(universes),
-    fetchInitialOrders(universes),
-    fetchTotalCount(universes),
+    fetchStats(universes, subuniverses),
+    fetchMonthlySpending(universes, subuniverses),
+    fetchYearlySpending(universes, subuniverses),
+    fetchInitialOrders(universes, subuniverses),
+    fetchTotalCount(universes, subuniverses),
     fetchUniverses(),
   ]);
   return { stats, monthly, yearly, orders, total, availableUniverses };
@@ -41,17 +41,20 @@ async function fetchDashboardData(universes: string[]) {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ universes?: string }>;
+  searchParams: Promise<{ universes?: string; subuniverses?: string }>;
 }) {
   const t = await getTranslations("Dashboard");
-  const { universes: universesParam } = await searchParams;
+  const { universes: universesParam, subuniverses: subuniversesParam } = await searchParams;
   const selectedUniverses = universesParam
     ? universesParam.split(",").filter(Boolean)
+    : [];
+  const selectedSubuniverses = subuniversesParam
+    ? subuniversesParam.split(",").filter(Boolean)
     : [];
 
   let data;
   try {
-    data = await fetchDashboardData(selectedUniverses);
+    data = await fetchDashboardData(selectedUniverses, selectedSubuniverses);
   } catch {
     return (
       <main className="container mx-auto px-4 py-8">
@@ -92,6 +95,7 @@ export default async function DashboardPage({
             <UniversePicker
               available={availableUniverses}
               selected={selectedUniverses}
+              selectedSubuniverses={selectedSubuniverses}
             />
           </Suspense>
           <ThemeToggle />
@@ -111,7 +115,7 @@ export default async function DashboardPage({
       {/* Orders table */}
       <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" />}>
         <OrdersTable
-          key={selectedUniverses.join(",")}
+          key={`${selectedUniverses.join(",")}-${selectedSubuniverses.join(",")}`}
           initialOrders={orders}
           initialPagination={{
             page: 1,
@@ -120,6 +124,7 @@ export default async function DashboardPage({
             totalPages: Math.ceil(total / 20),
           }}
           selectedUniverses={selectedUniverses}
+          selectedSubuniverses={selectedSubuniverses}
         />
       </Suspense>
     </main>

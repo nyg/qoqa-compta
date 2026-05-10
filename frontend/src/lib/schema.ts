@@ -48,6 +48,15 @@ export const qoqaUniversesSqlite = sqliteTable("qoqa_universes", {
   updated_at: text("updated_at").default(sql`(datetime('now'))`).notNull(),
 });
 
+/** SQLite version of qoqa_subuniverses */
+export const qoqaSubuniversesSqlite = sqliteTable("qoqa_subuniverses", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  identifier: text("identifier").notNull(),
+  name: text("name"),
+  universe_tracking_identifier: text("universe_tracking_identifier").notNull(),
+  updated_at: text("updated_at").default(sql`(datetime('now'))`).notNull(),
+});
+
 /** PostgreSQL version of qoqa_orders */
 export const qoqaOrdersPg = pgTable("qoqa_orders", {
   id: serial("id").primaryKey(),
@@ -77,6 +86,15 @@ export const qoqaUniversesPg = pgTable("qoqa_universes", {
   id: serial("id").primaryKey(),
   universe_tracking_identifier: varchar("universe_tracking_identifier", { length: 64 }).notNull(),
   name: varchar("name", { length: 255 }),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** PostgreSQL version of qoqa_subuniverses */
+export const qoqaSubuniversesPg = pgTable("qoqa_subuniverses", {
+  id: serial("id").primaryKey(),
+  identifier: varchar("identifier", { length: 64 }).notNull(),
+  name: varchar("name", { length: 255 }),
+  universe_tracking_identifier: varchar("universe_tracking_identifier", { length: 64 }).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

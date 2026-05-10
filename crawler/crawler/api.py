@@ -25,7 +25,7 @@ AUTH_TOKEN_URL = "https://auth.qoqa.ch/v2/token"
 API_BASE = "https://api.qoqa.ch/v2"
 PURCHASES_URL = f"{API_BASE}/users/me/purchases"
 ORDER_URL = f"{API_BASE}/users/me/orders"
-UNIVERSES_URL = f"{API_BASE}/universes"
+ALERTS_URL = f"{API_BASE}/alerts"
 
 _SUPPORTED_LOCALES = {"fr", "de"}
 
@@ -70,7 +70,7 @@ class OrderData:
     offer_title: str | None
     offer_subtitle: str | None
     universe: str | None
-    subuniverse: str | None
+    subuniverse: str | None  # cleaned identifier (e.g. "beer", not "qbeerqoqach")
     item_description: str | None
     invoice_number: str | None
     pdf_url: str | None
@@ -79,11 +79,21 @@ class OrderData:
 
 
 @dataclass
+class SubuniverseData:
+    """Structured sub-universe data extracted from a universe's push_topics."""
+
+    identifier: str  # cleaned (e.g. "beer")
+    name: str | None
+    universe_tracking_identifier: str
+
+
+@dataclass
 class UniverseData:
     """Structured universe data extracted from the QoQa API."""
 
     universe_tracking_identifier: str
     name: str | None
+    subuniverses: list[SubuniverseData]
 
 
 def get_auth_token(cookies: dict[str, str]) -> str:
@@ -170,18 +180,79 @@ def get_order_details(token: str, order_id: str, locale: str = "fr") -> dict:
     return resp.json()
 
 
-def fetch_universes(locale: str = "fr") -> list[dict]:
-    """Fetch all universes from the public QoQa API (no auth required).
+def clean_subuniverse_identifier(raw: str) -> str:
+    """Remove vendor-specific prefix and suffix from a raw subuniverse identifier.
+
+    Rules applied in order:
+    1. Strip ``subuniverse_`` prefix if present.
+    2. Otherwise strip a leading ``q`` character if present.
+    3. Strip trailing ``qoqach`` suffix if present.
+
+    Examples::
+
+        clean_subuniverse_identifier("qbeerqoqach")   # → "beer"
+        clean_subuniverse_identifier("subuniverse_nolow")  # → "nolow"
+    """
+    s = raw
+    if s.startswith("subuniverse_"):
+        s = s[len("subuniverse_"):]
+    elif s.startswith("q"):
+        s = s[1:]
+    if s.endswith("qoqach"):
+        s = s[: -len("qoqach")]
+    return s
+
+
+def fetch_universes(token: str, locale: str = "fr") -> list[UniverseData]:
+    """Fetch universes and their sub-universes from the authenticated QoQa API.
+
+    Uses the private ``/v2/alerts`` endpoint (requires a valid JWT). The
+    response contains a hierarchical structure: each universe has a list of
+    sub-universes in its ``push_topics`` field.
 
     Args:
+        token: JWT bearer token.
         locale: Locale for universe names (``"fr"`` or ``"de"``).
 
     Returns:
-        List of universe dicts from the API.
+        List of :class:`UniverseData` objects, each with a populated
+        ``subuniverses`` list.
     """
-    resp = requests.get(UNIVERSES_URL, params={"locale": locale}, timeout=15)
+    headers = _api_headers(token)
+    resp = requests.get(
+        ALERTS_URL,
+        headers=headers,
+        params={"locale": locale, "sub_universe": "true"},
+        timeout=15,
+    )
     resp.raise_for_status()
-    return resp.json()
+    data = resp.json()
+
+    universes: list[UniverseData] = []
+    for u in data.get("alerts", {}).get("universes", []):
+        uid = u.get("identifier")
+        if not uid:
+            continue
+        subuniverses: list[SubuniverseData] = []
+        for sub in u.get("push_topics", []):
+            sub_raw = sub.get("identifier")
+            if not sub_raw:
+                continue
+            subuniverses.append(
+                SubuniverseData(
+                    identifier=clean_subuniverse_identifier(sub_raw),
+                    name=sub.get("name"),
+                    universe_tracking_identifier=uid,
+                )
+            )
+        universes.append(
+            UniverseData(
+                universe_tracking_identifier=uid,
+                name=u.get("name"),
+                subuniverses=subuniverses,
+            )
+        )
+    return universes
 
 
 def parse_order_data(detail: dict) -> OrderData:
@@ -207,7 +278,8 @@ def parse_order_data(detail: dict) -> OrderData:
     offer_subtitle = offer.get("subtitle")
     universe = offer.get("universe_tracking_identifier")
     subs = offer.get("sub_universe_tracking_identifiers") or []
-    subuniverse = subs[0] if subs else None
+    raw_sub = subs[0] if subs else None
+    subuniverse = clean_subuniverse_identifier(raw_sub) if raw_sub else None
 
     # Order items
     items = detail.get("order_items") or []
