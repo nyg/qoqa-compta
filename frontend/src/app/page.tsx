@@ -35,6 +35,14 @@ export default async function DashboardPage({
     // universes and determine which pie chart mode to use.
     const availableUniverses = await fetchUniverses();
 
+    // When nothing is selected, treat it as "all universes selected" so that
+    // every downstream query sees a concrete IN-list and returns all rows.
+    const effectiveUniverses =
+      selectedUniverses.length === 0 && selectedSubuniverses.length === 0
+        ? availableUniverses.map((u) => u.identifier)
+        : selectedUniverses;
+    const effectiveSubuniverses = selectedSubuniverses;
+
     // Build a subuniverse→universe map to count distinct parent universes.
     const subToUniverse = new Map(
       availableUniverses.flatMap((u) =>
@@ -42,8 +50,8 @@ export default async function DashboardPage({
       )
     );
     const activeUniverseIds = new Set([
-      ...selectedUniverses,
-      ...selectedSubuniverses
+      ...effectiveUniverses,
+      ...effectiveSubuniverses
         .map((s) => subToUniverse.get(s))
         .filter((v): v is string => v !== undefined),
     ]);
@@ -55,13 +63,13 @@ export default async function DashboardPage({
         : "universe";
 
     const [stats, monthly, yearly, orders, total, pieData] = await Promise.all([
-      fetchStats(selectedUniverses, selectedSubuniverses),
-      fetchMonthlySpending(selectedUniverses, selectedSubuniverses),
-      fetchYearlySpending(selectedUniverses, selectedSubuniverses),
-      fetchInitialOrders(selectedUniverses, selectedSubuniverses),
-      fetchTotalCount(selectedUniverses, selectedSubuniverses),
+      fetchStats(effectiveUniverses, effectiveSubuniverses),
+      fetchMonthlySpending(effectiveUniverses, effectiveSubuniverses),
+      fetchYearlySpending(effectiveUniverses, effectiveSubuniverses),
+      fetchInitialOrders(effectiveUniverses, effectiveSubuniverses),
+      fetchTotalCount(effectiveUniverses, effectiveSubuniverses),
       pieMode !== null
-        ? fetchSpendingByGroup(pieMode, selectedUniverses, selectedSubuniverses)
+        ? fetchSpendingByGroup(pieMode, effectiveUniverses, effectiveSubuniverses)
         : Promise.resolve(null),
     ]);
 

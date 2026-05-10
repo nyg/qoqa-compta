@@ -49,7 +49,8 @@ function monthsAgo24(): SQL<string> {
 
 /**
  * Builds a WHERE clause that filters by universe AND/OR subuniverse.
- * Returns TRUE (no filter) when both lists are empty, i.e. "show everything".
+ * Returns FALSE when both lists are empty — callers must expand an empty
+ * selection to the full list of identifiers before calling this function.
  *
  * - universes: filter orders where universe IN [...]
  * - subuniverses: filter orders where subuniverse IN [...]
@@ -62,7 +63,7 @@ function buildUniverseWhereClause(
   const parts: SQL[] = [];
   if (universes.length > 0) parts.push(inArray(qoqaOrders.universe, universes) as SQL);
   if (subuniverses.length > 0) parts.push(inArray(qoqaOrders.subuniverse, subuniverses) as SQL);
-  if (parts.length === 0) return sql`TRUE`;
+  if (parts.length === 0) return sql`FALSE`;
   if (parts.length === 1) return parts[0];
   return or(...parts) as SQL;
 }
