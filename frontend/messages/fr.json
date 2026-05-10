@@ -46,6 +46,8 @@
     "legendTotal": "Total (CHF)",
     "legendOrders": "Commandes",
     "tooltipTotal": "Total",
-    "tooltipOrders": "Commandes"
+    "tooltipOrders": "Commandes",
+    "pieByUniverseTitle": "Dépenses par univers",
+    "pieBySubuniverseTitle": "Dépenses par sous-univers"
   }
 }

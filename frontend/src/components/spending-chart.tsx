@@ -19,11 +19,14 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFormatter } from "@/lib/formatter-context";
 import { useTranslations } from "next-intl";
-import type { MonthlySpending, YearlySpending } from "@/types/order";
+import type { MonthlySpending, SpendingByGroup, YearlySpending } from "@/types/order";
+import { SpendingPieChart } from "@/components/spending-pie-chart";
 
 interface SpendingChartProps {
   monthly: MonthlySpending[];
   yearly: YearlySpending[];
+  pieData?: SpendingByGroup[] | null;
+  pieMode?: "universe" | "subuniverse" | null;
 }
 
 interface ChartCardProps {
@@ -139,7 +142,7 @@ function ChartCard({ title, data, gradientId, barColor, lineColor }: ChartCardPr
   );
 }
 
-export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
+export function SpendingChart({ monthly, yearly, pieData, pieMode }: SpendingChartProps) {
   const { formatMonth } = useFormatter();
   const t = useTranslations("SpendingChart");
 
@@ -155,8 +158,13 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
     orders: y.count,
   }));
 
+  const hasPie = pieData && pieData.length > 0;
+  const pieTitle = pieMode === "subuniverse"
+    ? t("pieBySubuniverseTitle")
+    : t("pieByUniverseTitle");
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className={hasPie ? "grid gap-4 grid-cols-1 lg:grid-cols-3" : "grid gap-4 md:grid-cols-2"}>
       <ChartCard
         title={t("monthlyTitle")}
         data={monthlyData}
@@ -171,6 +179,9 @@ export function SpendingChart({ monthly, yearly }: SpendingChartProps) {
         barColor="var(--chart-3)"
         lineColor="var(--chart-4)"
       />
+      {hasPie && (
+        <SpendingPieChart data={pieData} title={pieTitle} />
+      )}
     </div>
   );
 }

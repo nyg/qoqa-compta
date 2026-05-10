@@ -46,6 +46,8 @@
     "legendTotal": "Total (CHF)",
     "legendOrders": "Ordinaziuns",
     "tooltipTotal": "Total",
-    "tooltipOrders": "Ordinaziuns"
+    "tooltipOrders": "Ordinaziuns",
+    "pieByUniverseTitle": "Spesas per univers",
+    "pieBySubuniverseTitle": "Spesas per suot-univers"
   }
 }

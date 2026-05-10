@@ -46,6 +46,8 @@
     "legendTotal": "Total (CHF)",
     "legendOrders": "Orders",
     "tooltipTotal": "Total",
-    "tooltipOrders": "Orders"
+    "tooltipOrders": "Orders",
+    "pieByUniverseTitle": "Spending by universe",
+    "pieBySubuniverseTitle": "Spending by sub-universe"
   }
 }
