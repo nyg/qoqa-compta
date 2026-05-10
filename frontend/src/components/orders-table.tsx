@@ -112,21 +112,13 @@ export function OrdersTable({
 
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm table-fixed">
-            <colgroup>
-              <col className="w-28" />
-              <col className="w-24" />
-              <col className="w-44" />
-              <col className="w-36" />
-              <col />
-              <col className="w-24" />
-            </colgroup>
+          <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">
                   {t("colOrderNumber")}
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">
                   {t("colDate")}
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
@@ -135,10 +127,10 @@ export function OrdersTable({
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                   {t("colOffer")}
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <th className="w-full px-4 py-3 text-left font-medium text-muted-foreground">
                   {t("colItem")}
                 </th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                <th className="px-4 py-3 text-right font-medium text-muted-foreground whitespace-nowrap">
                   {t("colAmount")}
                 </th>
               </tr>
@@ -164,10 +156,10 @@ export function OrdersTable({
                     key={order.id}
                     className="border-b last:border-0 hover:bg-muted/30 transition-colors"
                   >
-                    <td className="px-4 py-3 font-mono text-xs">
+                    <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">
                       {order.order_number}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                       {formatDate(order.order_date)}
                     </td>
                     <td className="px-4 py-3">
@@ -198,7 +190,7 @@ export function OrdersTable({
                     <td className="px-4 py-3 text-muted-foreground truncate">
                       {order.item_description ?? <span className="opacity-40">—</span>}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums whitespace-nowrap">
                       {formatCHF(parseFloat(order.amount_chf))}
                     </td>
                   </tr>
