@@ -229,7 +229,14 @@ def fetch_universes(token: str, locale: str = "fr") -> list[UniverseData]:
     data = resp.json()
 
     universes: list[UniverseData] = []
-    for u in data.get("alerts", {}).get("universes", []):
+    alerts = data.get("alerts", {})
+    # The API may return alerts as a list of universe objects directly,
+    # or as a dict with a "universes" key — handle both.
+    if isinstance(alerts, list):
+        universe_list = alerts
+    else:
+        universe_list = alerts.get("universes", [])
+    for u in universe_list:
         uid = u.get("identifier")
         if not uid:
             continue
