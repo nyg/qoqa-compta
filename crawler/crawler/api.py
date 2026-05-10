@@ -229,29 +229,30 @@ def fetch_universes(token: str, locale: str = "fr") -> list[UniverseData]:
     data = resp.json()
 
     universes: list[UniverseData] = []
-    for u in data.get("alerts", []):
-        uid = u.get("identifier")
-        if not uid:
-            continue
-        subuniverses: list[SubuniverseData] = []
-        for sub in u.get("push_topics", []):
-            sub_raw = sub.get("identifier")
-            if not sub_raw:
+    for alert in data.get("alerts", []):
+        for u in alert.get("universes", []):
+            uid = u.get("identifier")
+            if not uid:
                 continue
-            subuniverses.append(
-                SubuniverseData(
-                    identifier=clean_subuniverse_identifier(sub_raw),
-                    name=sub.get("name"),
+            subuniverses: list[SubuniverseData] = []
+            for sub in u.get("push_topics", []):
+                sub_raw = sub.get("identifier")
+                if not sub_raw:
+                    continue
+                subuniverses.append(
+                    SubuniverseData(
+                        identifier=clean_subuniverse_identifier(sub_raw),
+                        name=sub.get("name"),
+                        universe_tracking_identifier=uid,
+                    )
+                )
+            universes.append(
+                UniverseData(
                     universe_tracking_identifier=uid,
+                    name=u.get("name"),
+                    subuniverses=subuniverses,
                 )
             )
-        universes.append(
-            UniverseData(
-                universe_tracking_identifier=uid,
-                name=u.get("name"),
-                subuniverses=subuniverses,
-            )
-        )
     return universes
 
 
