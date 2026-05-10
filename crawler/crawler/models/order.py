@@ -3,7 +3,16 @@
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    Date,
+    DateTime,
+    LargeBinary,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from crawler.db import Base
@@ -46,6 +55,7 @@ class QoqaOrder(Base):
     # Invoice / source
     invoice_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
     pdf_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    pdf_data: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     raw_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Timestamps
