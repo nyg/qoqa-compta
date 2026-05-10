@@ -21,11 +21,19 @@
     "colOffer": "Offer",
     "colItem": "Item",
     "colAmount": "Amount",
+    "colInvoice": "Invoice",
+    "viewInvoice": "View invoice",
+    "noInvoice": "No invoice available",
     "loading": "Loading…",
     "noOrders": "No orders found.",
     "pagination": "Page {current, number} / {total, number}",
     "prevPage": "← Previous",
     "nextPage": "Next →"
+  },
+  "PdfDialog": {
+    "title": "Invoice {orderNumber}",
+    "close": "Close",
+    "download": "Download PDF"
   },
   "UniversePicker": {
     "allUniverses": "All universes",

@@ -21,11 +21,19 @@
     "colOffer": "Offerta",
     "colItem": "Artitgel",
     "colAmount": "Import",
+    "colInvoice": "Fattura",
+    "viewInvoice": "Mussar la fattura",
+    "noInvoice": "Nagina fattura disponibla",
     "loading": "Chargiar…",
     "noOrders": "Naginas ordinaziuns chattas.",
     "pagination": "Pagina {current, number} / {total, number}",
     "prevPage": "← Precedent",
     "nextPage": "Suandant →"
+  },
+  "PdfDialog": {
+    "title": "Fattura {orderNumber}",
+    "close": "Serrar",
+    "download": "Telechargiar il PDF"
   },
   "UniversePicker": {
     "allUniverses": "Tut ils univers",

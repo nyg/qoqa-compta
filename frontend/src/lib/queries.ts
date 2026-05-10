@@ -10,7 +10,7 @@
  *  - date('now', '-24 months') instead of NOW() - INTERVAL '24 months'
  *  - No ::float / ::int casts — CAST(x AS REAL/INTEGER) used instead
  */
-import { and, between, getTableColumns, gte, inArray, lte, or, sql, SQL } from "drizzle-orm";
+import { and, between, eq, getTableColumns, gte, inArray, lte, or, sql, SQL } from "drizzle-orm";
 import { db, isSqlite, qoqaOrders, qoqaSubuniverses, qoqaUniverses } from "./db";
 import type { OrderStats, MonthlySpending, SubuniverseOption, UniverseOption, YearlySpending } from "@/types/order";
 import type { QoqaOrder } from "@/types/order";
@@ -65,6 +65,26 @@ function buildUniverseWhereClause(
   if (parts.length === 0) return sql`FALSE`;
   if (parts.length === 1) return parts[0];
   return or(...parts) as SQL;
+}
+
+/**
+ * Returns the column projection used when listing orders.
+ *
+ * Crucially, this **omits** ``pdf_data`` (BLOB / bytea) so list queries don't
+ * pay the cost of pulling potentially-large invoice PDFs. A ``has_pdf``
+ * boolean is added in its place via ``pdf_data IS NOT NULL``.
+ */
+function orderListColumns() {
+  // Strip pdf_data from the column projection: we never want to fetch the
+  // bytes when listing rows.
+  const { pdf_data, ...rest } = getTableColumns(qoqaOrders);
+  void pdf_data;
+  return {
+    ...(rest as unknown as Record<string, SQL<unknown>>),
+    has_pdf: sql<number>`CASE WHEN ${qoqaOrders.pdf_data} IS NOT NULL THEN 1 ELSE 0 END`,
+    universe_name: sql<string | null>`${qoqaUniverses.name}`,
+    subuniverse_name: sql<string | null>`${qoqaSubuniverses.name}`,
+  };
 }
 
 // ── Query functions ───────────────────────────────────────────────────────────
@@ -229,13 +249,7 @@ export async function fetchOrders(
   const where = buildWhere(filter);
 
   const rows = await db
-    .select({
-      // Cast required: qoqaOrders is a SQLite|PG union type; spread would produce
-      // mixed column types that TypeScript rejects. Runtime values are correct.
-      ...(getTableColumns(qoqaOrders) as unknown as Record<string, SQL<unknown>>),
-      universe_name: sql<string | null>`${qoqaUniverses.name}`,
-      subuniverse_name: sql<string | null>`${qoqaSubuniverses.name}`,
-    })
+    .select(orderListColumns())
     .from(qoqaOrders)
     .leftJoin(
       qoqaUniverses,
@@ -268,11 +282,7 @@ export async function fetchInitialOrders(
 ): Promise<QoqaOrder[]> {
   const where = buildUniverseWhereClause(universes, subuniverses);
   const rows = await db
-    .select({
-      ...(getTableColumns(qoqaOrders) as unknown as Record<string, SQL<unknown>>),
-      universe_name: sql<string | null>`${qoqaUniverses.name}`,
-      subuniverse_name: sql<string | null>`${qoqaSubuniverses.name}`,
-    })
+    .select(orderListColumns())
     .from(qoqaOrders)
     .leftJoin(
       qoqaUniverses,
@@ -295,6 +305,59 @@ export async function fetchTotalCount(
   const where = buildUniverseWhereClause(universes, subuniverses);
   const [row] = await db.select({ total: asInt(sql`COUNT(*)`) }).from(qoqaOrders).where(where);
   return row.total;
+}
+
+/**
+ * Fetch the stored PDF bytes (and filename) for one order.
+ *
+ * Returns ``null`` when no order exists for ``orderNumber`` *or* when the row
+ * has no ``pdf_data`` blob. The bytes are returned as a ``Uint8Array`` so
+ * route handlers can stream them directly via ``new Response(...)``.
+ */
+export async function fetchOrderPdf(
+  orderNumber: string
+): Promise<{ filename: string; bytes: Uint8Array } | null> {
+  // qoqaOrders is a SQLite|PG union type; the spread is fine at runtime but
+  // TypeScript can't cope with the column union, so we cast the projection.
+  const projection = {
+    pdf_filename: qoqaOrders.pdf_filename,
+    pdf_data: qoqaOrders.pdf_data,
+  } as unknown as Record<string, SQL<unknown>>;
+
+  const rows = (await db
+    .select(projection)
+    .from(qoqaOrders)
+    .where(eq(qoqaOrders.order_number, orderNumber))
+    .limit(1)) as Array<{ pdf_filename: string | null; pdf_data: unknown }>;
+
+  const row = rows[0];
+  if (!row || row.pdf_data == null) return null;
+
+  let bytes: Uint8Array;
+  if (row.pdf_data instanceof Uint8Array) {
+    bytes = row.pdf_data;
+  } else if (typeof Buffer !== "undefined" && Buffer.isBuffer(row.pdf_data)) {
+    bytes = new Uint8Array(
+      row.pdf_data.buffer,
+      row.pdf_data.byteOffset,
+      row.pdf_data.byteLength
+    );
+  } else if (typeof row.pdf_data === "string") {
+    // Some drivers return BYTEA as a hex string ("\\x..."); decode if so.
+    const hex = row.pdf_data.startsWith("\\x")
+      ? row.pdf_data.slice(2)
+      : row.pdf_data;
+    const len = hex.length / 2;
+    bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    }
+  } else {
+    return null;
+  }
+
+  const filename = row.pdf_filename ?? `${orderNumber}.pdf`;
+  return { filename, bytes };
 }
 
 // ── Normalisation ─────────────────────────────────────────────────────────────
@@ -321,6 +384,7 @@ function normalizeOrder(row: Record<string, unknown>): QoqaOrder {
     item_description: row.item_description != null ? String(row.item_description) : null,
     invoice_number: row.invoice_number != null ? String(row.invoice_number) : null,
     pdf_filename: row.pdf_filename != null ? String(row.pdf_filename) : null,
+    has_pdf: Boolean(row.has_pdf) && Number(row.has_pdf) !== 0,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   };
