@@ -51,6 +51,8 @@ export async function GET(request: NextRequest) {
   const to = safeDate(searchParams.get("to"), "2099-12-31");
   const universesParam = searchParams.get("universes");
   const universes = universesParam ? universesParam.split(",").filter(Boolean) : [];
+  const subuniversesParam = searchParams.get("subuniverses");
+  const subuniverses = subuniversesParam ? subuniversesParam.split(",").filter(Boolean) : [];
   const rawPage = parseInt(searchParams.get("page") ?? "1", 10);
   const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
   const rawPageSize = parseInt(searchParams.get("pageSize") ?? "20", 10);
@@ -59,13 +61,13 @@ export async function GET(request: NextRequest) {
     Number.isFinite(rawPageSize) && rawPageSize > 0 ? rawPageSize : 20
   );
 
-  const filter = { search, minAmount, maxAmount, from, to, universes, page, pageSize };
+  const filter = { search, minAmount, maxAmount, from, to, universes, subuniverses, page, pageSize };
 
   try {
     const [stats, monthly, yearly, orders, total] = await Promise.all([
-      fetchStats(universes),
-      fetchMonthlySpending(universes),
-      fetchYearlySpending(universes),
+      fetchStats(universes, subuniverses),
+      fetchMonthlySpending(universes, subuniverses),
+      fetchYearlySpending(universes, subuniverses),
       fetchOrders(filter),
       fetchOrdersCount(filter),
     ]);

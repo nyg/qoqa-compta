@@ -16,7 +16,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzleLibsql, LibSQLDatabase } from "drizzle-orm/libsql";
 import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
 
-import { qoqaOrdersPg, qoqaOrdersSqlite, qoqaUniversesPg, qoqaUniversesSqlite } from "./schema";
+import { qoqaOrdersPg, qoqaOrdersSqlite, qoqaSubuniversesPg, qoqaSubuniversesSqlite, qoqaUniversesPg, qoqaUniversesSqlite } from "./schema";
 
 const XDG_DATA_HOME =
   process.env.XDG_DATA_HOME ??
@@ -43,13 +43,21 @@ function createDb(): LibSQLDatabase<any> {
     }
     const client = createClient({ url: `file:${filePath}` });
     return drizzleLibsql(client, {
-      schema: { qoqaOrders: qoqaOrdersSqlite, qoqaUniverses: qoqaUniversesSqlite },
+      schema: {
+        qoqaOrders: qoqaOrdersSqlite,
+        qoqaUniverses: qoqaUniversesSqlite,
+        qoqaSubuniverses: qoqaSubuniversesSqlite,
+      },
     });
   }
 
   const sql = neon(rawUrl);
   return drizzleNeon(sql, {
-    schema: { qoqaOrders: qoqaOrdersPg, qoqaUniverses: qoqaUniversesPg },
+    schema: {
+      qoqaOrders: qoqaOrdersPg,
+      qoqaUniverses: qoqaUniversesPg,
+      qoqaSubuniverses: qoqaSubuniversesPg,
+    },
   }) as unknown as LibSQLDatabase<any>;
 }
 
@@ -58,5 +66,6 @@ export const db = createDb();
 /** Convenience re-export: use the correct table reference for the active dialect. */
 export const qoqaOrders = isSqlite ? qoqaOrdersSqlite : qoqaOrdersPg;
 export const qoqaUniverses = isSqlite ? qoqaUniversesSqlite : qoqaUniversesPg;
+export const qoqaSubuniverses = isSqlite ? qoqaSubuniversesSqlite : qoqaSubuniversesPg;
 
 

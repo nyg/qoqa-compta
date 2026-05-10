@@ -25,12 +25,16 @@ interface OrdersTableProps {
   initialOrders: QoqaOrder[];
   initialPagination: Pagination;
   selectedUniverses: string[];
+  selectedSubuniverses: string[];
+  subuniverseNames: Record<string, string>;
 }
 
 export function OrdersTable({
   initialOrders,
   initialPagination,
   selectedUniverses,
+  selectedSubuniverses,
+  subuniverseNames,
 }: OrdersTableProps) {
   const [orders, setOrders] = useState<QoqaOrder[]>(initialOrders);
   const [pagination, setPagination] = useState<Pagination>(initialPagination);
@@ -52,6 +56,9 @@ export function OrdersTable({
         if (selectedUniverses.length > 0) {
           params.set("universes", selectedUniverses.join(","));
         }
+        if (selectedSubuniverses.length > 0) {
+          params.set("subuniverses", selectedSubuniverses.join(","));
+        }
         const res = await fetch(`/api/orders?${params}`);
         const data = await res.json();
         setOrders(data.orders ?? []);
@@ -62,7 +69,7 @@ export function OrdersTable({
         setLoading(false);
       }
     },
-    [pagination, selectedUniverses]
+    [pagination, selectedUniverses, selectedSubuniverses]
   );
 
   const handleSearch = useCallback(
@@ -92,7 +99,7 @@ export function OrdersTable({
             {t("title", { count: pagination.total })}
           </CardTitle>
           <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder={t("searchPlaceholder")}
               className="pl-9"
@@ -108,10 +115,10 @@ export function OrdersTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">
                   {t("colOrderNumber")}
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">
                   {t("colDate")}
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
@@ -120,10 +127,10 @@ export function OrdersTable({
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                   {t("colOffer")}
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <th className="w-full px-4 py-3 text-left font-medium text-muted-foreground">
                   {t("colItem")}
                 </th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                <th className="px-4 py-3 text-right font-medium text-muted-foreground whitespace-nowrap">
                   {t("colAmount")}
                 </th>
               </tr>
@@ -149,17 +156,24 @@ export function OrdersTable({
                     key={order.id}
                     className="border-b last:border-0 hover:bg-muted/30 transition-colors"
                   >
-                    <td className="px-4 py-3 font-mono text-xs">
+                    <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">
                       {order.order_number}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                       {formatDate(order.order_date)}
                     </td>
                     <td className="px-4 py-3">
                       {order.universe ? (
-                        <Badge variant="outline" className="font-normal text-xs">
-                          {order.universe_name ?? order.universe}
-                        </Badge>
+                        <div className="flex flex-nowrap gap-1">
+                          <Badge variant="outline" className="font-normal text-xs">
+                            {order.universe_name ?? order.universe}
+                          </Badge>
+                          {(order.subuniverse_name ?? (order.subuniverse ? subuniverseNames[order.subuniverse] : null) ?? order.subuniverse) && (
+                            <Badge variant="outline" className="font-normal text-xs">
+                              {order.subuniverse_name ?? (order.subuniverse ? subuniverseNames[order.subuniverse] : null) ?? order.subuniverse}
+                            </Badge>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
@@ -173,10 +187,10 @@ export function OrdersTable({
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-[260px] truncate">
+                    <td className="px-4 py-3 text-muted-foreground truncate">
                       {order.item_description ?? <span className="opacity-40">—</span>}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums whitespace-nowrap">
                       {formatCHF(parseFloat(order.amount_chf))}
                     </td>
                   </tr>
