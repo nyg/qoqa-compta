@@ -69,6 +69,10 @@ export default async function DashboardPage({
 
   const { stats, monthly, yearly, orders, total, availableUniverses } = data;
 
+  const subuniverseNames: Record<string, string> = Object.fromEntries(
+    availableUniverses.flatMap((u) => u.subuniverses.map((s) => [s.identifier, s.name]))
+  );
+
   return (
     <main className="container mx-auto px-4 py-8 space-y-8">
       {/* Header */}
@@ -125,6 +129,7 @@ export default async function DashboardPage({
           }}
           selectedUniverses={selectedUniverses}
           selectedSubuniverses={selectedSubuniverses}
+          subuniverseNames={subuniverseNames}
         />
       </Suspense>
     </main>

@@ -26,6 +26,7 @@ interface OrdersTableProps {
   initialPagination: Pagination;
   selectedUniverses: string[];
   selectedSubuniverses: string[];
+  subuniverseNames: Record<string, string>;
 }
 
 export function OrdersTable({
@@ -33,6 +34,7 @@ export function OrdersTable({
   initialPagination,
   selectedUniverses,
   selectedSubuniverses,
+  subuniverseNames,
 }: OrdersTableProps) {
   const [orders, setOrders] = useState<QoqaOrder[]>(initialOrders);
   const [pagination, setPagination] = useState<Pagination>(initialPagination);
@@ -166,9 +168,9 @@ export function OrdersTable({
                           <Badge variant="outline" className="font-normal text-xs">
                             {order.universe_name ?? order.universe}
                           </Badge>
-                          {(order.subuniverse_name ?? order.subuniverse) && (
-                            <Badge variant="secondary" className="font-normal text-xs">
-                              {order.subuniverse_name ?? order.subuniverse}
+                          {(order.subuniverse_name ?? (order.subuniverse ? subuniverseNames[order.subuniverse] : null) ?? order.subuniverse) && (
+                            <Badge variant="outline" className="font-normal text-xs">
+                              {order.subuniverse_name ?? (order.subuniverse ? subuniverseNames[order.subuniverse] : null) ?? order.subuniverse}
                             </Badge>
                           )}
                         </div>
