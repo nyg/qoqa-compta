@@ -49,5 +49,12 @@
     "tooltipOrders": "Ordinaziuns",
     "pieByUniverseTitle": "Spesas per univers",
     "pieBySubuniverseTitle": "Spesas per suot-univers"
+  },
+  "DateRangePicker": {
+    "label": "Perioda da data",
+    "allDates": "Tut las datas",
+    "from": "Da",
+    "to": "Fin",
+    "clear": "Stritgar"
   }
 }

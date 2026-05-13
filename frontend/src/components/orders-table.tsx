@@ -28,6 +28,8 @@ interface OrdersTableProps {
   selectedUniverses: string[];
   selectedSubuniverses: string[];
   subuniverseNames: Record<string, string>;
+  from?: string;
+  to?: string;
 }
 
 export function OrdersTable({
@@ -36,6 +38,8 @@ export function OrdersTable({
   selectedUniverses,
   selectedSubuniverses,
   subuniverseNames,
+  from,
+  to,
 }: OrdersTableProps) {
   const [orders, setOrders] = useState<QoqaOrder[]>(initialOrders);
   const [pagination, setPagination] = useState<Pagination>(initialPagination);
@@ -60,6 +64,8 @@ export function OrdersTable({
         if (selectedSubuniverses.length > 0) {
           params.set("subuniverses", selectedSubuniverses.join(","));
         }
+        if (from) params.set("from", from);
+        if (to) params.set("to", to);
         const res = await fetch(`/api/orders?${params}`);
         const data = await res.json();
         setOrders(data.orders ?? []);
@@ -70,7 +76,7 @@ export function OrdersTable({
         setLoading(false);
       }
     },
-    [pagination, selectedUniverses, selectedSubuniverses]
+    [pagination, selectedUniverses, selectedSubuniverses, from, to]
   );
 
   const handleSearch = useCallback(

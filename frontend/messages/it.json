@@ -49,5 +49,12 @@
     "tooltipOrders": "Ordini",
     "pieByUniverseTitle": "Spese per universo",
     "pieBySubuniverseTitle": "Spese per sotto-universo"
+  },
+  "DateRangePicker": {
+    "label": "Periodo",
+    "allDates": "Tutte le date",
+    "from": "Dal",
+    "to": "Al",
+    "clear": "Cancella"
   }
 }

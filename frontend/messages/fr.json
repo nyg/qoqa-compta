@@ -49,5 +49,12 @@
     "tooltipOrders": "Commandes",
     "pieByUniverseTitle": "Dépenses par univers",
     "pieBySubuniverseTitle": "Dépenses par sous-univers"
+  },
+  "DateRangePicker": {
+    "label": "Période",
+    "allDates": "Toutes les dates",
+    "from": "Du",
+    "to": "Au",
+    "clear": "Effacer"
   }
 }

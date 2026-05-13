@@ -64,10 +64,13 @@ export async function GET(request: NextRequest) {
   const filter = { search, minAmount, maxAmount, from, to, universes, subuniverses, page, pageSize };
 
   try {
+    const fromFilter = searchParams.get("from") && ISO_DATE_RE.test(searchParams.get("from")!) ? searchParams.get("from")! : undefined;
+    const toFilter = searchParams.get("to") && ISO_DATE_RE.test(searchParams.get("to")!) ? searchParams.get("to")! : undefined;
+
     const [stats, monthly, yearly, orders, total] = await Promise.all([
-      fetchStats(universes, subuniverses),
-      fetchMonthlySpending(universes, subuniverses),
-      fetchYearlySpending(universes, subuniverses),
+      fetchStats(universes, subuniverses, fromFilter, toFilter),
+      fetchMonthlySpending(universes, subuniverses, fromFilter, toFilter),
+      fetchYearlySpending(universes, subuniverses, fromFilter, toFilter),
       fetchOrders(filter),
       fetchOrdersCount(filter),
     ]);
