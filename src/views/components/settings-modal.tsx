@@ -58,6 +58,7 @@ export function SettingsModal() {
   const [syncRunning, setSyncRunning] = useState(false);
   const [syncDone, setSyncDone] = useState(false);
   const [syncLog, setSyncLog] = useState<LogEntry[]>([]);
+  const [syncStats, setSyncStats] = useState({ synced: 0, skipped: 0, withPdf: 0, errors: 0 });
   const logEndRef = useRef<HTMLDivElement>(null);
   const esRef = useRef<EventSource | null>(null);
 
@@ -70,6 +71,7 @@ export function SettingsModal() {
     setResetSuccess(false);
     setSyncDone(false);
     setSyncLog([]);
+    setSyncStats({ synced: 0, skipped: 0, withPdf: 0, errors: 0 });
     apiClient
       .getSettings()
       .then((s: AppSettings) => {
@@ -147,6 +149,7 @@ export function SettingsModal() {
     setSyncRunning(true);
     setSyncDone(false);
     setSyncLog([]);
+    setSyncStats({ synced: 0, skipped: 0, withPdf: 0, errors: 0 });
 
     apiClient.startSync(syncMode).catch(console.error);
 
@@ -164,7 +167,29 @@ export function SettingsModal() {
             timestamp: parsed.timestamp,
           },
         ]);
+        // Update running counters
+        if (parsed.type === "order_synced") {
+          setSyncStats((prev) => ({
+            ...prev,
+            synced: prev.synced + 1,
+            withPdf: prev.withPdf + (parsed.data?.hasPdf ? 1 : 0),
+          }));
+        } else if (parsed.type === "order_skipped") {
+          setSyncStats((prev) => ({ ...prev, skipped: prev.skipped + 1 }));
+        } else if (parsed.type === "order_error") {
+          setSyncStats((prev) => ({ ...prev, errors: prev.errors + 1 }));
+        }
+        // Sync finished
         if (parsed.type === "done" || parsed.type === "error" || parsed.type === "cancelled") {
+          // Overwrite with authoritative final stats from the server payload if available
+          if (parsed.data && "synced" in parsed.data) {
+            setSyncStats({
+              synced: Number(parsed.data.synced ?? 0),
+              withPdf: Number(parsed.data.withPdf ?? 0),
+              skipped: Number(parsed.data.skipped ?? 0),
+              errors: Number(parsed.data.errors ?? 0),
+            });
+          }
           setSyncRunning(false);
           setSyncDone(true);
           es.close();
@@ -414,11 +439,7 @@ export function SettingsModal() {
                       disabled={syncRunning}
                       onClick={handleRunSync}
                     >
-                      {syncRunning ? (
-                        <RefreshCw className="size-3 animate-spin" />
-                      ) : (
-                        <RefreshCw className="size-3" />
-                      )}
+                      <RefreshCw className={cn("size-3", syncRunning && "animate-spin")} />
                       {t("runSync")}
                     </Button>
                     {syncRunning && (
@@ -430,34 +451,38 @@ export function SettingsModal() {
                         {t("cancelSync")}
                       </Button>
                     )}
-                    {syncRunning && (
-                      <span className="text-xs text-muted-foreground animate-pulse">
-                        {t("syncRunning")}
-                      </span>
-                    )}
-                    {syncDone && !syncRunning && (
-                      <span className="text-xs text-green-500 flex items-center gap-1">
-                        <Check className="size-3" />
-                        {t("syncDone")}
-                      </span>
-                    )}
                   </div>
 
-                  {/* Sync log */}
-                  {syncLog.length > 0 && (
-                    <div className="mt-2 max-h-48 overflow-y-auto rounded-md border bg-muted/30 p-2 font-mono text-[0.65rem] space-y-0.5">
-                      {syncLog.map((entry, i) => (
-                        <div
-                          key={i}
-                          className={cn("leading-relaxed", logEntryColor(entry.type))}
-                        >
-                          <span className="text-muted-foreground/60 select-none mr-1.5">
-                            {entry.timestamp.slice(11, 19)}
-                          </span>
-                          {entry.message}
+                  {/* Sync stats + log */}
+                  {(syncRunning || syncDone) && (
+                    <div className="mt-2 space-y-1">
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 rounded-md border bg-muted/30 px-2.5 py-1.5 text-[0.65rem] font-mono">
+                        <span className="text-green-500">{syncStats.synced} synced</span>
+                        <span className="text-muted-foreground">{syncStats.withPdf} PDF</span>
+                        <span className="text-yellow-500">{syncStats.skipped} skipped</span>
+                        {syncStats.errors > 0 && (
+                          <span className="text-red-500">{syncStats.errors} errors</span>
+                        )}
+                        {syncRunning && (
+                          <span className="ml-auto animate-pulse text-muted-foreground">{t("syncRunning")}</span>
+                        )}
+                      </div>
+                      {syncLog.length > 0 && (
+                        <div className="max-h-40 overflow-y-auto rounded-md border bg-muted/30 p-2 font-mono text-[0.65rem] space-y-0.5">
+                          {syncLog.map((entry, i) => (
+                            <div
+                              key={i}
+                              className={cn("leading-relaxed", logEntryColor(entry.type))}
+                            >
+                              <span className="text-muted-foreground/60 select-none mr-1.5">
+                                {entry.timestamp.slice(11, 19)}
+                              </span>
+                              {entry.message}
+                            </div>
+                          ))}
+                          <div ref={logEndRef} />
                         </div>
-                      ))}
-                      <div ref={logEndRef} />
+                      )}
                     </div>
                   )}
                 </section>

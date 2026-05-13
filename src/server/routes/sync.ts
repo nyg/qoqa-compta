@@ -57,7 +57,9 @@ router.get("/sync/stream", (c) => {
   const stream = new ReadableStream({
     start(controller) {
       function enqueue(event: SyncProgressEvent) {
-        const line = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
+        // Use plain `data:` (no named event type) so EventSource.onmessage fires
+        // for every event. The type is embedded in the JSON payload.
+        const line = `data: ${JSON.stringify(event)}\n\n`;
         controller.enqueue(encoder.encode(line));
       }
 

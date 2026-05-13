@@ -56,6 +56,7 @@ async function main() {
   Bun.serve({
     port: PORT,
     fetch: app.fetch,
+    idleTimeout: 0, // SSE streams must not be closed by idle timeout
   });
 
   console.log(`✓ Server listening on http://localhost:${PORT}`);

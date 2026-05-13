@@ -153,10 +153,14 @@ export async function syncOrders(
 
   // 4. Process each purchase
   let consecutiveUnchanged = 0;
+  let syncedCount = 0;
+  let skippedCount = 0;
+  let pdfCount = 0;
+  let errorCount = 0;
 
   for (const purchase of purchases) {
     if (signal.aborted) {
-      emit(makeEvent("cancelled", "Sync cancelled"));
+      emit(makeEvent("cancelled", "Sync cancelled", { synced: syncedCount, withPdf: pdfCount, skipped: skippedCount, errors: errorCount }));
       return;
     }
 
@@ -166,9 +170,10 @@ export async function syncOrders(
       const existing = await getOrderByNumber(orderNumber);
       if (existing !== null) {
         consecutiveUnchanged++;
+        skippedCount++;
         emit(makeEvent("order_skipped", `Skipped already-synced order ${orderNumber}`));
         if (consecutiveUnchanged >= 5) {
-          emit(makeEvent("done", "Reached already-synced orders, stopping early"));
+          emit(makeEvent("done", `Reached already-synced orders — ${syncedCount} synced, ${pdfCount} with PDF`, { synced: syncedCount, withPdf: pdfCount, skipped: skippedCount, errors: errorCount }));
           return;
         }
         continue;
@@ -182,10 +187,13 @@ export async function syncOrders(
       const orderData = extractOrderFields(detail);
 
       // Download PDF if URL is present
+      let hasPdf = false;
       const pdfUrl = (detail.invoice_url ?? detail.pdf_url) as string | undefined;
       if (pdfUrl) {
         const pdfBytes = await downloadPdf(pdfUrl);
         if (pdfBytes) {
+          hasPdf = true;
+          pdfCount++;
           orderData.pdf_data = pdfBytes;
           const parsed = parseInvoice(pdfBytes);
           if (parsed.invoice_number) {
@@ -195,12 +203,14 @@ export async function syncOrders(
       }
 
       await upsertOrder(orderData);
-      emit(makeEvent("order_synced", `Synced order ${orderNumber}`));
+      syncedCount++;
+      emit(makeEvent("order_synced", `Synced order ${orderNumber}${hasPdf ? " (with PDF)" : ""}`, { hasPdf }));
     } catch (err) {
       // Log per-order errors but continue
-      emit(makeEvent("error", `Error syncing order ${orderNumber}: ${(err as Error).message}`));
+      errorCount++;
+      emit(makeEvent("order_error", `Error syncing order ${orderNumber}: ${(err as Error).message}`));
     }
   }
 
-  emit(makeEvent("done", `Sync complete — processed ${purchases.length} orders`));
+  emit(makeEvent("done", `Sync complete — ${syncedCount} synced, ${pdfCount} with PDF`, { synced: syncedCount, withPdf: pdfCount, skipped: skippedCount, errors: errorCount }));
 }
