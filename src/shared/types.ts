@@ -1,0 +1,115 @@
+export interface SubuniverseOption {
+  identifier: string;
+  name: string;
+}
+
+export interface UniverseOption {
+  identifier: string;
+  name: string;
+  subuniverses: SubuniverseOption[];
+}
+
+export interface QoqaOrder {
+  id: number;
+  order_number: string;
+  order_date: string;
+  /** CHF amount as decimal string */
+  amount_chf: string;
+  status: string | null;
+  subtotal_chf: string | null;
+  offer_id: string | null;
+  offer_title: string | null;
+  offer_subtitle: string | null;
+  universe: string | null;
+  universe_name: string | null;
+  subuniverse: string | null;
+  subuniverse_name: string | null;
+  item_description: string | null;
+  invoice_number: string | null;
+  pdf_filename: string | null;
+  has_pdf: boolean;
+}
+
+export interface OrderStats {
+  total_spent: number;
+  order_count: number;
+  average_per_order: number;
+}
+
+export interface MonthlySpending {
+  /** Format: YYYY-MM */
+  month: string;
+  total: number;
+  count: number;
+}
+
+export interface YearlySpending {
+  year: number;
+  total: number;
+  count: number;
+}
+
+export interface SpendingByGroup {
+  identifier: string;
+  name: string;
+  total: number;
+  count: number;
+}
+
+export interface Pagination {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface DashboardData {
+  stats: OrderStats;
+  monthly: MonthlySpending[];
+  yearly: YearlySpending[];
+  orders: QoqaOrder[];
+  pagination: Pagination;
+  universes: UniverseOption[];
+  pieData: SpendingByGroup[] | null;
+  pieMode: "universe" | "subuniverse" | null;
+}
+
+export interface OrdersResponse {
+  orders: QoqaOrder[];
+  pagination: Pagination;
+}
+
+export type SyncEventType =
+  | "start"
+  | "auth_ok"
+  | "auth_error"
+  | "universes_ok"
+  | "universes_error"
+  | "purchases_fetched"
+  | "order_synced"
+  | "order_skipped"
+  | "order_error"
+  | "done"
+  | "cancelled"
+  | "error";
+
+export interface SyncProgressEvent {
+  type: SyncEventType;
+  message: string;
+  data?: Record<string, unknown>;
+  timestamp: string;
+}
+
+export interface SyncStatus {
+  running: boolean;
+  startedAt?: string;
+  mode?: "full" | "update";
+}
+
+export interface AppSettings {
+  databaseUrl: string | null;
+  qoqaEmail: string | null;
+  qoqaPassword: string | null;
+  uiLocale: "en" | "fr" | "de" | "it" | "rm";
+  syncLocale: "fr" | "de";
+}

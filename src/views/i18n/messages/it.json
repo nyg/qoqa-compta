@@ -1,0 +1,86 @@
+{
+  "Dashboard": {
+    "subtitle": "Il tuo pannello di spesa <link>QoQa.ch</link>",
+    "errorTitle": "Impossibile connettersi al database.",
+    "errorDetail": "Assicurati che <code>DATABASE_URL</code> sia correttamente configurato nelle Impostazioni."
+  },
+  "StatsCards": {
+    "totalSpent": "Totale speso",
+    "totalSpentDesc": "Tutti gli ordini combinati",
+    "orders": "Ordini",
+    "ordersDesc": "Numero totale di ordini effettuati",
+    "averagePerOrder": "Media / ordine",
+    "averagePerOrderDesc": "Importo medio per ordine"
+  },
+  "OrdersTable": {
+    "title": "Tutti gli ordini ({{count}})",
+    "searchPlaceholder": "Cerca…",
+    "colOrderNumber": "Ordine #",
+    "colDate": "Data",
+    "colUniverse": "Universo",
+    "colOffer": "Offerta",
+    "colItem": "Articolo",
+    "colAmount": "Importo",
+    "colInvoice": "Fattura",
+    "viewInvoice": "Visualizza fattura",
+    "noInvoice": "Nessuna fattura disponibile",
+    "loading": "Caricamento…",
+    "noOrders": "Nessun ordine trovato.",
+    "pagination": "Pagina {{current}} / {{total}}",
+    "prevPage": "← Precedente",
+    "nextPage": "Successivo →"
+  },
+  "PdfDialog": {
+    "title": "Fattura {{orderNumber}}",
+    "close": "Chiudi",
+    "download": "Scarica PDF"
+  },
+  "UniversePicker": {
+    "allUniverses": "Tutti gli universi",
+    "label": "Filtro per universo",
+    "nSelected": "{{count}} selezionati"
+  },
+  "SpendingChart": {
+    "monthlyTitle": "Spese mensili",
+    "yearlyTitle": "Spese annuali",
+    "legendTotal": "Totale (CHF)",
+    "legendOrders": "Ordini",
+    "tooltipTotal": "Totale",
+    "tooltipOrders": "Ordini",
+    "pieByUniverseTitle": "Spese per universo",
+    "pieBySubuniverseTitle": "Spese per sotto-universo"
+  },
+  "DateRangePicker": {
+    "label": "Periodo",
+    "allDates": "Tutte le date",
+    "from": "Dal",
+    "to": "Al",
+    "clear": "Cancella"
+  },
+  "Settings": {
+    "title": "Impostazioni",
+    "credentialsSection": "Credenziali QoQa",
+    "email": "E-mail",
+    "password": "Password",
+    "databaseSection": "Database",
+    "dbModeLocal": "SQLite locale (predefinito)",
+    "dbModePostgres": "PostgreSQL (URL personalizzato)",
+    "dbUrl": "URL del database",
+    "dbUrlPlaceholder": "postgresql://user:pass@host/db",
+    "resetDb": "Ripristina database",
+    "resetDbConfirm": "Questo eliminerà tutti i dati sincronizzati. Sei sicuro/a?",
+    "resetDbSuccess": "Database ripristinato con successo.",
+    "syncSection": "Sincronizzazione",
+    "uiLocale": "Lingua interfaccia",
+    "syncLocale": "Lingua QoQa",
+    "syncModeFull": "Sincronizzazione completa (tutti gli ordini)",
+    "syncModeUpdate": "Aggiornamento (solo nuovi ordini)",
+    "runSync": "Avvia sincronizzazione",
+    "cancelSync": "Annulla",
+    "syncRunning": "Sincronizzazione in corso...",
+    "syncDone": "Sincronizzazione completata.",
+    "save": "Salva",
+    "saved": "Salvato",
+    "close": "Chiudi"
+  }
+}

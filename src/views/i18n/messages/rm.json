@@ -1,0 +1,86 @@
+{
+  "Dashboard": {
+    "subtitle": "Voss panel da spesas <link>QoQa.ch</link>",
+    "errorTitle": "Impossibel da connectar cun la banca da datas.",
+    "errorDetail": "Controllai che <code>DATABASE_URL</code> saja configurà correctamain en ils Parameters."
+  },
+  "StatsCards": {
+    "totalSpent": "Total spendì",
+    "totalSpentDesc": "Tut las ordinaziuns ensemen",
+    "orders": "Ordinaziuns",
+    "ordersDesc": "Dumber total d'ordinaziuns fatgas",
+    "averagePerOrder": "Media / ordinaziun",
+    "averagePerOrderDesc": "Import med per ordinaziun"
+  },
+  "OrdersTable": {
+    "title": "Tut las ordinaziuns ({{count}})",
+    "searchPlaceholder": "Tschertgar…",
+    "colOrderNumber": "Ordinaziun #",
+    "colDate": "Data",
+    "colUniverse": "Univers",
+    "colOffer": "Offerta",
+    "colItem": "Artitgel",
+    "colAmount": "Import",
+    "colInvoice": "Fattura",
+    "viewInvoice": "Mussar la fattura",
+    "noInvoice": "Nagina fattura disponibla",
+    "loading": "Chargiar…",
+    "noOrders": "Naginas ordinaziuns chattas.",
+    "pagination": "Pagina {{current}} / {{total}}",
+    "prevPage": "← Precedent",
+    "nextPage": "Suandant →"
+  },
+  "PdfDialog": {
+    "title": "Fattura {{orderNumber}}",
+    "close": "Serrar",
+    "download": "Telechargiar il PDF"
+  },
+  "UniversePicker": {
+    "allUniverses": "Tut ils univers",
+    "label": "Filter per univers",
+    "nSelected": "{{count}} tschernids"
+  },
+  "SpendingChart": {
+    "monthlyTitle": "Spesas mensualas",
+    "yearlyTitle": "Spesas annualas",
+    "legendTotal": "Total (CHF)",
+    "legendOrders": "Ordinaziuns",
+    "tooltipTotal": "Total",
+    "tooltipOrders": "Ordinaziuns",
+    "pieByUniverseTitle": "Spesas per univers",
+    "pieBySubuniverseTitle": "Spesas per suot-univers"
+  },
+  "DateRangePicker": {
+    "label": "Perioda da data",
+    "allDates": "Tut las datas",
+    "from": "Da",
+    "to": "Fin",
+    "clear": "Stritgar"
+  },
+  "Settings": {
+    "title": "Parameters",
+    "credentialsSection": "Datas d'access QoQa",
+    "email": "E-mail",
+    "password": "Pled-clav",
+    "databaseSection": "Banca da datas",
+    "dbModeLocal": "SQLite local (standard)",
+    "dbModePostgres": "PostgreSQL (URL persunalisà)",
+    "dbUrl": "URL da la banca da datas",
+    "dbUrlPlaceholder": "postgresql://user:pass@host/db",
+    "resetDb": "Reinitializar la banca da datas",
+    "resetDbConfirm": "Quai stritga tut las datas sincronisadas. Essas ti segir?",
+    "resetDbSuccess": "Banca da datas reinitializà cun success.",
+    "syncSection": "Sincronisaziun",
+    "uiLocale": "Lingua da l'interfatscha",
+    "syncLocale": "Lingua QoQa",
+    "syncModeFull": "Sincronisaziun cumpletta (tut las ordinaziuns)",
+    "syncModeUpdate": "Actualisaziun (mo novas ordinaziuns)",
+    "runSync": "Aviar la sync",
+    "cancelSync": "Interrumper",
+    "syncRunning": "Sincronisaziun en cors...",
+    "syncDone": "Sincronisaziun terminada.",
+    "save": "Memorisar",
+    "saved": "Memorisà",
+    "close": "Serrar"
+  }
+}

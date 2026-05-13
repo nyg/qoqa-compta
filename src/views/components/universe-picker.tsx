@@ -1,0 +1,242 @@
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams, useLocation } from "react-router";
+import { Check, ChevronDown, Minus } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import type { UniverseOption } from "../../shared/types";
+
+interface UniversePickerProps {
+  available: UniverseOption[];
+  selected: string[];
+  selectedSubuniverses: string[];
+}
+
+export function UniversePicker({
+  available,
+  selected,
+  selectedSubuniverses,
+}: UniversePickerProps) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const { t } = useTranslation("UniversePicker");
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  function pushParams(
+    nextUniverses: Set<string>,
+    nextSubuniverses: Set<string>
+  ) {
+    const params = new URLSearchParams(searchParams.toString());
+    const allIds = available.map((u) => u.identifier);
+    const allSelected =
+      allIds.length > 0 &&
+      nextUniverses.size === allIds.length &&
+      allIds.every((id) => nextUniverses.has(id)) &&
+      nextSubuniverses.size === 0;
+
+    if (allSelected) {
+      params.delete("universes");
+      params.delete("subuniverses");
+    } else {
+      if (nextUniverses.size === 0) {
+        params.delete("universes");
+      } else {
+        params.set("universes", [...nextUniverses].join(","));
+      }
+      if (nextSubuniverses.size === 0) {
+        params.delete("subuniverses");
+      } else {
+        params.set("subuniverses", [...nextSubuniverses].join(","));
+      }
+    }
+    const qs = params.toString();
+    navigate(qs ? `${location.pathname}?${qs}` : location.pathname, {
+      replace: true,
+    });
+  }
+
+  function toggleUniverse(uid: string, subs: string[]) {
+    if (isAllMode) {
+      const nextU = new Set(available.map((u) => u.identifier));
+      nextU.delete(uid);
+      pushParams(nextU, new Set());
+      return;
+    }
+    const nextU = new Set(selected);
+    const nextS = new Set(selectedSubuniverses);
+
+    if (nextU.has(uid)) {
+      nextU.delete(uid);
+      for (const s of subs) nextS.delete(s);
+    } else {
+      nextU.add(uid);
+      for (const s of subs) nextS.delete(s);
+    }
+    pushParams(nextU, nextS);
+  }
+
+  function toggleSubuniverse(
+    subId: string,
+    parentUid: string,
+    allSubs: string[]
+  ) {
+    if (isAllMode) {
+      const nextU = new Set(available.map((u) => u.identifier));
+      nextU.delete(parentUid);
+      const nextS = new Set<string>();
+      for (const s of allSubs) {
+        if (s !== subId) nextS.add(s);
+      }
+      pushParams(nextU, nextS);
+      return;
+    }
+    const nextU = new Set(selected);
+    const nextS = new Set(selectedSubuniverses);
+
+    if (nextU.has(parentUid)) {
+      // Universe is selected — explode into individual subs, then remove this one
+      for (const s of allSubs) {
+        if (s !== subId) nextS.add(s);
+      }
+      nextU.delete(parentUid);
+    } else if (nextS.has(subId)) {
+      nextS.delete(subId);
+    } else {
+      nextS.add(subId);
+      // If all subs are now selected, collapse to universe level
+      const allNowSelected = allSubs.every((s) => nextS.has(s));
+      if (allNowSelected) {
+        for (const s of allSubs) nextS.delete(s);
+        nextU.add(parentUid);
+      }
+    }
+    pushParams(nextU, nextS);
+  }
+
+  const isAllMode =
+    selected.length === 0 && selectedSubuniverses.length === 0;
+  const totalSelected = selected.length + selectedSubuniverses.length;
+  const label =
+    totalSelected === 0
+      ? t("allUniverses")
+      : t("nSelected", { count: totalSelected });
+
+  return (
+    <div ref={containerRef} className="relative">
+      <Button
+        variant="outline"
+        size="default"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={t("label")}
+      >
+        {label}
+        <ChevronDown
+          className={cn(
+            "ml-1 h-3 w-3 opacity-60 transition-transform duration-150",
+            open && "rotate-180"
+          )}
+        />
+      </Button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-multiselectable="true"
+          aria-label={t("label")}
+          className="absolute right-0 top-full z-50 mt-1 min-w-[13rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md"
+        >
+          {available.map(({ identifier: uid, name, subuniverses }) => {
+            const allSubIds = subuniverses.map((s) => s.identifier);
+            const isUniverseSelected = isAllMode || selected.includes(uid);
+            const selectedSubCount = allSubIds.filter((s) =>
+              selectedSubuniverses.includes(s)
+            ).length;
+            const isIndeterminate =
+              !isUniverseSelected &&
+              selectedSubCount > 0 &&
+              selectedSubCount < allSubIds.length;
+            const isChecked =
+              isUniverseSelected ||
+              (allSubIds.length > 0 &&
+                selectedSubCount === allSubIds.length);
+
+            return (
+              <div key={uid}>
+                <button
+                  role="option"
+                  aria-selected={isChecked}
+                  onClick={() => toggleUniverse(uid, allSubIds)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
+                >
+                  <span
+                    className={cn(
+                      "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                      isChecked
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : isIndeterminate
+                        ? "border-primary bg-primary/20 text-primary"
+                        : "border-border"
+                    )}
+                  >
+                    {isChecked && <Check className="h-3 w-3" />}
+                    {isIndeterminate && !isChecked && (
+                      <Minus className="h-3 w-3" />
+                    )}
+                  </span>
+                  <span className="font-medium">{name}</span>
+                </button>
+
+                {subuniverses.map(({ identifier: subId, name: subName }) => {
+                  const isSubSelected =
+                    isUniverseSelected ||
+                    selectedSubuniverses.includes(subId);
+                  return (
+                    <button
+                      key={subId}
+                      role="option"
+                      aria-selected={isSubSelected}
+                      onClick={() =>
+                        toggleSubuniverse(subId, uid, allSubIds)
+                      }
+                      className="flex w-full items-center gap-2 pl-8 pr-3 py-1.5 text-sm hover:bg-muted transition-colors text-left"
+                    >
+                      <span
+                        className={cn(
+                          "flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border",
+                          isSubSelected
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border"
+                        )}
+                      >
+                        {isSubSelected && <Check className="h-2.5 w-2.5" />}
+                      </span>
+                      <span className="text-muted-foreground">{subName}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,140 +1,107 @@
 # QoQa Compta
 
-> Web app & crawler to automatically sync your [QoQa.ch](https://www.qoqa.ch) orders and PDF invoices to a local SQLite (or PostgreSQL) database and display a spending dashboard.
-
-![Dashboard screenshot](docs/screenshot.png)
+> Desktop-ready spending dashboard for [QoQa.ch](https://www.qoqa.ch) — automatically syncs your orders and PDF invoices to a local SQLite (or PostgreSQL) database and displays spending charts, stats, and a searchable orders table.
 
 ---
 
-## Table of contents
+## Architecture
 
-- [Overview](#overview)
-- [Python crawler](#python-crawler)
-  - [Installation](#crawler-installation)
-  - [Running the crawler](#running-the-crawler)
-- [Next.js frontend](#nextjs-frontend)
-  - [Installation](#frontend-installation)
-  - [Running the frontend](#running-the-frontend)
-- [Environment variables](#environment-variables)
+| Layer | Technology |
+|---|---|
+| **Backend** | [Hono](https://hono.dev/) on [Bun](https://bun.sh) — REST API + sync engine |
+| **Frontend** | [Vite](https://vitejs.dev/) SPA — React 19, React Router v7, Tailwind v4 |
+| **Database** | SQLite (default, via `@libsql/client`) or PostgreSQL (via `@neondatabase/serverless`) |
+| **i18n** | [react-i18next](https://react.i18next.com/) — 5 locales: en, fr, de, it, rm |
 
----
+In **development**, Vite runs on `:3000` and proxies `/api/*` to Hono on `:3001`.
+In **production**, Hono serves the Vite build from `dist/` and the API from the same port.
 
-## Overview
-
-The crawler authenticates to QoQa.ch via its REST API (no browser required), then uses the QoQa REST API to fetch all order data and download PDF invoices. Data is stored in a local SQLite database (or PostgreSQL) and displayed in a Next.js dashboard.
-
-See [docs/architecture.md](docs/architecture.md) for the full architecture diagram, project structure, and database schema.
+The codebase is structured for an eventual [ElectroBun](https://github.com/blackboardsh/electrobun) migration: all API calls are isolated behind `src/views/lib/api-client.ts`, making the HTTP transport trivially swappable for ElectroBun RPC.
 
 ---
 
-## Python crawler
+## Getting started
 
-### Crawler installation
+### Prerequisites
+
+- [Bun](https://bun.sh) ≥ 1.3
+
+### Install
 
 ```bash
-cd crawler
+bun install
+```
 
-# Create a virtual environment
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+### Configure
 
-# Install dependencies
-pip install -r requirements.txt
+Copy `.env.example` to `.env` and fill in your credentials:
 
-# Copy and configure environment variables
+```bash
 cp .env.example .env
-# Edit .env with your DATABASE_URL and QOQA_EMAIL + QOQA_PASSWORD
 ```
 
-### Running the crawler
+| Variable | Description |
+|---|---|
+| `QOQA_EMAIL` | QoQa.ch login email |
+| `QOQA_PASSWORD` | QoQa.ch login password |
+| `DATABASE_URL` | _(optional)_ SQLite or PostgreSQL URL — defaults to `~/Library/Application Support/qoqa-compta/qoqa.db` on macOS |
+
+Credentials and the database URL can also be set from the in-app **Settings** modal without touching `.env`.
+
+### Run (development)
 
 ```bash
-# From the crawler/ directory, with the venv activated:
-
-# Full sync (all orders + PDFs)
-python -m crawler.sync --full
-
-# Incremental sync (new orders only — default)
-python -m crawler.sync --update
-
-# Only sync data to DB, skip PDF download
-python -m crawler.sync --full --db-only
-
-# Only download PDFs, skip DB sync
-python -m crawler.sync --full --pdf-only
-
-# Show help
-python -m crawler.sync --help
+bun run dev
 ```
 
-> **Authentication**: set `QOQA_EMAIL` + `QOQA_PASSWORD` in `.env`. The crawler authenticates via the QoQa REST API — no browser or Chrome required.
+This starts both the Hono API server (`:3001`) and the Vite dev server (`:3000`) concurrently. The dashboard is available at [http://localhost:3000](http://localhost:3000).
+
+### Build & run (production)
+
+```bash
+bun run build   # compile the SPA to dist/
+bun run start   # serve dist/ + API from :3001
+```
 
 ---
 
-## Next.js frontend
+## Features
 
-```bash
-cd frontend
-
-# Install dependencies
-pnpm install
-
-# Copy and configure environment variables
-cp .env.example .env.local
-# Edit .env.local with your DATABASE_URL
-
-# Start Next.js server
-pnpm dev
-```
-
-The dashboard will be available at [http://localhost:3000](http://localhost:3000).
-
-The UI language is automatically detected from your browser's `Accept-Language` header. Supported languages: **English**, **French** (fr), **German** (de), **Italian** (it), and **Romansh** (rm).
-
-Dashboard features:
 - **Stats cards** — total spent, number of orders, average per order
 - **Spending charts** — monthly and yearly bar + line charts
+- **Category filter** — filter all data by QoQa universe/sub-universe (URL-encoded)
 - **Orders table** — searchable, paginated list of all orders
-- **Invoice PDF viewer** — every order with a stored invoice exposes a "View
-  invoice" button that opens the PDF in an in-app popup using the browser's
-  native PDF viewer (with a download fallback)
-- **Category filter** — multi-select dropdown (top-right) to filter all dashboard data by order category; selection is encoded in the URL for shareable links
-
-> Invoice PDFs are stored twice by the crawler: as files under
-> `crawler/pdfs/` for offline access, and inline in `qoqa_orders.pdf_data`
-> (`BLOB` on SQLite, `BYTEA` on PostgreSQL) so the frontend can serve them
-> through `/api/orders/[orderNumber]/pdf` without sharing a filesystem with
-> the crawler. Pre-existing databases get the new column added automatically
-> on the next `python -m crawler.sync` run.
+- **Invoice PDF viewer** — opens stored invoices in an in-app popup
+- **Settings modal** — configure credentials, database URL, sync locale, and UI language; trigger a full or incremental sync with a live progress log
 
 ---
 
-## Environment variables
+## Database
 
-### Crawler
+SQLite is used by default (no setup required). To use PostgreSQL (e.g. [Neon](https://neon.tech)), set `DATABASE_URL` to a `postgresql://...` connection string.
 
-Copy `crawler/.env.example` to `crawler/.env` and fill in:
+The schema is bootstrapped automatically on first run (`CREATE TABLE IF NOT EXISTS`). To reset the database, use the **Reset DB** button in the Settings modal.
 
-| Variable           | Description                                          | Example                                                                          |
-| ------------------ | ---------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `DATABASE_URL`     | Database URL (SQLite default, PostgreSQL optional)   | `sqlite:////home/user/.local/share/qoqa-compta/qoqa.db`                         |
-| `QOQA_EMAIL`       | QoQa.ch login email                                 | `me@example.com`                                                                 |
-| `QOQA_PASSWORD`    | QoQa.ch login password                              | `••••••••`                                                                       |
-| `PDF_DOWNLOAD_DIR` | PDF download folder                                  | `./pdfs`                                                                         |
+---
 
-### Frontend
+## Project structure
 
-Copy `frontend/.env.example` to `frontend/.env.local` and fill in:
+```
+src/
+  server/           # Hono API + Bun sync engine
+    index.ts        # Server entry point
+    routes/         # API route handlers
+    sync.ts         # QoQa order sync pipeline
+    db.ts           # Drizzle ORM client (SQLite + PostgreSQL)
+    schema.ts       # Drizzle schema definitions
+    settings.ts     # settings.json read/write
+  views/            # Vite SPA (React)
+    main.tsx        # App entry point
+    pages/          # React Router pages
+    components/     # UI components
+    i18n/           # i18next setup + message files
+    lib/            # Utilities, formatters, API client
+  shared/
+    types.ts        # Shared TypeScript types
+```
 
-| Variable       | Description                                        | Example                                                                          |
-| -------------- | -------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `DATABASE_URL` | Database URL — must point to the **same file/DB** as the crawler | `sqlite:////home/user/.local/share/qoqa-compta/qoqa.db` |
-
-> **SQLite URL format**: use four slashes for an absolute path:
-> `sqlite:////absolute/path/to/qoqa.db` (three slashes for the scheme, one for the root `/`).
->
-> **PostgreSQL**: replace with your Neon.tech connection string:
-> `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/qoqa?sslmode=require`
->
-> **XDG note**: if `DATABASE_URL` is unset, the crawler defaults to
-> `$XDG_DATA_HOME/qoqa-compta/qoqa.db` (i.e. `~/.local/share/qoqa-compta/qoqa.db`).
