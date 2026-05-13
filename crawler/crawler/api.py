@@ -21,7 +21,6 @@ from pathlib import Path
 
 import requests
 
-AUTH_TOKEN_URL = "https://auth.qoqa.ch/v2/token"
 API_BASE = "https://api.qoqa.ch/v2"
 PURCHASES_URL = f"{API_BASE}/users/me/purchases"
 ORDER_URL = f"{API_BASE}/users/me/orders"
@@ -95,29 +94,6 @@ class UniverseData:
     name: str | None
     subuniverses: list[SubuniverseData]
 
-
-def get_auth_token(cookies: dict[str, str]) -> str:
-    """Exchange browser session cookies for a JWT token.
-
-    Args:
-        cookies: dict of cookie name→value from the browser session.
-
-    Returns:
-        The JWT bearer token string.
-
-    Raises:
-        RuntimeError: If the token endpoint returns an error.
-    """
-    resp = requests.get(AUTH_TOKEN_URL, cookies=cookies, timeout=15)
-    if resp.status_code != 200:
-        raise RuntimeError(
-            f"Failed to obtain auth token (HTTP {resp.status_code}): {resp.text[:200]}"
-        )
-    data = resp.json()
-    token = data.get("token")
-    if not token:
-        raise RuntimeError(f"Auth response missing 'token' field: {data}")
-    return token
 
 
 def _api_headers(token: str) -> dict[str, str]:

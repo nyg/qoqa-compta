@@ -2,20 +2,20 @@
 
 ## Overview
 
-The crawler logs in to QoQa.ch via the browser (just for authentication), then
+The crawler authenticates to QoQa.ch via its REST API (no browser required), then
 uses the QoQa REST API to fetch all order data and download PDF invoices.
 
 ```mermaid
 flowchart TD
-    Chrome["Chrome\n(CDP, ~10s)"]
-    JWT["Cookies / JWT token"]
+    Auth["requests\n(POST /v2/login)"]
+    JWT["JWT token"]
     QoqaAPI["QoQa REST API\napi.qoqa.ch"]
     PythonSync["Python Sync\n(requests)"]
     DB["SQLite /\nPostgreSQL"]
     PDFs["PDFs\n(local)"]
     Dashboard["Dashboard\n(Next.js 16)"]
 
-    Chrome -->|login| JWT
+    Auth -->|credentials| JWT
     JWT -->|auth| QoqaAPI
     QoqaAPI -->|"JSON + PDF URLs"| PythonSync
     PythonSync -->|upsert + PDF bytes| DB

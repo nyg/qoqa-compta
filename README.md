@@ -21,7 +21,7 @@
 
 ## Overview
 
-The crawler logs in to QoQa.ch via the browser (just for authentication), then uses the QoQa REST API to fetch all order data and download PDF invoices. Data is stored in a local SQLite database (or PostgreSQL) and displayed in a Next.js dashboard.
+The crawler authenticates to QoQa.ch via its REST API (no browser required), then uses the QoQa REST API to fetch all order data and download PDF invoices. Data is stored in a local SQLite database (or PostgreSQL) and displayed in a Next.js dashboard.
 
 See [docs/architecture.md](docs/architecture.md) for the full architecture diagram, project structure, and database schema.
 
@@ -67,11 +67,7 @@ python -m crawler.sync --full --pdf-only
 python -m crawler.sync --help
 ```
 
-> **Authentication**: the crawler supports two modes:
-> - **Credentials** *(recommended)*: set `QOQA_EMAIL` + `QOQA_PASSWORD` in `.env`. The crawler logs in automatically — Chrome can stay open.
-> - **Profile reuse**: set `CHROME_USER_DATA_DIR` in `.env`. Uses your existing Chrome cookies — you must close Chrome first.
->
-> **Chromium**: set `BROWSER_PATH` in `.env` to use Chromium instead of Chrome.
+> **Authentication**: set `QOQA_EMAIL` + `QOQA_PASSWORD` in `.env`. The crawler authenticates via the QoQa REST API — no browser or Chrome required.
 
 ---
 
@@ -119,14 +115,12 @@ Dashboard features:
 
 Copy `crawler/.env.example` to `crawler/.env` and fill in:
 
-| Variable               | Description                                          | Example                                                                          |
-| ---------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `DATABASE_URL`         | Database URL (SQLite default, PostgreSQL optional)   | `sqlite:////home/user/.local/share/qoqa-compta/qoqa.db`                         |
-| `QOQA_EMAIL`           | QoQa.ch login email *(recommended)*                 | `me@example.com`                                                                 |
-| `QOQA_PASSWORD`        | QoQa.ch login password *(recommended)*              | `••••••••`                                                                       |
-| `CHROME_USER_DATA_DIR` | Chrome profile path *(alt. auth method)*             | `~/Library/Application Support/Google/Chrome` (macOS)                            |
-| `PDF_DOWNLOAD_DIR`     | PDF download folder                                  | `./pdfs`                                                                         |
-| `BROWSER_PATH`         | Custom browser binary *(optional)*                   | `/Applications/Chromium.app/Contents/MacOS/Chromium`                             |
+| Variable           | Description                                          | Example                                                                          |
+| ------------------ | ---------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `DATABASE_URL`     | Database URL (SQLite default, PostgreSQL optional)   | `sqlite:////home/user/.local/share/qoqa-compta/qoqa.db`                         |
+| `QOQA_EMAIL`       | QoQa.ch login email                                 | `me@example.com`                                                                 |
+| `QOQA_PASSWORD`    | QoQa.ch login password                              | `••••••••`                                                                       |
+| `PDF_DOWNLOAD_DIR` | PDF download folder                                  | `./pdfs`                                                                         |
 
 ### Frontend
 

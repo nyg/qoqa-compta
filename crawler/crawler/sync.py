@@ -20,12 +20,11 @@ from crawler.api import (
     detect_locale,
     download_pdf,
     fetch_universes,
-    get_auth_token,
     get_order_details,
     list_all_purchases,
     parse_order_data,
 )
-from crawler.browser import get_pdf_download_dir, login_and_get_cookies
+from crawler.auth import get_pdf_download_dir, get_token
 from crawler.db import Base, SessionLocal, engine, get_dialect_insert
 from crawler.models import QoqaOrder, QoqaSubuniverse, QoqaUniverse
 
@@ -240,21 +239,13 @@ def sync(
     _ensure_schema()
 
     # ── Step 1: Authenticate ───────────────────────────────────────────────────
-    console.log("[cyan]→[/cyan] Logging in to QoQa.ch…")
+    console.log("[cyan]→[/cyan] Authenticating with QoQa.ch…")
     try:
-        cookies = login_and_get_cookies()
+        token = get_token()
     except Exception as exc:
         console.print(f"[red]✗ Login error:[/red] {exc}")
         raise typer.Exit(code=1)
-    console.log("[green]✓[/green] Browser login successful.")
-
-    console.log("[cyan]→[/cyan] Obtaining API token…")
-    try:
-        token = get_auth_token(cookies)
-    except Exception as exc:
-        console.print(f"[red]✗ Token error:[/red] {exc}")
-        raise typer.Exit(code=1)
-    console.log("[green]✓[/green] API token obtained.")
+    console.log("[green]✓[/green] Authenticated.")
 
     # ── Step 2: Sync universes ─────────────────────────────────────────────────
     console.log("[cyan]→[/cyan] Syncing universes…")
