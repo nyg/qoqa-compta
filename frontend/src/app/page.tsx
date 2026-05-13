@@ -14,14 +14,17 @@ import { SpendingChart } from "@/components/spending-chart";
 import { OrdersTable } from "@/components/orders-table";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UniversePicker } from "@/components/universe-picker";
+import { DateRangePicker } from "@/components/date-range-picker";
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ universes?: string; subuniverses?: string }>;
+  searchParams: Promise<{ universes?: string; subuniverses?: string; from?: string; to?: string }>;
 }) {
   const t = await getTranslations("Dashboard");
-  const { universes: universesParam, subuniverses: subuniversesParam } = await searchParams;
+  const { universes: universesParam, subuniverses: subuniversesParam, from: fromParam, to: toParam } = await searchParams;
+  const from = fromParam || undefined;
+  const to = toParam || undefined;
   const selectedUniverses = universesParam
     ? universesParam.split(",").filter(Boolean)
     : [];
@@ -63,13 +66,13 @@ export default async function DashboardPage({
         : "universe";
 
     const [stats, monthly, yearly, orders, total, pieData] = await Promise.all([
-      fetchStats(effectiveUniverses, effectiveSubuniverses),
-      fetchMonthlySpending(effectiveUniverses, effectiveSubuniverses),
-      fetchYearlySpending(effectiveUniverses, effectiveSubuniverses),
-      fetchInitialOrders(effectiveUniverses, effectiveSubuniverses),
-      fetchTotalCount(effectiveUniverses, effectiveSubuniverses),
+      fetchStats(effectiveUniverses, effectiveSubuniverses, from, to),
+      fetchMonthlySpending(effectiveUniverses, effectiveSubuniverses, from, to),
+      fetchYearlySpending(effectiveUniverses, effectiveSubuniverses, from, to),
+      fetchInitialOrders(effectiveUniverses, effectiveSubuniverses, from, to),
+      fetchTotalCount(effectiveUniverses, effectiveSubuniverses, from, to),
       pieMode !== null
-        ? fetchSpendingByGroup(pieMode, effectiveUniverses, effectiveSubuniverses)
+        ? fetchSpendingByGroup(pieMode, effectiveUniverses, effectiveSubuniverses, from, to)
         : Promise.resolve(null),
     ]);
 
@@ -95,7 +98,7 @@ export default async function DashboardPage({
   return (
     <main className="container mx-auto px-4 py-8 space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">QoQa Compta</h1>
           <p className="text-muted-foreground mt-1">
@@ -121,6 +124,9 @@ export default async function DashboardPage({
               selectedSubuniverses={selectedSubuniverses}
             />
           </Suspense>
+          <Suspense>
+            <DateRangePicker from={from} to={to} />
+          </Suspense>
           <ThemeToggle />
         </div>
       </div>
@@ -138,7 +144,7 @@ export default async function DashboardPage({
       {/* Orders table */}
       <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" />}>
         <OrdersTable
-          key={`${selectedUniverses.join(",")}-${selectedSubuniverses.join(",")}`}
+          key={`${selectedUniverses.join(",")}-${selectedSubuniverses.join(",")}-${from ?? ""}-${to ?? ""}`}
           initialOrders={orders}
           initialPagination={{
             page: 1,
@@ -149,6 +155,8 @@ export default async function DashboardPage({
           selectedUniverses={selectedUniverses}
           selectedSubuniverses={selectedSubuniverses}
           subuniverseNames={subuniverseNames}
+          from={from}
+          to={to}
         />
       </Suspense>
     </main>

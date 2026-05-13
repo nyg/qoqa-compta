@@ -49,5 +49,12 @@
     "tooltipOrders": "Orders",
     "pieByUniverseTitle": "Spending by universe",
     "pieBySubuniverseTitle": "Spending by sub-universe"
+  },
+  "DateRangePicker": {
+    "label": "Date range",
+    "allDates": "All dates",
+    "from": "From",
+    "to": "To",
+    "clear": "Clear"
   }
 }

@@ -63,6 +63,19 @@ function buildUniverseWhereClause(
 }
 
 /**
+ * Builds a WHERE clause that filters orders to a date range.
+ * Returns undefined when neither bound is provided (no filter applied).
+ */
+function buildDateWhereClause(from?: string, to?: string): SQL | undefined {
+  if (!from && !to) return undefined;
+  return between(
+    qoqaOrders.order_date,
+    from ?? "2000-01-01",
+    to ?? "2099-12-31"
+  ) as SQL;
+}
+
+/**
  * Returns the column projection used when listing orders.
  *
  * Crucially, this **omits** ``pdf_data`` (BLOB / bytea) so list queries don't
@@ -143,10 +156,14 @@ export async function fetchUniverses(): Promise<UniverseOption[]> {
 
 export async function fetchStats(
   universes: string[] = [],
-  subuniverses: string[] = []
+  subuniverses: string[] = [],
+  from?: string,
+  to?: string
 ): Promise<OrderStats> {
   const col = qoqaOrders.amount_chf;
-  const where = buildUniverseWhereClause(universes, subuniverses);
+  const universeClause = buildUniverseWhereClause(universes, subuniverses);
+  const dateClause = buildDateWhereClause(from, to);
+  const where = dateClause ? and(universeClause, dateClause) : universeClause;
   const [row] = await db
     .select({
       total_spent: asFloat(sql`COALESCE(SUM(${col}), 0)`),
@@ -160,10 +177,14 @@ export async function fetchStats(
 
 export async function fetchMonthlySpending(
   universes: string[] = [],
-  subuniverses: string[] = []
+  subuniverses: string[] = [],
+  from?: string,
+  to?: string
 ): Promise<MonthlySpending[]> {
   const month = yearMonth(sql`${qoqaOrders.order_date}`);
-  const catClause = buildUniverseWhereClause(universes, subuniverses);
+  const universeClause = buildUniverseWhereClause(universes, subuniverses);
+  const dateClause = buildDateWhereClause(from, to);
+  const catClause = dateClause ? and(universeClause, dateClause) : universeClause;
   return db
     .select({
       month,
@@ -178,10 +199,14 @@ export async function fetchMonthlySpending(
 
 export async function fetchYearlySpending(
   universes: string[] = [],
-  subuniverses: string[] = []
+  subuniverses: string[] = [],
+  from?: string,
+  to?: string
 ): Promise<YearlySpending[]> {
   const year = yearOf(sql`${qoqaOrders.order_date}`);
-  const where = buildUniverseWhereClause(universes, subuniverses);
+  const universeClause = buildUniverseWhereClause(universes, subuniverses);
+  const dateClause = buildDateWhereClause(from, to);
+  const where = dateClause ? and(universeClause, dateClause) : universeClause;
   return db
     .select({
       year,
@@ -206,9 +231,13 @@ export async function fetchYearlySpending(
 export async function fetchSpendingByGroup(
   mode: "universe" | "subuniverse",
   universes: string[],
-  subuniverses: string[]
+  subuniverses: string[],
+  from?: string,
+  to?: string
 ): Promise<SpendingByGroup[]> {
-  const where = buildUniverseWhereClause(universes, subuniverses);
+  const universeClause = buildUniverseWhereClause(universes, subuniverses);
+  const dateClause = buildDateWhereClause(from, to);
+  const where = dateClause ? and(universeClause, dateClause) : universeClause;
 
   if (mode === "subuniverse") {
     const rows = await db
@@ -324,9 +353,13 @@ export async function fetchOrdersCount(filter: OrdersFilter = {}): Promise<numbe
 
 export async function fetchInitialOrders(
   universes: string[] = [],
-  subuniverses: string[] = []
+  subuniverses: string[] = [],
+  from?: string,
+  to?: string
 ): Promise<QoqaOrder[]> {
-  const where = buildUniverseWhereClause(universes, subuniverses);
+  const universeClause = buildUniverseWhereClause(universes, subuniverses);
+  const dateClause = buildDateWhereClause(from, to);
+  const where = dateClause ? and(universeClause, dateClause) : universeClause;
   const rows = await db
     .select(orderListColumns())
     .from(qoqaOrders)
@@ -346,9 +379,13 @@ export async function fetchInitialOrders(
 
 export async function fetchTotalCount(
   universes: string[] = [],
-  subuniverses: string[] = []
+  subuniverses: string[] = [],
+  from?: string,
+  to?: string
 ): Promise<number> {
-  const where = buildUniverseWhereClause(universes, subuniverses);
+  const universeClause = buildUniverseWhereClause(universes, subuniverses);
+  const dateClause = buildDateWhereClause(from, to);
+  const where = dateClause ? and(universeClause, dateClause) : universeClause;
   const [row] = await db.select({ total: asInt(sql`COUNT(*)`) }).from(qoqaOrders).where(where);
   return row.total;
 }

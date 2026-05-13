@@ -49,5 +49,12 @@
     "tooltipOrders": "Bestellungen",
     "pieByUniverseTitle": "Ausgaben nach Universum",
     "pieBySubuniverseTitle": "Ausgaben nach Unteruniversum"
+  },
+  "DateRangePicker": {
+    "label": "Zeitraum",
+    "allDates": "Alle Daten",
+    "from": "Von",
+    "to": "Bis",
+    "clear": "Zurücksetzen"
   }
 }

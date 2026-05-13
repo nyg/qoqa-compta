@@ -49,21 +49,38 @@ export function UniversePicker({ available, selected, selectedSubuniverses }: Un
 
   function pushParams(nextUniverses: Set<string>, nextSubuniverses: Set<string>) {
     const params = new URLSearchParams(searchParams.toString());
-    if (nextUniverses.size === 0) {
+    const allIds = available.map((u) => u.identifier);
+    const allSelected =
+      allIds.length > 0 &&
+      nextUniverses.size === allIds.length &&
+      allIds.every((id) => nextUniverses.has(id)) &&
+      nextSubuniverses.size === 0;
+    if (allSelected) {
       params.delete("universes");
-    } else {
-      params.set("universes", [...nextUniverses].join(","));
-    }
-    if (nextSubuniverses.size === 0) {
       params.delete("subuniverses");
     } else {
-      params.set("subuniverses", [...nextSubuniverses].join(","));
+      if (nextUniverses.size === 0) {
+        params.delete("universes");
+      } else {
+        params.set("universes", [...nextUniverses].join(","));
+      }
+      if (nextSubuniverses.size === 0) {
+        params.delete("subuniverses");
+      } else {
+        params.set("subuniverses", [...nextSubuniverses].join(","));
+      }
     }
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
   }
 
   function toggleUniverse(uid: string, subs: string[]) {
+    if (isAllMode) {
+      const nextU = new Set(available.map((u) => u.identifier));
+      nextU.delete(uid);
+      pushParams(nextU, new Set());
+      return;
+    }
     const nextU = new Set(selected);
     const nextS = new Set(selectedSubuniverses);
 
@@ -80,6 +97,16 @@ export function UniversePicker({ available, selected, selectedSubuniverses }: Un
   }
 
   function toggleSubuniverse(subId: string, parentUid: string, allSubs: string[]) {
+    if (isAllMode) {
+      const nextU = new Set(available.map((u) => u.identifier));
+      nextU.delete(parentUid);
+      const nextS = new Set<string>();
+      for (const s of allSubs) {
+        if (s !== subId) nextS.add(s);
+      }
+      pushParams(nextU, nextS);
+      return;
+    }
     const nextU = new Set(selected);
     const nextS = new Set(selectedSubuniverses);
 
@@ -102,6 +129,8 @@ export function UniversePicker({ available, selected, selectedSubuniverses }: Un
     }
     pushParams(nextU, nextS);
   }
+
+  const isAllMode = selected.length === 0 && selectedSubuniverses.length === 0;
 
   const totalSelected = selected.length + selectedSubuniverses.length;
   const label =
@@ -137,7 +166,7 @@ export function UniversePicker({ available, selected, selectedSubuniverses }: Un
         >
           {available.map(({ identifier: uid, name, subuniverses }) => {
             const allSubIds = subuniverses.map((s) => s.identifier);
-            const isUniverseSelected = selected.includes(uid);
+            const isUniverseSelected = isAllMode || selected.includes(uid);
             const selectedSubCount = allSubIds.filter((s) => selectedSubuniverses.includes(s)).length;
             const isIndeterminate =
               !isUniverseSelected && selectedSubCount > 0 && selectedSubCount < allSubIds.length;

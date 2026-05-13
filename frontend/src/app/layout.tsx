@@ -36,7 +36,7 @@ export default async function RootLayout({
         >
           <NextIntlClientProvider locale={locale} messages={messages}>
             <FormatterProvider locale={formatLocale}>
-              <div className="min-h-screen bg-background">{children}</div>
+              <div className="min-h-screen bg-background overflow-x-hidden">{children}</div>
             </FormatterProvider>
           </NextIntlClientProvider>
         </ThemeProvider>
