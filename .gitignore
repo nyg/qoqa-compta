@@ -3,6 +3,11 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# ElectroBun
+views/main/
+artifacts/
+build
+
 # Environment
 .env
 

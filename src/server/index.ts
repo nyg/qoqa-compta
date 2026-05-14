@@ -1,40 +1,18 @@
 /// <reference types="bun-types" />
-import { Hono } from "hono";
 import { existsSync, statSync } from "fs";
 import path from "path";
 import { initDb } from "./db";
 import { bootstrapSchema } from "./schema-bootstrap";
-import dashboardRoutes from "./routes/dashboard";
-import ordersRoutes from "./routes/orders";
-import syncRoutes from "./routes/sync";
-import settingsRoutes from "./routes/settings";
+import { createApp } from "./app";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 const IS_PROD = process.env.NODE_ENV === "production";
 
-const app = new Hono();
+const app = createApp();
 
-// ── Request logging ────────────────────────────────────────────────────────────
-
-app.use("*", async (c, next) => {
-  const start = Date.now();
-  await next();
-  const ms = Date.now() - start;
-  const status = c.res.status;
-  const color = status >= 500 ? "\x1b[31m" : status >= 400 ? "\x1b[33m" : "\x1b[32m";
-  const reset = "\x1b[0m";
-  console.log(`${color}${c.req.method} ${new URL(c.req.url).pathname} → ${status}${reset} (${ms}ms)`);
-});
-
-// ── API routes ─────────────────────────────────────────────────────────────────
-
-app.route("/api", dashboardRoutes);
-app.route("/api", ordersRoutes);
-app.route("/api", syncRoutes);
-app.route("/api", settingsRoutes);
-
-// ── Static file serving (production only) ─────────────────────────────────────
+// ── Static file serving (web production only) ─────────────────────────────────
 // Vite builds to ./dist; fall back to index.html for SPA client-side routing.
+// In desktop mode the SPA is served via views:// by ElectroBun instead.
 
 if (IS_PROD) {
   const DIST = path.resolve("./dist");
