@@ -1,1 +1,0 @@
-"""qoqa-compta crawler package."""

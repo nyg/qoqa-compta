@@ -32,13 +32,18 @@ env/
 crawler/pdfs/*.pdf
 crawler/downloads/*.pdf
 
-# Node.js / Next.js
+# Node.js / Vite
+node_modules/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+bun.lock
+
+# Legacy paths (to be deleted)
 frontend/node_modules/
 frontend/.next/
 frontend/out/
 frontend/.turbo/
-*.tsbuildinfo
-next-env.d.ts
 
 # OS
 .DS_Store

@@ -1,0 +1,92 @@
+{
+  "Dashboard": {
+    "subtitle": "Your <qoqa>QoQa.ch</qoqa> spending dashboard",
+    "errorTitle": "Failed to connect to the database.",
+    "errorDetail": "Make sure <code>DATABASE_URL</code> is configured correctly in the Settings.",
+    "emptyTitle": "No orders found in the database.",
+    "emptyDetail": "Open <settings>Settings</settings> to configure your database connection and run a sync to import your QoQa orders."
+  },
+  "StatsCards": {
+    "totalSpent": "Total spent",
+    "totalSpentDesc": "All orders combined",
+    "orders": "Orders",
+    "ordersDesc": "Total number of orders placed",
+    "averagePerOrder": "Average / order",
+    "averagePerOrderDesc": "Average amount per order"
+  },
+  "OrdersTable": {
+    "title": "All orders ({{count}})",
+    "searchPlaceholder": "Search…",
+    "colOrderNumber": "Order #",
+    "colDate": "Date",
+    "colUniverse": "Universe",
+    "colOffer": "Offer",
+    "colItem": "Item",
+    "colAmount": "Amount",
+    "colInvoice": "Invoice",
+    "viewInvoice": "View invoice",
+    "noInvoice": "No invoice available",
+    "loading": "Loading…",
+    "noOrders": "No orders found.",
+    "pagination": "Page {{current}} / {{total}}",
+    "prevPage": "← Previous",
+    "nextPage": "Next →",
+    "pageSize": "per page",
+    "csvExport": "Export CSV"
+  },
+  "PdfDialog": {
+    "title": "Invoice {{orderNumber}}",
+    "close": "Close",
+    "download": "Download PDF"
+  },
+  "UniversePicker": {
+    "allUniverses": "All universes",
+    "label": "Universe filter",
+    "nSelected": "{{count}} selected"
+  },
+  "SpendingChart": {
+    "monthlyTitle": "Monthly spending",
+    "yearlyTitle": "Yearly spending",
+    "legendTotal": "Total (CHF)",
+    "legendOrders": "Orders",
+    "tooltipTotal": "Total",
+    "tooltipOrders": "Orders",
+    "pieByUniverseTitle": "Spending by universe",
+    "pieBySubuniverseTitle": "Spending by sub-universe"
+  },
+  "DateRangePicker": {
+    "label": "Date range",
+    "allDates": "All dates",
+    "from": "From",
+    "to": "To",
+    "clear": "Clear"
+  },
+  "Settings": {
+    "title": "Settings",
+    "credentialsSection": "QoQa Credentials",
+    "email": "Email",
+    "password": "Password",
+    "databaseSection": "Database",
+    "dbModeLocal": "Local SQLite (default)",
+    "dbModePostgres": "PostgreSQL (custom URL)",
+    "dbUrl": "Database URL",
+    "dbUrlPlaceholder": "postgresql://user:pass@host/db",
+    "resetDb": "Reset Database",
+    "resetDbConfirm": "This will delete all synced data. Are you sure?",
+    "resetDbYes": "Yes, reset",
+    "resetDbCancel": "Cancel",
+    "resetDbSuccess": "Database reset successfully.",
+    "syncSection": "Sync",
+    "uiLocale": "Interface language",
+    "syncLocale": "QoQa language",
+    "syncModeFull": "Full sync (all orders)",
+    "syncModeUpdate": "Update (new orders only)",
+    "runSync": "Run Sync",
+    "cancelSync": "Cancel",
+    "syncRunning": "Sync in progress...",
+    "syncDone": "Sync completed.",
+    "save": "Save",
+    "saved": "Saved",
+    "close": "Close"
+  }
+}
