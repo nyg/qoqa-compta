@@ -1,4 +1,4 @@
-import { getRawLibsqlClient, getRawNeonExecutor, isDbSqlite } from "./db";
+import { getRawBunDb, getRawNeonExecutor, isDbSqlite } from "./db";
 
 // ── SQLite DDL ─────────────────────────────────────────────────────────────────
 
@@ -120,19 +120,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_qoqa_subuniverses_identifier
 
 export async function bootstrapSchema(): Promise<void> {
   if (isDbSqlite()) {
-    const client = getRawLibsqlClient();
-    if (!client) throw new Error("No libsql client available");
-    // PRAGMAs must run outside a transaction
-    await client.execute("PRAGMA journal_mode=WAL");
-    await client.execute("PRAGMA busy_timeout=5000");
-    await client.batch([
-      { sql: SQLITE_ORDERS, args: [] },
-      { sql: SQLITE_UNIVERSES, args: [] },
-      { sql: SQLITE_SUBUNIVERSES, args: [] },
-      { sql: SQLITE_IDX_ORDERS, args: [] },
-      { sql: SQLITE_IDX_UNIVERSES, args: [] },
-      { sql: SQLITE_IDX_SUBUNIVERSES, args: [] },
-    ]);
+    const db = getRawBunDb();
+    if (!db) throw new Error("No bun:sqlite database available");
+    // PRAGMAs must run outside a transaction; all bun:sqlite ops are synchronous
+    db.exec("PRAGMA journal_mode=WAL");
+    db.exec("PRAGMA busy_timeout=5000");
+    db.exec(SQLITE_ORDERS);
+    db.exec(SQLITE_UNIVERSES);
+    db.exec(SQLITE_SUBUNIVERSES);
+    db.exec(SQLITE_IDX_ORDERS);
+    db.exec(SQLITE_IDX_UNIVERSES);
+    db.exec(SQLITE_IDX_SUBUNIVERSES);
   } else {
     const exec = getRawNeonExecutor();
     if (!exec) throw new Error("No neon executor available");
@@ -147,13 +145,11 @@ export async function bootstrapSchema(): Promise<void> {
 
 export async function dropAllTables(): Promise<void> {
   if (isDbSqlite()) {
-    const client = getRawLibsqlClient();
-    if (!client) throw new Error("No libsql client available");
-    await client.batch([
-      { sql: "DROP TABLE IF EXISTS qoqa_orders", args: [] },
-      { sql: "DROP TABLE IF EXISTS qoqa_universes", args: [] },
-      { sql: "DROP TABLE IF EXISTS qoqa_subuniverses", args: [] },
-    ]);
+    const db = getRawBunDb();
+    if (!db) throw new Error("No bun:sqlite database available");
+    db.exec("DROP TABLE IF EXISTS qoqa_orders");
+    db.exec("DROP TABLE IF EXISTS qoqa_universes");
+    db.exec("DROP TABLE IF EXISTS qoqa_subuniverses");
   } else {
     const exec = getRawNeonExecutor();
     if (!exec) throw new Error("No neon executor available");

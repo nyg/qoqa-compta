@@ -475,7 +475,7 @@ export async function upsertOrder(data: NewOrderData): Promise<void> {
     updated_at: now,
   };
 
-  const db = getDb() as unknown as ReturnType<typeof import("drizzle-orm/libsql").drizzle>;
+  const db = getDb() as unknown as ReturnType<typeof import("drizzle-orm/bun-sqlite").drizzle>;
 
   if (isDbSqlite()) {
     await (db as any)
