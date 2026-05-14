@@ -81,8 +81,6 @@ jobs:
         include:
           - os: macos-15        # arm64 (Apple Silicon)
             platform: macOS-arm64
-          - os: macos-13        # x64 (Intel)
-            platform: macOS-x64
           - os: windows-latest  # x64
             platform: Windows
     runs-on: ${{ matrix.os }}
