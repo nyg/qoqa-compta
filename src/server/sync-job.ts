@@ -61,6 +61,7 @@ export function startSync(options: SyncOptions): { ok: boolean; error?: string }
     return { ok: false, error: "A sync job is already running" };
   }
 
+  console.log(`[sync] Starting job (mode=${options.mode})`);
   _running = true;
   _startedAt = new Date().toISOString();
   _mode = options.mode;
@@ -68,7 +69,11 @@ export function startSync(options: SyncOptions): { ok: boolean; error?: string }
 
   // Run async; do not await here so the caller gets a response immediately
   syncOrders(options, addEvent, _abortController.signal)
+    .then(() => {
+      console.log(`[sync] Job finished (mode=${options.mode})`);
+    })
     .catch((err) => {
+      console.error("[sync] Job error:", err);
       addEvent({
         type: "error",
         message: `Sync failed: ${(err as Error).message}`,

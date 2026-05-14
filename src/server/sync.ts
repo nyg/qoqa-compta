@@ -111,9 +111,12 @@ export async function syncOrders(
   // 1. Authenticate
   let token: string;
   try {
+    console.log("[sync] Authenticating…");
     token = await authenticate(email, password);
+    console.log("[sync] Auth OK");
     emit(makeEvent("auth_ok", "Authenticated successfully"));
   } catch (err) {
+    console.error("[sync] Auth failed:", err);
     emit(makeEvent("auth_error", `Authentication failed: ${(err as Error).message}`));
     throw err;
   }
@@ -122,6 +125,7 @@ export async function syncOrders(
 
   // 2. Fetch and upsert universes
   try {
+    console.log("[sync] Fetching universes…");
     const universesData = await fetchUniverses(token, locale);
     for (const u of universesData) {
       await upsertUniverse({ identifier: u.identifier, nameFr: u.name, nameDe: undefined });
@@ -134,7 +138,9 @@ export async function syncOrders(
       }
     }
     emit(makeEvent("universes_ok", `Synced ${universesData.length} universes`));
+    console.log(`[sync] Universes OK (${universesData.length})`);
   } catch (err) {
+    console.error("[sync] Universes error:", err);
     emit(makeEvent("universes_error", `Failed to sync universes: ${(err as Error).message}`));
     // Non-fatal: continue with order sync
   }
@@ -144,9 +150,12 @@ export async function syncOrders(
   // 3. Fetch all purchases
   let purchases: Awaited<ReturnType<typeof fetchPurchases>>;
   try {
+    console.log("[sync] Fetching purchases…");
     purchases = await fetchPurchases(token, locale);
+    console.log(`[sync] Purchases fetched: ${purchases.length}`);
     emit(makeEvent("purchases_fetched", `Found ${purchases.length} orders`, { count: purchases.length }));
   } catch (err) {
+    console.error("[sync] Failed to fetch purchases:", err);
     emit(makeEvent("error", `Failed to fetch purchases: ${(err as Error).message}`));
     throw err;
   }

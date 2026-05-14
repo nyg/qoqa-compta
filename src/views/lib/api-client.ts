@@ -60,7 +60,7 @@ export const apiClient = {
   },
 
   startSync(mode: "full" | "update"): Promise<{ ok: boolean; error?: string }> {
-    return request<{ ok: boolean; error?: string }>("/api/sync/start", {
+    return request<{ ok: boolean; error?: string }>("/api/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode }),
@@ -68,7 +68,7 @@ export const apiClient = {
   },
 
   cancelSync(): Promise<void> {
-    return request<void>("/api/sync/cancel", { method: "POST" });
+    return request<void>("/api/sync", { method: "DELETE" });
   },
 
   getSyncStatus(): Promise<SyncStatus> {
@@ -92,6 +92,6 @@ export const apiClient = {
   },
 
   resetDatabase(): Promise<void> {
-    return request<void>("/api/db/reset", { method: "POST" });
+    return request<void>("/api/settings/database", { method: "DELETE" });
   },
 };
