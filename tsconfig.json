@@ -17,5 +17,5 @@
       "@/*": ["./src/views/*"]
     }
   },
-  "include": ["src", "vite.config.ts", "index.html"]
+  "include": ["src", "vite.config.ts", "electrobun.config.ts", "scripts", "index.html"]
 }

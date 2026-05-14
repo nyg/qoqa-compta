@@ -10,13 +10,13 @@
 |---|---|
 | **Backend** | [Hono](https://hono.dev/) on [Bun](https://bun.sh) — REST API + sync engine |
 | **Frontend** | [Vite](https://vitejs.dev/) SPA — React 19, React Router v7, Tailwind v4 |
+| **Desktop** | [ElectroBun](https://github.com/blackboardsh/electrobun) — native macOS & Windows app |
 | **Database** | SQLite (default, via `@libsql/client`) or PostgreSQL (via `@neondatabase/serverless`) |
 | **i18n** | [react-i18next](https://react.i18next.com/) — 5 locales: en, fr, de, it, rm |
 
-In **development**, Vite runs on `:3000` and proxies `/api/*` to Hono on `:3001`.
-In **production**, Hono serves the Vite build from `dist/` and the API from the same port.
-
-The codebase is structured for an eventual [ElectroBun](https://github.com/blackboardsh/electrobun) migration: all API calls are isolated behind `src/views/lib/api-client.ts`, making the HTTP transport trivially swappable for ElectroBun RPC.
+In **web development**, Vite runs on `:3000` and proxies `/api/*` to Hono on `:3001`.
+In **web production**, Hono serves the Vite build from `dist/` and the API from the same port.
+In **desktop mode**, ElectroBun serves the SPA via `views://` and Hono runs as a local API-only server on `127.0.0.1:3001`.
 
 ---
 
@@ -44,7 +44,7 @@ In development you can optionally create a `.env` file with any of the following
 | `QOQA_PASSWORD` | QoQa.ch login password |
 | `DATABASE_URL` | SQLite or PostgreSQL URL — defaults to `~/Library/Application Support/qoqa-compta/qoqa.db` on macOS |
 
-### Run (development)
+### Run (development — web)
 
 ```bash
 bun run dev
@@ -52,12 +52,29 @@ bun run dev
 
 This starts both the Hono API server (`:3001`) and the Vite dev server (`:3000`) concurrently. The dashboard is available at [http://localhost:3000](http://localhost:3000).
 
-### Build & run (production)
+### Run (development — desktop)
+
+```bash
+bun run dev:vite      # Vite dev server on :3000 (keep this running)
+bun run desktop:dev   # ElectroBun desktop app (separate terminal)
+```
+
+ElectroBun starts the Hono API server internally on `127.0.0.1:3001` and opens a native window pointed at the Vite dev server for hot-module reloading.
+
+### Build & run (web production)
 
 ```bash
 bun run build   # compile the SPA to dist/
 bun run start   # serve dist/ + API from :3001
 ```
+
+### Build (desktop)
+
+```bash
+bun run build:stable
+```
+
+This runs `vite build` first (via the ElectroBun `preBuild` hook) then packages the app. Output artifacts are in `artifacts/`: `.dmg` for macOS, `.zip` for Windows.
 
 ---
 
@@ -85,12 +102,15 @@ The schema is bootstrapped automatically on first run (`CREATE TABLE IF NOT EXIS
 ```
 src/
   server/           # Hono API + Bun sync engine
-    index.ts        # Server entry point
+    app.ts          # Hono app factory (shared by web and desktop entry points)
+    index.ts        # Web server entry point (API + static file serving)
     routes/         # API route handlers
     sync.ts         # QoQa order sync pipeline
     db.ts           # Drizzle ORM client (SQLite + PostgreSQL)
     schema.ts       # Drizzle schema definitions
     settings.ts     # settings.json read/write
+  electrobun/
+    index.ts        # Desktop entry point (ElectroBun main process)
   views/            # Vite SPA (React)
     main.tsx        # App entry point
     pages/          # React Router pages
@@ -99,5 +119,25 @@ src/
     lib/            # Utilities, formatters, API client
   shared/
     types.ts        # Shared TypeScript types
+scripts/
+  prebuild.ts       # ElectroBun preBuild hook — runs `vite build`
+electrobun.config.ts  # ElectroBun build configuration
 ```
+
+---
+
+## Releases
+
+Releases are created via the **Release** GitHub Actions workflow (`.github/workflows/release.yml`), triggered manually from the **Actions** tab.
+
+### How to release
+
+1. Go to **Actions → Release → Run workflow**
+2. Select the version bump type: `patch`, `minor`, or `major`
+3. The workflow will:
+   - Bump `package.json` version, commit, and tag on `master`
+   - Build native desktop artifacts on macOS (arm64 + x64) and Windows (x64)
+   - Create a GitHub Release with all artifacts attached
+
+> **Prerequisite:** A `RELEASE_TOKEN` repository secret containing a PAT with `contents: write` permission is required to push the version commit to `master`.
 

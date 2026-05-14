@@ -5,6 +5,11 @@ import type {
   AppSettings,
 } from "../../shared/types";
 
+// In desktop production the SPA is loaded from views://main/index.html and
+// needs an absolute URL to reach the local Hono server. In web mode (dev or
+// production) the SPA and API share the same origin so a relative path works.
+const API_BASE = window.location.protocol === "views:" ? "http://localhost:3001" : "";
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, options);
   if (!res.ok) {
@@ -30,7 +35,7 @@ export const apiClient = {
     if (params.from) p.set("from", params.from);
     if (params.to) p.set("to", params.to);
     const qs = p.toString();
-    return request<DashboardData>(`/api/dashboard${qs ? `?${qs}` : ""}`);
+    return request<DashboardData>(`${API_BASE}/api/dashboard${qs ? `?${qs}` : ""}`);
   },
 
   getOrders(params: {
@@ -52,11 +57,11 @@ export const apiClient = {
     if (params.page != null) p.set("page", params.page.toString());
     if (params.pageSize != null) p.set("pageSize", params.pageSize.toString());
     const qs = p.toString();
-    return request<OrdersResponse>(`/api/orders${qs ? `?${qs}` : ""}`);
+    return request<OrdersResponse>(`${API_BASE}/api/orders${qs ? `?${qs}` : ""}`);
   },
 
   getPdfUrl(orderNumber: string): string {
-    return `/api/orders/${encodeURIComponent(orderNumber)}/pdf`;
+    return `${API_BASE}/api/orders/${encodeURIComponent(orderNumber)}/pdf`;
   },
 
   getCsvUrl(params: {
@@ -72,11 +77,11 @@ export const apiClient = {
     if (params.from) p.set("from", params.from);
     if (params.to) p.set("to", params.to);
     const qs = p.toString();
-    return `/api/orders/csv${qs ? `?${qs}` : ""}`;
+    return `${API_BASE}/api/orders/csv${qs ? `?${qs}` : ""}`;
   },
 
   startSync(mode: "full" | "update"): Promise<{ ok: boolean; error?: string }> {
-    return request<{ ok: boolean; error?: string }>("/api/sync", {
+    return request<{ ok: boolean; error?: string }>(`${API_BASE}/api/sync`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode }),
@@ -84,23 +89,23 @@ export const apiClient = {
   },
 
   cancelSync(): Promise<void> {
-    return request<void>("/api/sync", { method: "DELETE" });
+    return request<void>(`${API_BASE}/api/sync`, { method: "DELETE" });
   },
 
   getSyncStatus(): Promise<SyncStatus> {
-    return request<SyncStatus>("/api/sync/status");
+    return request<SyncStatus>(`${API_BASE}/api/sync/status`);
   },
 
   createSyncEventSource(): EventSource {
-    return new EventSource("/api/sync/stream");
+    return new EventSource(`${API_BASE}/api/sync/stream`);
   },
 
   getSettings(): Promise<AppSettings> {
-    return request<AppSettings>("/api/settings");
+    return request<AppSettings>(`${API_BASE}/api/settings`);
   },
 
   updateSettings(settings: Partial<AppSettings>): Promise<AppSettings> {
-    return request<AppSettings>("/api/settings", {
+    return request<AppSettings>(`${API_BASE}/api/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
@@ -108,6 +113,6 @@ export const apiClient = {
   },
 
   resetDatabase(): Promise<void> {
-    return request<void>("/api/settings/database", { method: "DELETE" });
+    return request<void>(`${API_BASE}/api/settings/database`, { method: "DELETE" });
   },
 };
