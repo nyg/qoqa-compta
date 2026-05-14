@@ -2,92 +2,76 @@
 
 ## Project overview
 
-Monorepo with two independent components that share a PostgreSQL database (Neon.tech):
+Single Bun application — a Hono REST API + sync engine that serves a Vite/React SPA. There is no separate crawler or frontend subdirectory; everything lives in `src/`.
 
-- **`crawler/`** — Python CLI that logs in to QoQa.ch through Chrome (SeleniumBase CDP) only to obtain a JWT, then uses the QoQa REST API (`requests`) to fetch order JSON and download invoice PDFs. PDFs are parsed with pdfplumber and upserted into PostgreSQL.
-- **`frontend/`** — Next.js 16 (App Router) dashboard displaying spending stats, charts, and a searchable orders table. Deployed to Vercel Edge.
-
-Both connect to the same `qoqa_orders` table. The crawler writes; the frontend reads.
+- **`src/server/`** — Hono API server running on Bun. Handles authentication (direct HTTP POST to QoQa, no browser), order sync (TypeScript pipeline with SSE progress), database access (Drizzle ORM), and user settings (platform-aware `settings.json`).
+- **`src/views/`** — Vite SPA (React 19, React Router v7). Dashboard with spending charts, orders table, invoice PDF viewer, and settings modal.
+- **`src/shared/`** — TypeScript types shared between server and SPA.
 
 ## Commands
 
-### Frontend (Next.js)
-
 ```bash
-cd frontend
-pnpm install
-pnpm dev          # dev server on :3000
-pnpm build        # production build
-pnpm lint         # ESLint (next/core-web-vitals)
+bun install              # install dependencies
+
+bun run dev              # dev: Vite :3000 + Hono :3001 (concurrently)
+bun run build            # production: compile SPA to dist/
+bun run start            # production: serve dist/ + API from :3001
+bun run typecheck        # tsc --noEmit
+bun run lint             # ESLint
+bun run db:push          # drizzle-kit push (schema sync)
 ```
-
-### Crawler (Python)
-
-```bash
-cd crawler
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-
-python -m crawler.sync --full       # all orders from scratch
-python -m crawler.sync --update     # incremental (default)
-python -m crawler.sync --pdf-only   # download PDFs only
-python -m crawler.sync --db-only    # parse existing PDFs into DB
-```
-
-No test suite exists in either component.
 
 ## Architecture
 
-### Frontend data flow
+### Data flow
 
-- **`page.tsx`** is a fully dynamic Server Component that reads `searchParams` (selected universes) and fetches all dashboard data — stats, charts, initial orders — server-side with the active filter applied.
-- **`/api/orders`** is an API route used by `OrdersTable` for client-side search and pagination. It also accepts a `universes` query param to keep the table in sync with the active filter.
-- Both use Drizzle ORM (`src/lib/queries.ts`) which supports SQLite (via `@libsql/client`) and PostgreSQL (via `@neondatabase/serverless`).
+- The SPA makes all API calls through `src/views/lib/api-client.ts` — isolated so the HTTP transport can be swapped for ElectroBun RPC in the future.
+- `GET /api/dashboard` returns all stats, charts, and initial orders in one round-trip.
+- `GET /api/orders` is used for client-side search and pagination.
+- `POST /api/sync` starts a sync job; progress is streamed via SSE (`GET /api/sync/stream`).
+- `GET/PUT /api/settings` reads/writes `settings.json`.
 
-### Crawler pipeline
+### Sync pipeline
 
 ```
-CLI (Typer, sync.py)
-  → browser.py (SeleniumBase CDP) — login only, extracts cookies → JWT
-  → api.py (requests) — fetches universes list + order list + downloads PDFs from QoQa REST API
-  → utils/pdf_parser.py (pdfplumber + regex) — extracts structured fields
-  → db.py / models/order.py + models/universe.py (SQLAlchemy 2.x) — upsert via ON CONFLICT
+POST /api/sync { mode: "full" | "update" }
+  → auth.ts       — POST auth.qoqa.ch/v2/login → JWT (no browser, pure HTTP)
+  → api.ts        — fetchUniverses → upsert qoqa_universes + qoqa_subuniverses
+  → api.ts        — fetchPurchases (list)
+  → for each:
+      api.ts      — fetchOrderDetail + downloadPdf
+      queries.ts  — upsertOrder (INSERT … ON CONFLICT DO UPDATE)
+  → SSE stream emits SyncProgressEvent at each step
 ```
-
-**Authentication has two modes** (see README):
-- *Credentials* (recommended): `QOQA_EMAIL` + `QOQA_PASSWORD` in `crawler/.env`; Chrome can stay open.
-- *Profile reuse*: `CHROME_USER_DATA_DIR` in `crawler/.env`; Chrome must be closed first.
-
-`BROWSER_PATH` can override the Chrome binary (e.g. for Chromium).
 
 ## Conventions
 
-### Python (crawler)
+### TypeScript
 
-- Python 3.11+ with modern union types (`str | None`, `list[Path]`)
-- SQLAlchemy 2.x `Mapped[]` type annotations for ORM fields
-- Private functions prefixed with `_` (e.g., `_ensure_schema`, `_upsert_order`)
-- CLI built with Typer; terminal output uses Rich (progress bars, colored status)
-- Environment loaded from `crawler/.env` via python-dotenv
-
-### TypeScript (frontend)
-
+- Bun runtime; `bun-types` in devDependencies
 - `strict: true` in tsconfig; path alias `@/*` → `./src/*`
-- UI built with shadcn/ui (Base UI primitives via `@base-ui/react`, base-mira style preset, CVA + `cn()` utility from `src/lib/utils.ts`)
-- Tailwind v4 with CSS-variable theming in `globals.css` (`@theme inline` directive) — no `tailwind.config.ts`
-- Charts use Recharts (`ComposedChart` with bar + line dual-axis)
-- UI text is fully internationalised with next-intl (5 locales: `en`, `fr`, `de`, `it`, `rm`); message files live in `frontend/messages/`
-- Locale is auto-detected from the `Accept-Language` header in `src/i18n/request.ts`; Romansh (`rm`) falls back to `de-CH` for `Intl` formatting
-- Number/date formatting uses `fr-CH` locale for Swiss conventions; helpers are in `src/lib/formatters.ts` + `src/lib/formatter-context.tsx`
-- Client components marked with `"use client"`; server components are the default
-- Category filter state is encoded in the URL (`?universes=qwine,alcohol`) — the `UniversePicker` client component updates search params via `useRouter`
+- UI built with Base UI (`@base-ui/react`) primitives, CVA + `cn()` utility from `src/views/lib/utils.ts`
+- Tailwind v4 with CSS-variable theming in `src/views/globals.css` (`@theme inline` directive) — no `tailwind.config.ts`
+- Charts use Recharts (`ComposedChart` with bar + line dual-axis; pie chart for spending breakdown)
+- UI text internationalised with react-i18next (5 locales: `en`, `fr`, `de`, `it`, `rm`); message files live in `src/views/i18n/messages/`
+- Locale auto-detected from the browser in `src/views/i18n/index.ts`; Romansh (`rm`) falls back to `de-CH` for `Intl` formatting
+- Number/date formatting uses `fr-CH` locale for Swiss conventions; helpers in `src/views/lib/formatters.ts` + `src/views/lib/formatter-context.tsx`
+- Filter state (universe, subuniverse, date range) is managed in URL search params via `src/views/lib/use-filter-state.ts`
 
 ### Database
 
-- `qoqa_orders` table with `order_number` as the unique business key; `universe` (formerly `offer_category`) and `subuniverse` (formerly `offer_subcategory`) store the QoQa universe tracking identifier
-- `qoqa_universes` lookup table: `universe_tracking_identifier` (unique), `name_fr`, `name_de`, `updated_at` — populated by the crawler from the public `/v2/universes` API on every run
-- Amounts stored as `NUMERIC(10, 2)` (CHF); represented as `Decimal` in Python, `string` in TypeScript
-- Crawler uses SQLAlchemy upsert (INSERT … ON CONFLICT UPDATE); frontend uses Drizzle ORM (`src/lib/queries.ts`)
+- `qoqa_orders` table with `order_number` as the unique business key
+- `qoqa_universes` and `qoqa_subuniverses` lookup tables, populated from the QoQa alerts API on every sync
+- Both `name_fr` and `name_de` columns on universes/subuniverses
+- Amounts stored as `NUMERIC(10, 2)` (CHF); represented as `string` in TypeScript
+- `pdf_data` column holds raw invoice PDF bytes (`BLOB` on SQLite, `BYTEA` on PostgreSQL); list queries use `has_pdf` boolean instead of selecting the bytes
+- Schema defined in `src/server/schema.ts` (dual SQLite + PG via Drizzle); bootstrapped at startup via `src/server/schema-bootstrap.ts`
+
+### Settings
+
+- Persisted to `~/Library/Application Support/qoqa-compta/settings.json` on macOS (see `src/server/settings.ts` for platform paths)
+- In development only, env vars (`QOQA_EMAIL`, `QOQA_PASSWORD`, `DATABASE_URL`, `PORT`) override the settings file
+- All settings are configurable from the in-app Settings modal — no `.env` file required in production
 
 ### Git
 
@@ -96,6 +80,7 @@ CLI (Typer, sync.py)
 
 ### Environment
 
-- `crawler/.env` holds crawler vars (`DATABASE_URL`, `QOQA_EMAIL`, `QOQA_PASSWORD`, `CHROME_USER_DATA_DIR`, `PDF_DOWNLOAD_DIR`, optional `BROWSER_PATH`)
-- `frontend/.env.local` holds frontend vars (`DATABASE_URL`)
+- No `.env` file required for production; the Settings modal handles all config
+- In development, optionally create a `.env` at the repo root with `DATABASE_URL`, `QOQA_EMAIL`, `QOQA_PASSWORD`, or `PORT`
 - Dependency updates managed by Renovate (config extends `github>nyg/renovate-presets`)
+
