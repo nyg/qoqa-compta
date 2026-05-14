@@ -17,6 +17,8 @@ export interface QoqaOrder {
   amount_chf: string;
   status: string | null;
   subtotal_chf: string | null;
+  discount_chf: string | null;
+  vat_chf: string | null;
   offer_id: string | null;
   offer_title: string | null;
   offer_subtitle: string | null;

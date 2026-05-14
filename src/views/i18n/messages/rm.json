@@ -28,7 +28,9 @@
     "noOrders": "Naginas ordinaziuns chattas.",
     "pagination": "Pagina {{current}} / {{total}}",
     "prevPage": "← Precedent",
-    "nextPage": "Suandant →"
+    "nextPage": "Suandant →",
+    "pageSize": "per pagina",
+    "csvExport": "Exportar CSV"
   },
   "PdfDialog": {
     "title": "Fattura {{orderNumber}}",
@@ -69,6 +71,8 @@
     "dbUrlPlaceholder": "postgresql://user:pass@host/db",
     "resetDb": "Reinitializar la banca da datas",
     "resetDbConfirm": "Quai stritga tut las datas sincronisadas. Essas ti segir?",
+    "resetDbYes": "Gea, reinitializar",
+    "resetDbCancel": "Interrumper",
     "resetDbSuccess": "Banca da datas reinitializà cun success.",
     "syncSection": "Sincronisaziun",
     "uiLocale": "Lingua da l'interfatscha",

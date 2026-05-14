@@ -28,7 +28,9 @@
     "noOrders": "No orders found.",
     "pagination": "Page {{current}} / {{total}}",
     "prevPage": "← Previous",
-    "nextPage": "Next →"
+    "nextPage": "Next →",
+    "pageSize": "per page",
+    "csvExport": "Export CSV"
   },
   "PdfDialog": {
     "title": "Invoice {{orderNumber}}",
@@ -69,6 +71,8 @@
     "dbUrlPlaceholder": "postgresql://user:pass@host/db",
     "resetDb": "Reset Database",
     "resetDbConfirm": "This will delete all synced data. Are you sure?",
+    "resetDbYes": "Yes, reset",
+    "resetDbCancel": "Cancel",
     "resetDbSuccess": "Database reset successfully.",
     "syncSection": "Sync",
     "uiLocale": "Interface language",

@@ -33,17 +33,36 @@ router.get("/dashboard", async (c) => {
       fetchInitialOrders(universeList, subuniverseList, from, to, pageSize),
     ]);
 
-    // Pie chart mode: subuniverse breakdown when exactly one universe is selected,
-    // universe breakdown otherwise (only when there is data to show).
+    // Pie chart mode: mirror the original logic — when no filter is applied, treat all
+    // available universes as the effective scope. Build the set of distinct parent universes
+    // actually in scope: if that set has exactly one entry, show subuniverse breakdown;
+    // if more than one, show universe breakdown; if zero (no data), hide the pie.
     let pieMode: "universe" | "subuniverse" | null = null;
     let pieData: SpendingByGroup[] | null = null;
 
     if (total > 0) {
+      const subToUniverse = new Map(
+        universes.flatMap((u) => u.subuniverses.map((s) => [s.identifier, u.identifier]))
+      );
+      const effectiveUniverses =
+        universeList.length === 0 && subuniverseList.length === 0
+          ? universes.map((u) => u.identifier)
+          : universeList;
+      const activeUniverseIds = new Set([
+        ...effectiveUniverses,
+        ...subuniverseList
+          .map((s) => subToUniverse.get(s))
+          .filter((v): v is string => v !== undefined),
+      ]);
       pieMode =
-        universeList.length === 1 && subuniverseList.length === 0
+        activeUniverseIds.size === 1
           ? "subuniverse"
-          : "universe";
-      pieData = await fetchSpendingByGroup(pieMode, universeList, subuniverseList, from, to);
+          : activeUniverseIds.size > 1
+          ? "universe"
+          : null;
+      if (pieMode !== null) {
+        pieData = await fetchSpendingByGroup(pieMode, universeList, subuniverseList, from, to);
+      }
     }
 
     const totalPages = Math.ceil(total / pageSize);

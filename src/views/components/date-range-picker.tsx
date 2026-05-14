@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams, useLocation } from "react-router";
 import { Calendar, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -9,14 +8,13 @@ import { useFormatter } from "@/lib/formatter-context";
 interface DateRangePickerProps {
   from?: string; // YYYY-MM-DD
   to?: string;   // YYYY-MM-DD
+  onFromChange: (val: string | undefined) => void;
+  onToChange: (val: string | undefined) => void;
 }
 
-export function DateRangePicker({ from, to }: DateRangePickerProps) {
+export function DateRangePicker({ from, to, onFromChange, onToChange }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const location = useLocation();
   const { t } = useTranslation("DateRangePicker");
   const { formatDate } = useFormatter();
 
@@ -33,24 +31,6 @@ export function DateRangePicker({ from, to }: DateRangePickerProps) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
-
-  function pushParams(nextFrom: string | null, nextTo: string | null) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (nextFrom) {
-      params.set("from", nextFrom);
-    } else {
-      params.delete("from");
-    }
-    if (nextTo) {
-      params.set("to", nextTo);
-    } else {
-      params.delete("to");
-    }
-    const qs = params.toString();
-    navigate(qs ? `${location.pathname}?${qs}` : location.pathname, {
-      replace: true,
-    });
-  }
 
   const hasFilter = Boolean(from || to);
   const label =
@@ -91,9 +71,7 @@ export function DateRangePicker({ from, to }: DateRangePickerProps) {
               type="date"
               value={from ?? ""}
               max={to ?? undefined}
-              onChange={(e) =>
-                pushParams(e.target.value || null, to ?? null)
-              }
+              onChange={(e) => onFromChange(e.target.value || undefined)}
               className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
@@ -105,9 +83,7 @@ export function DateRangePicker({ from, to }: DateRangePickerProps) {
               type="date"
               value={to ?? ""}
               min={from ?? undefined}
-              onChange={(e) =>
-                pushParams(from ?? null, e.target.value || null)
-              }
+              onChange={(e) => onToChange(e.target.value || undefined)}
               className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
@@ -117,7 +93,8 @@ export function DateRangePicker({ from, to }: DateRangePickerProps) {
               size="sm"
               className="w-full justify-center text-xs"
               onClick={() => {
-                pushParams(null, null);
+                onFromChange(undefined);
+                onToChange(undefined);
                 setOpen(false);
               }}
             >

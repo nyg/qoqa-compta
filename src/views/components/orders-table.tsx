@@ -1,13 +1,16 @@
 import { useState, useCallback } from "react";
-import { Search } from "lucide-react";
+import { Download, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { OrderPdfDialog } from "@/components/order-pdf-dialog";
 import { useFormatter } from "@/lib/formatter-context";
 import { useTranslation } from "react-i18next";
 import { apiClient } from "@/lib/api-client";
 import type { QoqaOrder, Pagination } from "../../shared/types";
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 interface OrdersTableProps {
   initialOrders: QoqaOrder[];
@@ -33,17 +36,19 @@ export function OrdersTable({
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(initialPagination.pageSize ?? 20);
   const { formatCHF, formatDate } = useFormatter();
   const { t } = useTranslation("OrdersTable");
 
   const fetchOrders = useCallback(
-    async (newSearch: string, page: number) => {
+    async (newSearch: string, page: number, newPageSize?: number) => {
+      const ps = newPageSize ?? pageSize;
       setLoading(true);
       try {
         const data = await apiClient.getOrders({
           search: newSearch || undefined,
           page,
-          pageSize: 20,
+          pageSize: ps,
           universes: selectedUniverses.length > 0 ? selectedUniverses : undefined,
           subuniverses:
             selectedSubuniverses.length > 0 ? selectedSubuniverses : undefined,
@@ -51,14 +56,14 @@ export function OrdersTable({
           to: to || undefined,
         });
         setOrders(data.orders ?? []);
-        setPagination(data.pagination ?? pagination);
+        setPagination(data.pagination ?? { page, pageSize: ps, total: 0, totalPages: 0 });
       } catch (e) {
         console.error(e);
       } finally {
         setLoading(false);
       }
     },
-    [pagination, selectedUniverses, selectedSubuniverses, from, to]
+    [pageSize, selectedUniverses, selectedSubuniverses, from, to]
   );
 
   const handleSearch = useCallback(
@@ -79,6 +84,23 @@ export function OrdersTable({
     [fetchOrders, search]
   );
 
+  const handlePageSizeChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newSize = parseInt(e.target.value, 10);
+      setPageSize(newSize);
+      setCurrentPage(1);
+      fetchOrders(search, 1, newSize);
+    },
+    [fetchOrders, search]
+  );
+
+  const csvUrl = apiClient.getCsvUrl({
+    universes: selectedUniverses.length > 0 ? selectedUniverses : undefined,
+    subuniverses: selectedSubuniverses.length > 0 ? selectedSubuniverses : undefined,
+    from: from || undefined,
+    to: to || undefined,
+  });
+
   return (
     <Card>
       <CardHeader>
@@ -86,14 +108,36 @@ export function OrdersTable({
           <CardTitle className="text-base">
             {t("title", { count: pagination.total })}
           </CardTitle>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t("searchPlaceholder")}
-              className="pl-9"
-              value={search}
-              onChange={handleSearch}
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t("searchPlaceholder")}
+                className="pl-9"
+                value={search}
+                onChange={handleSearch}
+              />
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <select
+                value={pageSize}
+                onChange={handlePageSizeChange}
+                aria-label={t("pageSize")}
+                className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n} {t("pageSize")}
+                  </option>
+                ))}
+              </select>
+              <a href={csvUrl} download="qoqa-orders.csv">
+                <Button variant="outline" size="sm">
+                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                  {t("csvExport")}
+                </Button>
+              </a>
+            </div>
           </div>
         </div>
       </CardHeader>

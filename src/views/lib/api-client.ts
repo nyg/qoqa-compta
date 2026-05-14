@@ -59,6 +59,22 @@ export const apiClient = {
     return `/api/orders/${encodeURIComponent(orderNumber)}/pdf`;
   },
 
+  getCsvUrl(params: {
+    universes?: string[];
+    subuniverses?: string[];
+    from?: string;
+    to?: string;
+  }): string {
+    const p = new URLSearchParams();
+    if (params.universes?.length) p.set("universes", params.universes.join(","));
+    if (params.subuniverses?.length)
+      p.set("subuniverses", params.subuniverses.join(","));
+    if (params.from) p.set("from", params.from);
+    if (params.to) p.set("to", params.to);
+    const qs = p.toString();
+    return `/api/orders/csv${qs ? `?${qs}` : ""}`;
+  },
+
   startSync(mode: "full" | "update"): Promise<{ ok: boolean; error?: string }> {
     return request<{ ok: boolean; error?: string }>("/api/sync", {
       method: "POST",

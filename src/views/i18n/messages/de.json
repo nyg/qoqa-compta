@@ -28,7 +28,9 @@
     "noOrders": "Keine Bestellungen gefunden.",
     "pagination": "Seite {{current}} / {{total}}",
     "prevPage": "← Zurück",
-    "nextPage": "Weiter →"
+    "nextPage": "Weiter →",
+    "pageSize": "pro Seite",
+    "csvExport": "CSV exportieren"
   },
   "PdfDialog": {
     "title": "Rechnung {{orderNumber}}",
@@ -69,6 +71,8 @@
     "dbUrlPlaceholder": "postgresql://user:pass@host/db",
     "resetDb": "Datenbank zurücksetzen",
     "resetDbConfirm": "Dadurch werden alle synchronisierten Daten gelöscht. Sind Sie sicher?",
+    "resetDbYes": "Ja, zurücksetzen",
+    "resetDbCancel": "Abbrechen",
     "resetDbSuccess": "Datenbank erfolgreich zurückgesetzt.",
     "syncSection": "Synchronisation",
     "uiLocale": "Oberflächensprache",

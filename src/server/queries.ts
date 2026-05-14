@@ -70,6 +70,14 @@ function yearOf(col: unknown): SQL<unknown> {
     : sql`EXTRACT(YEAR FROM ${col}::date)`) as SQL<unknown>;
 }
 
+// SQLite uses LIKE (case-insensitive for ASCII by default); PostgreSQL uses ILIKE.
+function ilikeCompat(col: unknown, value: string): SQL<unknown> {
+  if (isDbSqlite()) {
+    return sql`LOWER(${col}) LIKE LOWER(${value})` as SQL<unknown>;
+  }
+  return sql`${col} ILIKE ${value}` as SQL<unknown>;
+}
+
 // ── Column subset for list queries ────────────────────────────────────────────
 
 function orderListColumns(orders: typeof qoqaOrdersSqlite) {
@@ -80,6 +88,8 @@ function orderListColumns(orders: typeof qoqaOrdersSqlite) {
     amount_chf: orders.amount_chf,
     status: orders.status,
     subtotal_chf: orders.subtotal_chf,
+    discount_chf: orders.discount_chf,
+    vat_chf: orders.vat_chf,
     offer_id: orders.offer_id,
     offer_title: orders.offer_title,
     offer_subtitle: orders.offer_subtitle,
@@ -102,6 +112,8 @@ function normalizeOrder(row: Record<string, unknown>): QoqaOrder {
     amount_chf: String(row.amount_chf ?? "0"),
     status: row.status ? String(row.status) : null,
     subtotal_chf: row.subtotal_chf ? String(row.subtotal_chf) : null,
+    discount_chf: row.discount_chf ? String(row.discount_chf) : null,
+    vat_chf: row.vat_chf ? String(row.vat_chf) : null,
     offer_id: row.offer_id ? String(row.offer_id) : null,
     offer_title: row.offer_title ? String(row.offer_title) : null,
     offer_subtitle: row.offer_subtitle ? String(row.offer_subtitle) : null,
@@ -265,9 +277,9 @@ export async function fetchOrders(
 
   const searchCondition = search
     ? or(
-        ilike(orders.order_number, `%${search}%`),
-        ilike(orders.offer_title, `%${search}%`),
-        ilike(orders.item_description, `%${search}%`)
+        ilikeCompat(orders.order_number, `%${search}%`),
+        ilikeCompat(orders.offer_title, `%${search}%`),
+        ilikeCompat(orders.item_description, `%${search}%`)
       )
     : undefined;
 
@@ -298,13 +310,66 @@ export async function fetchOrders(
   return { orders: rows.map(normalizeOrder), total: Number(count ?? 0) };
 }
 
+export async function fetchAllOrders(params: {
+  universes?: string[];
+  subuniverses?: string[];
+  from?: string;
+  to?: string;
+}): Promise<QoqaOrder[]> {
+  const { orders, universes: universesT, subuniverses: subuniversesT } = t();
+
+  const conditions: (SQL<unknown> | undefined)[] = [
+    params.universes && params.universes.length > 0
+      ? inArray(orders.universe!, params.universes)
+      : undefined,
+    params.subuniverses && params.subuniverses.length > 0
+      ? inArray(orders.subuniverse!, params.subuniverses)
+      : undefined,
+    params.from ? gte(orders.order_date!, params.from) : undefined,
+    params.to ? lte(orders.order_date!, params.to) : undefined,
+  ];
+
+  const where = and(...conditions.filter((c): c is SQL<unknown> => c !== undefined));
+
+  const rows = await getDb()
+    .select({
+      ...orderListColumns(orders),
+      universe_name: sql<string | null>`${universesT.name_fr}`.as("universe_name"),
+      subuniverse_name: sql<string | null>`${subuniversesT.name_fr}`.as("subuniverse_name"),
+    })
+    .from(orders)
+    .leftJoin(universesT, eq(universesT.universe_tracking_identifier, orders.universe!))
+    .leftJoin(subuniversesT, eq(subuniversesT.identifier, orders.subuniverse!))
+    .where(where)
+    .orderBy(sql`${orders.order_date} DESC`) as unknown as Record<string, unknown>[];
+
+  return rows.map(normalizeOrder);
+}
+
 export async function fetchUniverses(): Promise<UniverseOption[]> {
-  const { universes, subuniverses } = t();
-  const universesRows = await getDb()
-    .select()
-    .from(universes)
-    .orderBy(universes.universe_tracking_identifier);
-  const subuniversesRows = await getDb().select().from(subuniverses);
+  const { orders, universes, subuniverses } = t();
+
+  // Collect distinct universe/subuniverse identifiers that actually appear in orders
+  const [usedUniverseRows, usedSubuniverseRows] = await Promise.all([
+    getDb().select({ id: orders.universe }).from(orders).where(isNotNull(orders.universe)).groupBy(orders.universe),
+    getDb().select({ id: orders.subuniverse }).from(orders).where(isNotNull(orders.subuniverse)).groupBy(orders.subuniverse),
+  ]);
+
+  const usedUniverseIds = usedUniverseRows.map((r) => r.id).filter((id): id is string => id != null);
+  const usedSubuniverseIds = usedSubuniverseRows.map((r) => r.id).filter((id): id is string => id != null);
+
+  if (usedUniverseIds.length === 0) return [];
+
+  const [universesRows, subuniversesRows] = await Promise.all([
+    getDb()
+      .select()
+      .from(universes)
+      .where(inArray(universes.universe_tracking_identifier, usedUniverseIds))
+      .orderBy(universes.universe_tracking_identifier),
+    usedSubuniverseIds.length > 0
+      ? getDb().select().from(subuniverses).where(inArray(subuniverses.identifier, usedSubuniverseIds))
+      : Promise.resolve([]),
+  ]);
 
   return universesRows.map((u) => ({
     identifier: u.universe_tracking_identifier,

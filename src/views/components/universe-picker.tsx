@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams, useLocation } from "react-router";
 import { Check, ChevronDown, Minus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -10,18 +9,17 @@ interface UniversePickerProps {
   available: UniverseOption[];
   selected: string[];
   selectedSubuniverses: string[];
+  onFiltersChange: (universes: string[], subuniverses: string[]) => void;
 }
 
 export function UniversePicker({
   available,
   selected,
   selectedSubuniverses,
+  onFiltersChange,
 }: UniversePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const location = useLocation();
   const { t } = useTranslation("UniversePicker");
 
   useEffect(() => {
@@ -38,11 +36,7 @@ export function UniversePicker({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  function pushParams(
-    nextUniverses: Set<string>,
-    nextSubuniverses: Set<string>
-  ) {
-    const params = new URLSearchParams(searchParams.toString());
+  function applyFilters(nextUniverses: Set<string>, nextSubuniverses: Set<string>) {
     const allIds = available.map((u) => u.identifier);
     const allSelected =
       allIds.length > 0 &&
@@ -51,31 +45,17 @@ export function UniversePicker({
       nextSubuniverses.size === 0;
 
     if (allSelected) {
-      params.delete("universes");
-      params.delete("subuniverses");
+      onFiltersChange([], []);
     } else {
-      if (nextUniverses.size === 0) {
-        params.delete("universes");
-      } else {
-        params.set("universes", [...nextUniverses].join(","));
-      }
-      if (nextSubuniverses.size === 0) {
-        params.delete("subuniverses");
-      } else {
-        params.set("subuniverses", [...nextSubuniverses].join(","));
-      }
+      onFiltersChange([...nextUniverses], [...nextSubuniverses]);
     }
-    const qs = params.toString();
-    navigate(qs ? `${location.pathname}?${qs}` : location.pathname, {
-      replace: true,
-    });
   }
 
   function toggleUniverse(uid: string, subs: string[]) {
     if (isAllMode) {
       const nextU = new Set(available.map((u) => u.identifier));
       nextU.delete(uid);
-      pushParams(nextU, new Set());
+      applyFilters(nextU, new Set());
       return;
     }
     const nextU = new Set(selected);
@@ -88,7 +68,7 @@ export function UniversePicker({
       nextU.add(uid);
       for (const s of subs) nextS.delete(s);
     }
-    pushParams(nextU, nextS);
+    applyFilters(nextU, nextS);
   }
 
   function toggleSubuniverse(
@@ -103,7 +83,7 @@ export function UniversePicker({
       for (const s of allSubs) {
         if (s !== subId) nextS.add(s);
       }
-      pushParams(nextU, nextS);
+      applyFilters(nextU, nextS);
       return;
     }
     const nextU = new Set(selected);
@@ -126,7 +106,7 @@ export function UniversePicker({
         nextU.add(parentUid);
       }
     }
-    pushParams(nextU, nextS);
+    applyFilters(nextU, nextS);
   }
 
   const isAllMode =

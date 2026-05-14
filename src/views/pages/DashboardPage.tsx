@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useCallback, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import { StatsCards } from "@/components/stats-cards";
 import { SpendingChart } from "@/components/spending-chart";
 import { OrdersTable } from "@/components/orders-table";
@@ -11,6 +10,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SettingsModal } from "@/components/settings-modal";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api-client";
+import { useFilterState, type FilterState } from "@/lib/use-filter-state";
 import type { DashboardData } from "../../shared/types";
 
 function LoadingSkeleton() {
@@ -66,48 +66,34 @@ function ErrorState({
 
 export function DashboardPage() {
   const { t } = useTranslation("Dashboard");
-  const [searchParams] = useSearchParams();
+  const { filters, setFilters } = useFilterState();
   const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dataVersion, setDataVersion] = useState(0);
 
-  // Parse filter params from URL
-  const universesParam = searchParams.get("universes");
-  const subuniversesParam = searchParams.get("subuniverses");
-  const from = searchParams.get("from") ?? undefined;
-  const to = searchParams.get("to") ?? undefined;
-
-  const selectedUniverses = universesParam
-    ? universesParam.split(",").filter(Boolean)
-    : [];
-  const selectedSubuniverses = subuniversesParam
-    ? subuniversesParam.split(",").filter(Boolean)
-    : [];
-
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async (f: FilterState) => {
     setLoading(true);
     setError(null);
     try {
       const result = await apiClient.getDashboard({
-        universes: selectedUniverses.length > 0 ? selectedUniverses : undefined,
-        subuniverses:
-          selectedSubuniverses.length > 0 ? selectedSubuniverses : undefined,
-        from,
-        to,
+        universes: f.universes.length > 0 ? f.universes : undefined,
+        subuniverses: f.subuniverses.length > 0 ? f.subuniverses : undefined,
+        from: f.from,
+        to: f.to,
       });
       setData(result);
+      setDataVersion((v) => v + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  // Reload whenever search params change
   useEffect(() => {
-    loadDashboard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.toString()]);
+    loadDashboard(filters);
+  }, [filters, loadDashboard]);
 
   // Build a subuniverse name lookup for the orders table
   const subuniverseNames: Record<string, string> = {};
@@ -123,11 +109,14 @@ export function DashboardPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5">
+        <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-3 px-3 py-2.5">
           <div className="flex items-center gap-2 min-w-0">
             <h1 className="font-heading text-sm font-semibold truncate">
-              qoqa-compta
+              QoQa Compta
             </h1>
+            {loading && data && (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
+            )}
             <span className="hidden text-xs text-muted-foreground sm:block">
               <Trans
                 i18nKey="subtitle"
@@ -153,10 +142,18 @@ export function DashboardPage() {
               <>
                 <UniversePicker
                   available={data.universes}
-                  selected={selectedUniverses}
-                  selectedSubuniverses={selectedSubuniverses}
+                  selected={filters.universes}
+                  selectedSubuniverses={filters.subuniverses}
+                  onFiltersChange={(universes, subuniverses) =>
+                    setFilters({ universes, subuniverses })
+                  }
                 />
-                <DateRangePicker from={from} to={to} />
+                <DateRangePicker
+                  from={filters.from}
+                  to={filters.to}
+                  onFromChange={(val) => setFilters({ from: val })}
+                  onToChange={(val) => setFilters({ to: val })}
+                />
               </>
             )}
             <ThemeToggle />
@@ -166,12 +163,12 @@ export function DashboardPage() {
       </header>
 
       {/* Main */}
-      <main className="mx-auto max-w-7xl px-4 py-6 space-y-4">
-        {loading && <LoadingSkeleton />}
-        {!loading && error && (
-          <ErrorState message={error} onRetry={loadDashboard} />
+      <main className="mx-auto max-w-screen-2xl px-3 py-6 space-y-4">
+        {!data && loading && <LoadingSkeleton />}
+        {!data && !loading && error && (
+          <ErrorState message={error} onRetry={() => loadDashboard(filters)} />
         )}
-        {!loading && !error && data && (
+        {data && (
           <>
             <StatsCards stats={data.stats} />
             <SpendingChart
@@ -181,13 +178,14 @@ export function DashboardPage() {
               pieMode={data.pieMode}
             />
             <OrdersTable
+              key={dataVersion}
               initialOrders={data.orders}
               initialPagination={data.pagination}
-              selectedUniverses={selectedUniverses}
-              selectedSubuniverses={selectedSubuniverses}
+              selectedUniverses={filters.universes}
+              selectedSubuniverses={filters.subuniverses}
               subuniverseNames={subuniverseNames}
-              from={from}
-              to={to}
+              from={filters.from}
+              to={filters.to}
             />
           </>
         )}

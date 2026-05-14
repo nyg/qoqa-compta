@@ -11,6 +11,14 @@ import i18n, { SUPPORTED_LOCALES, type SupportedLocale } from "@/i18n/index";
 
 type SyncMode = "full" | "update";
 
+const LOCALE_NAMES: Record<string, string> = {
+  en: "English",
+  fr: "Français",
+  de: "Deutsch",
+  it: "Italiano",
+  rm: "Rumantsch",
+};
+
 interface LogEntry {
   type: SyncProgressEvent["type"];
   message: string;
@@ -128,10 +136,6 @@ export function SettingsModal() {
   }
 
   async function handleResetDb() {
-    if (!confirmReset) {
-      setConfirmReset(true);
-      return;
-    }
     setResetting(true);
     try {
       await apiClient.resetDatabase();
@@ -338,24 +342,40 @@ export function SettingsModal() {
                   </div>
 
                   {/* Reset DB */}
-                  <div className="pt-1 flex items-center gap-2 flex-wrap">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      disabled={resetting}
-                      onClick={handleResetDb}
-                    >
-                      {resetting ? (
-                        <RefreshCw className="size-3 animate-spin" />
-                      ) : (
+                  <div className="pt-1 space-y-2">
+                    {!confirmReset ? (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={resetting}
+                        onClick={() => setConfirmReset(true)}
+                      >
                         <AlertTriangle className="size-3" />
-                      )}
-                      {t("resetDb")}
-                    </Button>
-                    {confirmReset && !resetting && (
-                      <span className="text-xs text-destructive">
-                        {t("resetDbConfirm")}
-                      </span>
+                        {t("resetDb")}
+                      </Button>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs text-destructive">{t("resetDbConfirm")}</p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={resetting}
+                            onClick={handleResetDb}
+                          >
+                            {resetting && <RefreshCw className="size-3 animate-spin" />}
+                            {t("resetDbYes")}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={resetting}
+                            onClick={() => setConfirmReset(false)}
+                          >
+                            {t("resetDbCancel")}
+                          </Button>
+                        </div>
+                      </div>
                     )}
                     {resetSuccess && (
                       <span className="text-xs text-green-500 flex items-center gap-1">
@@ -365,6 +385,23 @@ export function SettingsModal() {
                     )}
                   </div>
                 </section>
+
+                {/* ── Save ── */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    disabled={saving || loading}
+                    onClick={handleSave}
+                  >
+                    {saving ? (
+                      <RefreshCw className="size-3 animate-spin" />
+                    ) : saved ? (
+                      <Check className="size-3" />
+                    ) : null}
+                    {saved ? t("saved") : t("save")}
+                  </Button>
+                </div>
 
                 {/* ── Sync ── */}
                 <section className="space-y-3">
@@ -385,7 +422,7 @@ export function SettingsModal() {
                       >
                         {SUPPORTED_LOCALES.map((loc) => (
                           <option key={loc} value={loc}>
-                            {loc.toUpperCase()}
+                            {LOCALE_NAMES[loc] ?? loc.toUpperCase()}
                           </option>
                         ))}
                       </select>
@@ -399,8 +436,8 @@ export function SettingsModal() {
                         }
                         className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
                       >
-                        <option value="fr">FR</option>
-                        <option value="de">DE</option>
+                        <option value="fr">Français</option>
+                        <option value="de">Deutsch</option>
                       </select>
                     </label>
                   </div>
@@ -495,19 +532,6 @@ export function SettingsModal() {
             <DialogPrimitive.Close render={<Button variant="ghost" size="sm" />}>
               {t("close")}
             </DialogPrimitive.Close>
-            <Button
-              variant="default"
-              size="sm"
-              disabled={saving || loading}
-              onClick={handleSave}
-            >
-              {saving ? (
-                <RefreshCw className="size-3 animate-spin" />
-              ) : saved ? (
-                <Check className="size-3" />
-              ) : null}
-              {saved ? t("saved") : t("save")}
-            </Button>
           </footer>
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>

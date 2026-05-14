@@ -28,7 +28,9 @@
     "noOrders": "Aucune commande trouvée.",
     "pagination": "Page {{current}} / {{total}}",
     "prevPage": "← Précédent",
-    "nextPage": "Suivant →"
+    "nextPage": "Suivant →",
+    "pageSize": "par page",
+    "csvExport": "Exporter CSV"
   },
   "PdfDialog": {
     "title": "Facture {{orderNumber}}",
@@ -69,13 +71,15 @@
     "dbUrlPlaceholder": "postgresql://user:pass@host/db",
     "resetDb": "Réinitialiser la base de données",
     "resetDbConfirm": "Cela supprimera toutes les données synchronisées. Êtes-vous sûr(e) ?",
+    "resetDbYes": "Oui, réinitialiser",
+    "resetDbCancel": "Annuler",
     "resetDbSuccess": "Base de données réinitialisée avec succès.",
     "syncSection": "Synchronisation",
     "uiLocale": "Langue de l'interface",
     "syncLocale": "Langue QoQa",
     "syncModeFull": "Synchronisation complète (toutes les commandes)",
     "syncModeUpdate": "Mise à jour (nouvelles commandes uniquement)",
-    "runSync": "Lancer la sync",
+    "runSync": "Lancer la Synchronisation",
     "cancelSync": "Annuler",
     "syncRunning": "Synchronisation en cours...",
     "syncDone": "Synchronisation terminée.",

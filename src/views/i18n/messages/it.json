@@ -28,7 +28,9 @@
     "noOrders": "Nessun ordine trovato.",
     "pagination": "Pagina {{current}} / {{total}}",
     "prevPage": "← Precedente",
-    "nextPage": "Successivo →"
+    "nextPage": "Successivo →",
+    "pageSize": "per pagina",
+    "csvExport": "Esporta CSV"
   },
   "PdfDialog": {
     "title": "Fattura {{orderNumber}}",
@@ -69,6 +71,8 @@
     "dbUrlPlaceholder": "postgresql://user:pass@host/db",
     "resetDb": "Ripristina database",
     "resetDbConfirm": "Questo eliminerà tutti i dati sincronizzati. Sei sicuro/a?",
+    "resetDbYes": "Sì, ripristina",
+    "resetDbCancel": "Annulla",
     "resetDbSuccess": "Database ripristinato con successo.",
     "syncSection": "Sincronizzazione",
     "uiLocale": "Lingua interfaccia",

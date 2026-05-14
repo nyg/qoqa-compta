@@ -1,12 +1,90 @@
 import { Hono } from "hono";
-import { fetchOrders, fetchOrderPdf } from "../queries";
-import type { OrdersResponse } from "../../shared/types";
+import { fetchOrders, fetchOrderPdf, fetchAllOrders } from "../queries";
+import type { OrdersResponse, QoqaOrder } from "../../shared/types";
 
 const router = new Hono();
 
 function parseList(param: string | undefined): string[] {
   return param ? param.split(",").filter(Boolean) : [];
 }
+
+function escapeCsv(value: string | null | undefined): string {
+  if (value == null) return "";
+  const str = String(value);
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function ordersToCsv(orders: QoqaOrder[]): string {
+  const headers = [
+    "order_number",
+    "order_date",
+    "universe_name",
+    "subuniverse_name",
+    "offer_title",
+    "offer_subtitle",
+    "item_description",
+    "status",
+    "amount_chf",
+    "subtotal_chf",
+    "discount_chf",
+    "vat_chf",
+    "invoice_number",
+  ];
+
+  const rows = orders.map((o) =>
+    [
+      o.order_number,
+      o.order_date,
+      o.universe_name,
+      o.subuniverse_name,
+      o.offer_title,
+      o.offer_subtitle,
+      o.item_description,
+      o.status,
+      o.amount_chf,
+      o.subtotal_chf,
+      o.discount_chf,
+      o.vat_chf,
+      o.invoice_number,
+    ]
+      .map(escapeCsv)
+      .join(",")
+  );
+
+  return [headers.join(","), ...rows].join("\n");
+}
+
+// GET /api/orders/csv  (must be defined before /:orderNumber/pdf)
+router.get("/orders/csv", async (c) => {
+  try {
+    const universeList = parseList(c.req.query("universes"));
+    const subuniverseList = parseList(c.req.query("subuniverses"));
+    const from = c.req.query("from");
+    const to = c.req.query("to");
+
+    const orders = await fetchAllOrders({
+      universes: universeList.length ? universeList : undefined,
+      subuniverses: subuniverseList.length ? subuniverseList : undefined,
+      from,
+      to,
+    });
+
+    const csv = ordersToCsv(orders);
+
+    return new Response(csv, {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="qoqa-orders.csv"`,
+      },
+    });
+  } catch (err) {
+    console.error("[orders/csv]", err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
+});
 
 // GET /api/orders
 router.get("/orders", async (c) => {
