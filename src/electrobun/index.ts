@@ -43,7 +43,8 @@ async function main() {
 
   console.log(`✓ API server listening on http://127.0.0.1:${PORT}`);
 
-  new BrowserWindow({ url, frame: { x: 0, y: 0, width: 1280, height: 900 } });
+  const win = new BrowserWindow({ title: "QoQa Compta", url, frame: { x: 0, y: 0, width: 1280, height: 900 } });
+  win.maximize();
 }
 
 main();
