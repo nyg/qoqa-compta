@@ -2,45 +2,30 @@
 
 ## Overview
 
-The crawler authenticates to QoQa.ch via its REST API (no browser required), then
-uses the QoQa REST API to fetch all order data and download PDF invoices.
+QoQa Compta is a single-process desktop-ready app: a [Hono](https://hono.dev/) server running on [Bun](https://bun.sh) serves both the REST API and (in production) the compiled Vite SPA from `dist/`. The sync engine lives inside the same server process.
 
 ```mermaid
 flowchart TD
-    Auth["requests\n(POST /v2/login)"]
-    JWT["JWT token"]
+    Browser["Browser\n(React SPA)"]
+    Hono["Hono API\n(Bun server :3001)"]
+    Sync["Sync engine\n(src/server/sync.ts)"]
+    Auth["auth.ts\nPOST /v2/login → JWT"]
     QoqaAPI["QoQa REST API\napi.qoqa.ch"]
-    PythonSync["Python Sync\n(requests)"]
-    DB["SQLite /\nPostgreSQL"]
-    PDFs["PDFs\n(local)"]
-    Dashboard["Dashboard\n(Next.js 16)"]
+    DB["SQLite\n(default)\nor PostgreSQL"]
 
-    Auth -->|credentials| JWT
-    JWT -->|auth| QoqaAPI
-    QoqaAPI -->|"JSON + PDF URLs"| PythonSync
-    PythonSync -->|upsert + PDF bytes| DB
-    PythonSync -->|download| PDFs
-    DB --> Dashboard
-    DB -->|"PDF bytes via /api/orders/[n]/pdf"| Dashboard
+    Browser -->|HTTP /api/*| Hono
+    Hono --> Sync
+    Sync --> Auth
+    Auth -->|JWT| QoqaAPI
+    QoqaAPI -->|JSON + PDF bytes| Sync
+    Sync -->|Drizzle upsert| DB
+    Hono -->|Drizzle query| DB
 ```
 
-### Invoice PDFs
+In **development** Vite's dev server runs on `:3000` and proxies `/api/*` to Hono on `:3001`.
+In **production** Hono serves `dist/` directly and falls back to `index.html` for SPA routing.
 
-Each row in `qoqa_orders` carries the raw invoice PDF in a `pdf_data` column
-(`BYTEA` on PostgreSQL, `BLOB` on SQLite). The crawler writes the bytes during
-the same upsert that creates / updates an order, so the data and its invoice
-travel together.
-
-The frontend exposes the PDFs through a dedicated route:
-
-- `GET /api/orders/[orderNumber]/pdf` → streams the bytes with
-  `Content-Type: application/pdf` and `Content-Disposition: inline`.
-- The orders table displays a per-row "View invoice" icon button that opens a
-  Base UI `Dialog` containing an `<iframe>` pointing at that route, so users
-  see the PDF in the browser's native viewer without leaving the page.
-- List queries (`fetchOrders`, `fetchInitialOrders`) **never** select
-  `pdf_data`; instead they project a `has_pdf` boolean (`pdf_data IS NOT NULL`)
-  to keep the orders endpoint cheap.
+The codebase is structured for an eventual [ElectroBun](https://github.com/blackboardsh/electrobun) migration: all API calls in the SPA are isolated behind `src/views/lib/api-client.ts`, making the HTTP transport trivially swappable for ElectroBun RPC.
 
 ---
 
@@ -51,135 +36,162 @@ qoqa-compta/
 ├── .gitignore
 ├── renovate.json
 ├── README.md
+├── index.html                    # Vite SPA entry
+├── vite.config.ts
+├── tsconfig.json
+├── drizzle.config.ts
 ├── docs/
-│   └── architecture.md       # this file
-├── crawler/                  # Python code
-│   ├── .env.example
-│   ├── requirements.txt
-│   ├── crawler/
-│   │   ├── __init__.py
-│   │   ├── __main__.py       # CLI entry point
-│   │   ├── sync.py           # Main synchronisation logic + idempotent migrations
-│   │   ├── api.py            # QoQa REST API client
-│   │   ├── browser.py        # Browser login only (SeleniumBase CDP)
-│   │   ├── db.py             # SQLAlchemy connection and session
-│   │   ├── models/
-│   │   │   ├── __init__.py
-│   │   │   ├── order.py      # SQLAlchemy QoqaOrder model (with pdf_data BLOB)
-│   │   │   ├── universe.py   # SQLAlchemy QoqaUniverse model
-│   │   │   └── subuniverse.py  # SQLAlchemy QoqaSubuniverse model
-│   │   └── utils/
-│   │       ├── __init__.py
-│   │       └── pdf_parser.py # PDF parsing with pdfplumber
-└── frontend/                 # Next.js application
-    ├── .env.example
-    ├── package.json
-    ├── tsconfig.json
-    ├── next.config.ts
-    ├── playwright.config.ts  # Playwright E2E test configuration
-    ├── components.json       # shadcn/ui config (base-mira / Base UI preset)
-    ├── messages/             # next-intl message files (en, fr, de, it, rm)
-    ├── tests/
-    │   ├── universe-picker.spec.ts  # E2E: hierarchical picker behaviour
-    │   └── orders-table.spec.ts     # E2E: two-pill universe display
-    └── src/
-        ├── app/
-        │   ├── globals.css
-        │   ├── layout.tsx
-        │   ├── page.tsx      # Main dashboard (dynamic, reads ?universes= + ?subuniverses= params)
-        │   └── api/
-        │       └── orders/
-        │           ├── route.ts                        # Paginated orders + aggregate data endpoint
-        │           └── [orderNumber]/
-        │               └── pdf/
-        │                   └── route.ts                # Streams stored invoice PDF bytes
-        ├── components/
-        │   ├── ui/               # shadcn/ui primitives (Base UI wrappers)
-        │   ├── universe-picker.tsx   # Hierarchical universe+subuniverse filter (client)
-        │   ├── orders-table.tsx      # Filterable, paginated orders table (client)
-        │   ├── order-pdf-dialog.tsx  # Invoice PDF popup (Base UI Dialog + iframe)
-        │   ├── spending-chart.tsx    # Monthly + yearly Recharts charts (client)
-        │   ├── stats-cards.tsx       # Aggregate stat cards (server)
-        │   ├── theme-provider.tsx
-        │   └── theme-toggle.tsx
-        ├── i18n/
-        │   └── request.ts    # next-intl locale detection from Accept-Language
-        ├── lib/
-        │   ├── db.ts             # Drizzle ORM client (SQLite or PostgreSQL)
-        │   ├── formatter-context.tsx  # React context for fr-CH formatters
-        │   ├── formatters.ts     # formatCHF, formatDate, formatMonth helpers
-        │   ├── queries.ts        # All DB query functions (Drizzle ORM)
-        │   ├── schema.ts         # Drizzle schema (qoqa_orders + qoqa_universes + qoqa_subuniverses)
-        │   └── utils.ts          # cn() and other utilities
-        └── types/
-            └── order.ts          # QoqaOrder, UniverseOption, SubuniverseOption, OrderStats, MonthlySpending, YearlySpending
+│   └── architecture.md           # this file
+└── src/
+    ├── server/                   # Hono API + sync engine (Bun)
+    │   ├── index.ts              # Server entry point — mounts routes, bootstraps DB
+    │   ├── auth.ts               # POST /v2/login → Bearer token
+    │   ├── api.ts                # QoQa REST API client (universes, purchases, PDFs)
+    │   ├── sync.ts               # Full / incremental sync pipeline (SSE progress)
+    │   ├── sync-job.ts           # Running-job state (abort controller, status)
+    │   ├── db.ts                 # Drizzle ORM client — SQLite or PostgreSQL
+    │   ├── schema.ts             # Drizzle table definitions (dual SQLite + PG)
+    │   ├── schema-bootstrap.ts   # CREATE TABLE IF NOT EXISTS bootstrap
+    │   ├── queries.ts            # All DB operations (upsert, select, aggregate)
+    │   ├── settings.ts           # settings.json read/write (platform-aware path)
+    │   └── routes/
+    │       ├── dashboard.ts      # GET /api/dashboard
+    │       ├── orders.ts         # GET /api/orders, GET /api/orders/:n/pdf, GET /api/orders/csv
+    │       ├── sync.ts           # POST /api/sync, DELETE /api/sync, GET /api/sync/stream (SSE)
+    │       └── settings.ts       # GET/PUT /api/settings, DELETE /api/settings/database
+    ├── views/                    # Vite SPA (React 19)
+    │   ├── main.tsx              # React entry point
+    │   ├── globals.css           # Tailwind v4 + CSS variable theming
+    │   ├── pages/
+    │   │   └── DashboardPage.tsx # Main dashboard page
+    │   ├── components/
+    │   │   ├── ui/               # Base UI primitives (button, input, card, badge)
+    │   │   ├── universe-picker.tsx    # Hierarchical universe+subuniverse filter
+    │   │   ├── orders-table.tsx       # Searchable, paginated orders table
+    │   │   ├── order-pdf-dialog.tsx   # Invoice PDF popup (Base UI Dialog + iframe)
+    │   │   ├── spending-chart.tsx     # Monthly + yearly Recharts ComposedChart
+    │   │   ├── spending-pie-chart.tsx # Spending breakdown by universe/subuniverse
+    │   │   ├── stats-cards.tsx        # Aggregate stat cards
+    │   │   ├── date-range-picker.tsx  # Date range filter
+    │   │   ├── settings-modal.tsx     # Settings + sync control modal
+    │   │   ├── theme-provider.tsx
+    │   │   └── theme-toggle.tsx
+    │   ├── i18n/
+    │   │   ├── index.ts          # react-i18next setup + locale detection
+    │   │   └── messages/         # en.json, fr.json, de.json, it.json, rm.json
+    │   └── lib/
+    │       ├── api-client.ts     # All fetch calls — swap for ElectroBun RPC here
+    │       ├── formatter-context.tsx  # React context for fr-CH number/date formatters
+    │       ├── formatters.ts     # formatCHF, formatDate, formatMonth
+    │       ├── use-filter-state.ts    # URL-state hook for universe/date filters
+    │       └── utils.ts          # cn() and other utilities
+    └── shared/
+        └── types.ts              # Shared TypeScript types (QoqaOrder, AppSettings, …)
 ```
+
+---
+
+## Sync pipeline
+
+The sync runs inside the Hono server process as an async task managed by `src/server/sync-job.ts`. Progress is streamed to the client via Server-Sent Events (`GET /api/sync/stream`).
+
+```
+POST /api/sync { mode: "full" | "update" }
+  → auth.ts          — POST auth.qoqa.ch/v2/login → JWT
+  → api.ts           — fetchUniverses + sub-universes → upsert to qoqa_universes / qoqa_subuniverses
+  → api.ts           — fetchPurchases (paginated list)
+  → for each order:
+      api.ts         — fetchOrderDetail → extract fields
+      api.ts         — downloadPdf → pdf_data bytes
+      queries.ts     — upsertOrder (INSERT … ON CONFLICT DO UPDATE)
+  → SSE stream emits typed SyncProgressEvent at each step
+```
+
+In **update** mode, sync stops after 5 consecutive already-known orders to avoid full re-scans.
+
+---
+
+## Settings
+
+User settings are persisted to a platform-aware JSON file:
+
+| Platform | Path |
+|---|---|
+| macOS | `~/Library/Application Support/qoqa-compta/settings.json` |
+| Windows | `%APPDATA%\qoqa-compta\settings.json` |
+| Linux | `$XDG_CONFIG_HOME/qoqa-compta/settings.json` (or `~/.config/…`) |
+
+In **development** only, env vars (`QOQA_EMAIL`, `QOQA_PASSWORD`, `DATABASE_URL`) take precedence over the file.
 
 ---
 
 ## Database
 
-The crawler automatically creates the tables on first run (via SQLAlchemy `create_all`)
-and runs idempotent migrations (column adds, column renames) via `_run_migrations()`
-before `create_all`. New columns added to existing models — like `pdf_data` — are
-backfilled into pre-existing tables with `ALTER TABLE … ADD COLUMN`.
+SQLite is the default (no setup needed). PostgreSQL is supported for remote/shared setups.
 
-### SQLite (default)
+### SQLite
 
-No setup required. The crawler creates the database file and its parent directory
-automatically. Both the crawler and frontend must point to the same absolute path.
+The database file defaults to:
 
-WAL mode and a 5-second busy timeout are enabled automatically so concurrent
-reads (frontend) and writes (crawler) don't deadlock.
+| Platform | Path |
+|---|---|
+| macOS | `~/Library/Application Support/qoqa-compta/qoqa.db` |
+| Windows | `%APPDATA%\qoqa-compta\qoqa.db` |
+| Linux | `$XDG_DATA_HOME/qoqa-compta/qoqa.db` |
 
-### PostgreSQL (optional)
+### PostgreSQL
 
-Set `DATABASE_URL` to a PostgreSQL connection string in both `crawler/.env` and
-`frontend/.env.local`. Useful when deploying the frontend to Vercel.
+Set `DATABASE_URL` to a `postgresql://…` connection string in the Settings modal (or `.env` in dev).
 
 ### Table structure
 
 ```sql
+-- Orders — one row per QoQa order; pdf_data stores the raw invoice PDF bytes
 CREATE TABLE qoqa_orders (
-    id               SERIAL PRIMARY KEY,
-    order_number     VARCHAR(64) UNIQUE NOT NULL,
-    order_date       DATE NOT NULL,
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,  -- SERIAL on PG
+    order_number     TEXT UNIQUE NOT NULL,
+    order_date       TEXT NOT NULL,
     amount_chf       NUMERIC(10, 2) NOT NULL,
-    status           VARCHAR(32),
+    status           TEXT,
     subtotal_chf     NUMERIC(10, 2),
     discount_chf     NUMERIC(10, 2),
     vat_chf          NUMERIC(10, 2),
-    delivery_on      DATE,
-    offer_id         VARCHAR(32),
-    offer_title      VARCHAR(255),
-    offer_subtitle   VARCHAR(255),
-    universe         VARCHAR(64),   -- universe_tracking_identifier (FK → qoqa_universes)
-    subuniverse      VARCHAR(64),   -- cleaned identifier (FK → qoqa_subuniverses)
+    delivery_on      TEXT,
+    offer_id         TEXT,
+    offer_title      TEXT,
+    offer_subtitle   TEXT,
+    universe         TEXT,          -- universe_tracking_identifier (FK → qoqa_universes)
+    subuniverse      TEXT,          -- cleaned identifier (FK → qoqa_subuniverses)
     item_description TEXT,
-    invoice_number   VARCHAR(64),
-    pdf_filename     VARCHAR(255),
-    pdf_data         BYTEA,         -- raw invoice PDF bytes (BLOB on SQLite)
+    invoice_number   TEXT,
+    pdf_filename     TEXT,
+    pdf_data         BLOB,          -- BYTEA on PostgreSQL
     raw_json         TEXT,
-    created_at       TIMESTAMPTZ DEFAULT NOW(),
-    updated_at       TIMESTAMPTZ DEFAULT NOW()
+    created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Populated from the authenticated /v2/alerts?locale=fr&sub_universe=true endpoint.
--- The universe name is stored in the `name` column (locale = fr from the API response).
+-- Universe lookup — populated from /v2/alerts API on every sync
 CREATE TABLE qoqa_universes (
-    id                           SERIAL PRIMARY KEY,
-    universe_tracking_identifier VARCHAR(64) UNIQUE NOT NULL,
-    name                         VARCHAR(255),
-    updated_at                   TIMESTAMPTZ DEFAULT NOW()
+    id                           INTEGER PRIMARY KEY AUTOINCREMENT,
+    universe_tracking_identifier TEXT UNIQUE NOT NULL,
+    name_fr                      TEXT,
+    name_de                      TEXT,
+    updated_at                   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Sub-universes extracted from the push_topics field of each universe in the alerts API.
--- Identifiers are cleaned at parse time: strip subuniverse_/q prefix and qoqach suffix.
+-- Sub-universe lookup — extracted from push_topics of each universe
 CREATE TABLE qoqa_subuniverses (
-    id                           SERIAL PRIMARY KEY,
-    identifier                   VARCHAR(64) UNIQUE NOT NULL,
-    name                         VARCHAR(255),
-    universe_tracking_identifier VARCHAR(64) NOT NULL,  -- FK → qoqa_universes
-    updated_at                   TIMESTAMPTZ DEFAULT NOW()
+    id                           INTEGER PRIMARY KEY AUTOINCREMENT,
+    identifier                   TEXT UNIQUE NOT NULL,
+    name_fr                      TEXT,
+    name_de                      TEXT,
+    universe_tracking_identifier TEXT NOT NULL,  -- FK → qoqa_universes
+    updated_at                   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ```
+
+### Invoice PDFs
+
+Each row in `qoqa_orders` carries the raw invoice PDF in the `pdf_data` column. List queries never select `pdf_data`; instead they project a `has_pdf` boolean (`pdf_data IS NOT NULL`) to keep the orders endpoint cheap. PDFs are served via `GET /api/orders/:orderNumber/pdf`.
+

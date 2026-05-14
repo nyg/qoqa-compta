@@ -34,19 +34,15 @@ bun install
 
 ### Configure
 
-Copy `.env.example` to `.env` and fill in your credentials:
+Credentials and the database URL are configured from the in-app **Settings** modal (gear icon). No `.env` file is required.
 
-```bash
-cp .env.example .env
-```
+In development you can optionally create a `.env` file with any of the following overrides (they take precedence over the settings file):
 
 | Variable | Description |
 |---|---|
 | `QOQA_EMAIL` | QoQa.ch login email |
 | `QOQA_PASSWORD` | QoQa.ch login password |
-| `DATABASE_URL` | _(optional)_ SQLite or PostgreSQL URL — defaults to `~/Library/Application Support/qoqa-compta/qoqa.db` on macOS |
-
-Credentials and the database URL can also be set from the in-app **Settings** modal without touching `.env`.
+| `DATABASE_URL` | SQLite or PostgreSQL URL — defaults to `~/Library/Application Support/qoqa-compta/qoqa.db` on macOS |
 
 ### Run (development)
 
