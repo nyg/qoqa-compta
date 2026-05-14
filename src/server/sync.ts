@@ -23,72 +23,55 @@ export interface SyncOptions {
   mode: "full" | "update";
 }
 
-// ── PDF invoice number extraction ─────────────────────────────────────────────
-// Basic heuristic — replace with a proper PDF library (e.g. pdf-parse) for
-// reliable extraction.
-
-function parseInvoice(pdfBytes: Uint8Array): { invoice_number: string | null } {
-  try {
-    // Many QoQa PDFs embed text as latin-1; look for common invoice number patterns
-    const text = new TextDecoder("latin-1").decode(pdfBytes);
-    const match =
-      text.match(/facture\s+(?:n[o°]?[\s.]*)?(\d{5,})/i) ??
-      text.match(/invoice\s+(?:n[o°]?[\s.]*)?(\d{5,})/i) ??
-      text.match(/(?:^|\s)(\d{7,})\s/m);
-    if (match) return { invoice_number: match[1] };
-  } catch {
-    // ignore decode errors
-  }
-  return { invoice_number: null };
-}
-
 // ── Field extraction ───────────────────────────────────────────────────────────
 
 function extractOrderFields(detail: OrderDetailData): NewOrderData {
-  const orderNumber = detail.order_number ?? String(detail.id ?? "");
-  const amount = parseFloat(String(detail.amount_chf ?? detail.total_amount ?? 0));
+  const orderNumber = detail.reference ?? String(detail.id ?? "");
+  const amount = parseFloat(String(detail.total ?? 0));
 
-  const campaign = (detail.campaign ?? {}) as NonNullable<OrderDetailData["campaign"]>;
-  const universeInfo = campaign.universe ?? {};
-  const universe = universeInfo.tracking_identifier ?? null;
+  const offer = (detail.offer ?? {}) as NonNullable<OrderDetailData["offer"]>;
+  const universe = offer.universe_tracking_identifier ?? null;
 
   let subuniverse: string | null = null;
-  const rawSub = universeInfo.sub_universe?.tracking_identifier;
-  if (rawSub) {
-    subuniverse = cleanSubuniverseIdentifier(rawSub);
+  const subIds = offer.sub_universe_tracking_identifiers;
+  if (subIds && subIds.length > 0) {
+    subuniverse = cleanSubuniverseIdentifier(subIds[0]);
   }
 
   const createdAt = detail.created_at ?? "";
   const orderDate = createdAt.length >= 10 ? createdAt.slice(0, 10) : createdAt;
 
-  const items = detail.items ?? [];
-  const itemDescription = items.length > 0 ? (items[0].description ?? null) : null;
+  const items = detail.order_items ?? [];
+  const itemDescription = items.length > 0 ? (items[0].full_name ?? null) : null;
+  const vatCentimes = items.reduce((sum, item) => sum + (item.vat_amount_to_centimes ?? 0), 0);
+  const vatChf = vatCentimes > 0 ? String(vatCentimes / 100) : null;
+
+  // Invoice number from accounting_documents[0].title (e.g. "Facture 12345")
+  const docs = detail.accounting_documents ?? [];
+  let invoiceNumber: string | null = null;
+  if (docs.length > 0) {
+    const docTitle = docs[0].title ?? "";
+    invoiceNumber = docTitle.replace(/^Facture\s*/i, "").trim() || null;
+  }
 
   return {
     order_number: orderNumber,
     order_date: orderDate,
     amount_chf: isNaN(amount) ? "0" : String(amount),
     status: detail.status ?? null,
-    subtotal_chf:
-      detail.subtotal_amount != null
-        ? String(parseFloat(String(detail.subtotal_amount)))
-        : null,
-    discount_chf:
-      detail.discount_amount != null
-        ? String(parseFloat(String(detail.discount_amount)))
-        : null,
-    vat_chf:
-      detail.vat_amount != null
-        ? String(parseFloat(String(detail.vat_amount)))
-        : null,
+    subtotal_chf: detail.subtotal != null ? String(parseFloat(String(detail.subtotal))) : null,
+    discount_chf: detail.discount_amount_to_centimes
+      ? String(detail.discount_amount_to_centimes / 100)
+      : null,
+    vat_chf: vatChf,
     delivery_on: detail.delivery_on ?? null,
-    offer_id: campaign.id != null ? String(campaign.id) : null,
-    offer_title: campaign.title ?? null,
-    offer_subtitle: campaign.subtitle ?? null,
+    offer_id: offer.id != null ? String(offer.id) : null,
+    offer_title: offer.title ?? null,
+    offer_subtitle: offer.subtitle ?? null,
     universe,
     subuniverse,
     item_description: itemDescription,
-    invoice_number: detail.invoice_number ?? null,
+    invoice_number: invoiceNumber,
     raw_json: JSON.stringify(detail),
   };
 }
@@ -173,14 +156,16 @@ export async function syncOrders(
       return;
     }
 
-    const orderNumber = String(purchase.order_number ?? purchase.id ?? "");
+    const orderId = String(purchase.id ?? "");
+    // reference is the human-readable order number (e.g. "QO-12345") stored in DB
+    const orderReference = purchase.reference ? String(purchase.reference) : orderId;
 
     if (mode === "update") {
-      const existing = await getOrderByNumber(orderNumber);
+      const existing = await getOrderByNumber(orderReference);
       if (existing !== null) {
         consecutiveUnchanged++;
         skippedCount++;
-        emit(makeEvent("order_skipped", `Skipped already-synced order ${orderNumber}`));
+        emit(makeEvent("order_skipped", `Skipped already-synced order ${orderReference}`));
         if (consecutiveUnchanged >= 5) {
           emit(makeEvent("done", `Reached already-synced orders — ${syncedCount} synced, ${pdfCount} with PDF`, { synced: syncedCount, withPdf: pdfCount, skipped: skippedCount, errors: errorCount }));
           return;
@@ -191,33 +176,27 @@ export async function syncOrders(
     }
 
     try {
-      const orderId = String(purchase.id ?? "");
       const detail = await fetchOrderDetail(token, orderId, locale);
       const orderData = extractOrderFields(detail);
 
-      // Download PDF if URL is present
+      // PDF URL: accounting_documents[0].pdf_link, fallback to invoice_link
       let hasPdf = false;
-      const pdfUrl = (detail.invoice_url ?? detail.pdf_url) as string | undefined;
+      const pdfUrl = detail.accounting_documents?.[0]?.pdf_link ?? detail.invoice_link;
       if (pdfUrl) {
         const pdfBytes = await downloadPdf(pdfUrl);
         if (pdfBytes) {
           hasPdf = true;
           pdfCount++;
           orderData.pdf_data = pdfBytes;
-          const parsed = parseInvoice(pdfBytes);
-          if (parsed.invoice_number) {
-            orderData.invoice_number = parsed.invoice_number;
-          }
         }
       }
 
       await upsertOrder(orderData);
       syncedCount++;
-      emit(makeEvent("order_synced", `Synced order ${orderNumber}${hasPdf ? " (with PDF)" : ""}`, { hasPdf }));
+      emit(makeEvent("order_synced", `Synced order ${orderData.order_number}${hasPdf ? " (with PDF)" : ""}`, { hasPdf }));
     } catch (err) {
-      // Log per-order errors but continue
       errorCount++;
-      emit(makeEvent("order_error", `Error syncing order ${orderNumber}: ${(err as Error).message}`));
+      emit(makeEvent("order_error", `Error syncing order ${orderReference}: ${(err as Error).message}`));
     }
   }
 
