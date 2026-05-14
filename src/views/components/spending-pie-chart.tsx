@@ -16,6 +16,41 @@ interface SpendingPieChartProps {
   title: string;
 }
 
+function renderPctLabel({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  percent,
+}: {
+  cx: number;
+  cy: number;
+  midAngle: number;
+  innerRadius: number;
+  outerRadius: number;
+  percent: number;
+}) {
+  if (percent < 0.06) return null;
+  const r = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + r * Math.cos(-(midAngle * Math.PI) / 180);
+  const y = cy + r * Math.sin(-(midAngle * Math.PI) / 180);
+  return (
+    <text
+      x={x}
+      y={y}
+      textAnchor="middle"
+      dominantBaseline="central"
+      fill="white"
+      fontSize={11}
+      fontWeight="700"
+      pointerEvents="none"
+    >
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+}
+
 export function SpendingPieChart({ data, title }: SpendingPieChartProps) {
   const { formatCHF } = useFormatter();
   const grandTotal = data.reduce((sum, d) => sum + d.total, 0);
@@ -37,6 +72,8 @@ export function SpendingPieChart({ data, title }: SpendingPieChartProps) {
               innerRadius={55}
               outerRadius={95}
               paddingAngle={2}
+              label={renderPctLabel as any}
+              labelLine={false}
             >
               {data.map((entry, index) => (
                 <Cell

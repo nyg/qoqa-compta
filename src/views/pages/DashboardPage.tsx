@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw, Settings } from "lucide-react";
 import { StatsCards } from "@/components/stats-cards";
 import { SpendingChart } from "@/components/spending-chart";
 import { OrdersTable } from "@/components/orders-table";
@@ -65,12 +65,16 @@ function ErrorState({
 }
 
 export function DashboardPage() {
-  const { t } = useTranslation("Dashboard");
+  const { t, i18n } = useTranslation("Dashboard");
   const { filters, setFilters } = useFilterState();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const qoqaLang = i18n.language === "de" ? "de" : "fr";
+  const qoqaUrl = `https://www.qoqa.ch/${qoqaLang}/my_account/orders`;
 
   const loadDashboard = useCallback(async (f: FilterState) => {
     setLoading(true);
@@ -111,9 +115,7 @@ export function DashboardPage() {
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-3 px-3 py-2.5">
           <div className="flex items-center gap-2 min-w-0">
-            <h1 className="font-heading text-sm font-semibold truncate">
-              QoQa Compta
-            </h1>
+            <h1 className="font-heading text-sm font-semibold truncate">QoQa Compta</h1>
             {loading && data && (
               <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
             )}
@@ -122,15 +124,13 @@ export function DashboardPage() {
                 i18nKey="subtitle"
                 ns="Dashboard"
                 components={{
-                  link: (
+                  qoqa: (
                     <a
-                      href="https://qoqa.ch/fr/my_account/orders"
+                      href={qoqaUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline underline-offset-4 hover:text-foreground transition-colors"
-                    >
-                      QoQa.ch
-                    </a>
+                    />
                   ),
                 }}
               />
@@ -157,7 +157,7 @@ export function DashboardPage() {
               </>
             )}
             <ThemeToggle />
-            <SettingsModal />
+            <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
           </div>
         </div>
       </header>
@@ -170,23 +170,55 @@ export function DashboardPage() {
         )}
         {data && (
           <>
-            <StatsCards stats={data.stats} />
-            <SpendingChart
-              monthly={data.monthly}
-              yearly={data.yearly}
-              pieData={data.pieData}
-              pieMode={data.pieMode}
-            />
-            <OrdersTable
-              key={dataVersion}
-              initialOrders={data.orders}
-              initialPagination={data.pagination}
-              selectedUniverses={filters.universes}
-              selectedSubuniverses={filters.subuniverses}
-              subuniverseNames={subuniverseNames}
-              from={filters.from}
-              to={filters.to}
-            />
+            {data.stats.order_count === 0 &&
+            filters.universes.length === 0 &&
+            filters.subuniverses.length === 0 &&
+            !filters.from &&
+            !filters.to ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+                <Settings className="h-10 w-10 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">{t("emptyTitle")}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    <Trans
+                      i18nKey="emptyDetail"
+                      ns="Dashboard"
+                      components={{
+                        settings: (
+                          <button
+                            type="button"
+                            className="underline underline-offset-4 hover:text-foreground transition-colors"
+                            onClick={() => {
+                              setSettingsOpen(true);
+                            }}
+                          />
+                        ),
+                      }}
+                    />
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <StatsCards stats={data.stats} />
+                <SpendingChart
+                  monthly={data.monthly}
+                  yearly={data.yearly}
+                  pieData={data.pieData}
+                  pieMode={data.pieMode}
+                />
+                <OrdersTable
+                  key={dataVersion}
+                  initialOrders={data.orders}
+                  initialPagination={data.pagination}
+                  selectedUniverses={filters.universes}
+                  selectedSubuniverses={filters.subuniverses}
+                  subuniverseNames={subuniverseNames}
+                  from={filters.from}
+                  to={filters.to}
+                />
+              </>
+            )}
           </>
         )}
       </main>

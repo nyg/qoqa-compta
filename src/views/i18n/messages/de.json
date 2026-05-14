@@ -1,8 +1,10 @@
 {
   "Dashboard": {
-    "subtitle": "Ihr <link>QoQa.ch</link> Ausgaben-Dashboard",
+    "subtitle": "Ihr <qoqa>QoQa.ch</qoqa> Ausgaben-Dashboard",
     "errorTitle": "Verbindung zur Datenbank fehlgeschlagen.",
-    "errorDetail": "Stellen Sie sicher, dass <code>DATABASE_URL</code> in den Einstellungen korrekt konfiguriert ist."
+    "errorDetail": "Stellen Sie sicher, dass <code>DATABASE_URL</code> in den Einstellungen korrekt konfiguriert ist.",
+    "emptyTitle": "Keine Bestellungen in der Datenbank gefunden.",
+    "emptyDetail": "Öffnen Sie die <settings>Einstellungen</settings>, um Ihre Datenbankverbindung zu konfigurieren und eine Synchronisation zu starten."
   },
   "StatsCards": {
     "totalSpent": "Gesamtausgaben",

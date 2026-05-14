@@ -123,7 +123,7 @@ export function OrdersTable({
                 value={pageSize}
                 onChange={handlePageSizeChange}
                 aria-label={t("pageSize")}
-                className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-7 rounded-md border border-input bg-background px-2 py-0 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {PAGE_SIZE_OPTIONS.map((n) => (
                   <option key={n} value={n}>
@@ -132,7 +132,7 @@ export function OrdersTable({
                 ))}
               </select>
               <a href={csvUrl} download="qoqa-orders.csv">
-                <Button variant="outline" size="sm">
+                <Button variant="outline">
                   <Download className="h-3.5 w-3.5 mr-1.5" />
                   {t("csvExport")}
                 </Button>

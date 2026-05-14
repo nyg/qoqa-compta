@@ -40,9 +40,15 @@ function logEntryColor(type: SyncProgressEvent["type"]): string {
   return "text-muted-foreground";
 }
 
-export function SettingsModal() {
+export function SettingsModal({ open: controlledOpen, onOpenChange }: { open?: boolean; onOpenChange?: (open: boolean) => void } = {}) {
   const { t } = useTranslation("Settings");
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    setInternalOpen(v);
+    onOpenChange?.(v);
+  };
 
   // Settings form state
   const [email, setEmail] = useState("");

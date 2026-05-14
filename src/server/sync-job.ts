@@ -66,6 +66,9 @@ export function startSync(options: SyncOptions): { ok: boolean; error?: string }
   _startedAt = new Date().toISOString();
   _mode = options.mode;
   _abortController = new AbortController();
+  // Clear stale events from any previous sync so new subscribers don't see
+  // an old "done" event and close the stream prematurely.
+  _eventBuffer.length = 0;
 
   // Run async; do not await here so the caller gets a response immediately
   syncOrders(options, addEvent, _abortController.signal)

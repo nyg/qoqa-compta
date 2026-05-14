@@ -1,8 +1,10 @@
 {
   "Dashboard": {
-    "subtitle": "Il tuo pannello di spesa <link>QoQa.ch</link>",
+    "subtitle": "Il tuo pannello di spesa <qoqa>QoQa.ch</qoqa>",
     "errorTitle": "Impossibile connettersi al database.",
-    "errorDetail": "Assicurati che <code>DATABASE_URL</code> sia correttamente configurato nelle Impostazioni."
+    "errorDetail": "Assicurati che <code>DATABASE_URL</code> sia correttamente configurato nelle Impostazioni.",
+    "emptyTitle": "Nessun ordine trovato nel database.",
+    "emptyDetail": "Apri le <settings>Impostazioni</settings> per configurare la connessione al database ed eseguire una sincronizzazione per importare i tuoi ordini QoQa."
   },
   "StatsCards": {
     "totalSpent": "Totale speso",

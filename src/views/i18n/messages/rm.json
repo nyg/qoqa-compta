@@ -1,8 +1,10 @@
 {
   "Dashboard": {
-    "subtitle": "Voss panel da spesas <link>QoQa.ch</link>",
+    "subtitle": "Voss panel da spesas <qoqa>QoQa.ch</qoqa>",
     "errorTitle": "Impossibel da connectar cun la banca da datas.",
-    "errorDetail": "Controllai che <code>DATABASE_URL</code> saja configurà correctamain en ils Parameters."
+    "errorDetail": "Controllai che <code>DATABASE_URL</code> saja configurà correctamain en ils Parameters.",
+    "emptyTitle": "Naginas ordinaziuns chattas en la banca da datas.",
+    "emptyDetail": "Avra ils <settings>Parameters</settings> per configurar la connexiun cun la banca da datas ed aviar ina sincronisaziun."
   },
   "StatsCards": {
     "totalSpent": "Total spendì",
