@@ -99,6 +99,45 @@ jobs:
       - name: Build desktop app
         run: bunx electrobun build --env=stable
 
+      - name: Wrap Windows artifacts in NSIS installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem artifacts -Filter "*.zip" | Select-Object -First 1
+          if (-not $zip) { throw "No zip found in artifacts/ — electrobun Windows build may have failed" }
+          Expand-Archive $zip.FullName -DestinationPath sfx-staging
+
+          # The electrobun zip layout:
+          #   QoQa Compta-Setup.exe                     (extractor stub, root)
+          #   .installer/QoQa Compta-Setup.tar.zst      (app archive)
+          #   .installer/QoQa Compta-Setup.metadata.json
+          # The stub derives archive/metadata filenames from its own name — do NOT rename it.
+          $installerDir = "sfx-staging\.installer"
+          $outExe = [IO.Path]::GetFullPath("artifacts\QoQa Compta-Setup.exe")
+          $stub   = [IO.Path]::GetFullPath("sfx-staging\QoQa Compta-Setup.exe")
+          $arch   = Get-ChildItem $installerDir -Filter "*.tar.zst"   | Select-Object -First 1 | ForEach-Object FullName
+          $meta   = Get-ChildItem $installerDir -Filter "*.metadata.json" | Select-Object -First 1 | ForEach-Object FullName
+
+          @"
+          Name "QoQa Compta"
+          OutFile "$outExe"
+          RequestExecutionLevel user
+
+          Section
+            SetOutPath "`$TEMP\QoQaComptaSetup"
+            File "$stub"
+            File "$arch"
+            File "$meta"
+            ExecWait '"`$TEMP\QoQaComptaSetup\QoQa Compta-Setup.exe"'
+            RMDir /r "`$TEMP\QoQaComptaSetup"
+          SectionEnd
+          "@ | Set-Content installer.nsi -Encoding UTF8
+
+          makensis installer.nsi
+          if ($LASTEXITCODE -ne 0) { throw "NSIS compilation failed" }
+          if (-not (Test-Path $outExe)) { throw "NSIS produced no output exe" }
+          Remove-Item artifacts\*.zip
+
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -129,7 +168,7 @@ jobs:
       - name: Rename release assets
         run: |
           find artifacts -name '*.dmg' -exec mv {} 'artifacts/QoQa Compta.dmg' \;
-          find artifacts -name '*.exe' -exec mv {} 'artifacts/QoQa Compta.exe' \; || true
+          find artifacts -name '*.exe' -exec mv {} 'artifacts/QoQa Compta.exe' \;
 
       - name: Create GitHub release
         run: |
