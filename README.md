@@ -1,5 +1,9 @@
 # QoQa Compta
 
+<p align="center">
+  <img src="docs/icon.svg" width="80" alt="QoQa Compta icon" />
+</p>
+
 > Desktop-ready spending dashboard for [QoQa.ch](https://www.qoqa.ch) — automatically syncs your orders and PDF invoices to a local SQLite (or PostgreSQL) database and displays spending charts, stats, and a searchable orders table.
 
 ---
@@ -121,6 +125,7 @@ src/
     types.ts        # Shared TypeScript types
 scripts/
   prebuild.ts       # ElectroBun preBuild hook — runs `vite build`
+  make-iconset.sh   # Converts docs/icon.svg → assets/icon.iconset/ (run once after icon changes)
 electrobun.config.ts  # ElectroBun build configuration
 ```
 

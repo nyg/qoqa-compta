@@ -10,6 +10,9 @@ export default {
     version,
   },
   build: {
+    mac: {
+      icons: "assets/icon.iconset",
+    },
     bun: {
       entrypoint: "src/electrobun/index.ts",
     },
