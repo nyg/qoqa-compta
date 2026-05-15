@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Download, Search } from "lucide-react";
+import { Download, Globe, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ interface OrdersTableProps {
   selectedUniverses: string[];
   selectedSubuniverses: string[];
   subuniverseNames: Record<string, string>;
+  syncLocale: "fr" | "de";
   from?: string;
   to?: string;
 }
@@ -28,6 +29,7 @@ export function OrdersTable({
   selectedUniverses,
   selectedSubuniverses,
   subuniverseNames,
+  syncLocale,
   from,
   to,
 }: OrdersTableProps) {
@@ -291,10 +293,21 @@ export function OrdersTable({
                       {formatCHF(parseFloat(order.amount_chf))}
                     </td>
                     <td className="px-2 py-3 text-right">
-                      <OrderPdfDialog
-                        orderNumber={order.order_number}
-                        disabled={!order.has_pdf}
-                      />
+                      <div className="flex items-center justify-end gap-1">
+                        <OrderPdfDialog orderNumber={order.order_number} disabled={!order.has_pdf} />
+                        {order.offer_id && (
+                          <a
+                            href={`https://www.qoqa.ch/${syncLocale}/offers/${order.offer_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={t("viewOnQoqa")}
+                            aria-label={t("viewOnQoqa")}
+                            className="inline-flex size-7 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                          >
+                            <Globe className="size-3.5" aria-hidden />
+                          </a>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

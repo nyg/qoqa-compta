@@ -32,7 +32,8 @@
     "prevPage": "← Precedent",
     "nextPage": "Suandant →",
     "pageSize": "per pagina",
-    "csvExport": "Exportar CSV"
+    "csvExport": "Exportar CSV",
+    "viewOnQoqa": "Vesair sin QoQa"
   },
   "PdfDialog": {
     "title": "Fattura {{orderNumber}}",

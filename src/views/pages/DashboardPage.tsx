@@ -214,6 +214,7 @@ export function DashboardPage() {
                   selectedUniverses={filters.universes}
                   selectedSubuniverses={filters.subuniverses}
                   subuniverseNames={subuniverseNames}
+                  syncLocale={data.syncLocale}
                   from={filters.from}
                   to={filters.to}
                 />

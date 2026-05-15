@@ -8,6 +8,7 @@ import {
   fetchUniverses,
   fetchSpendingByGroup,
 } from "../queries";
+import { readSettings } from "../settings";
 import type { DashboardData, SpendingByGroup } from "../../shared/types";
 
 const router = new Hono();
@@ -66,6 +67,7 @@ router.get("/dashboard", async (c) => {
     }
 
     const totalPages = Math.ceil(total / pageSize);
+    const { syncLocale } = readSettings();
 
     const body: DashboardData = {
       stats,
@@ -76,6 +78,7 @@ router.get("/dashboard", async (c) => {
       universes,
       pieData,
       pieMode,
+      syncLocale,
     };
 
     return c.json(body);

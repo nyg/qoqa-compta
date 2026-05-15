@@ -32,7 +32,8 @@
     "prevPage": "← Precedente",
     "nextPage": "Successivo →",
     "pageSize": "per pagina",
-    "csvExport": "Esporta CSV"
+    "csvExport": "Esporta CSV",
+    "viewOnQoqa": "Visualizza su QoQa"
   },
   "PdfDialog": {
     "title": "Fattura {{orderNumber}}",

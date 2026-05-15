@@ -32,7 +32,8 @@
     "prevPage": "← Previous",
     "nextPage": "Next →",
     "pageSize": "per page",
-    "csvExport": "Export CSV"
+    "csvExport": "Export CSV",
+    "viewOnQoqa": "View on QoQa"
   },
   "PdfDialog": {
     "title": "Invoice {{orderNumber}}",

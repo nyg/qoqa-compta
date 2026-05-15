@@ -6,8 +6,6 @@
 
 > Desktop-ready spending dashboard for [QoQa.ch](https://www.qoqa.ch) — automatically syncs your orders and PDF invoices to a local SQLite (or PostgreSQL) database and displays spending charts, stats, and a searchable orders table.
 
----
-
 ## Features
 
 - **Stats cards** — total spent, number of orders, average per order
@@ -17,7 +15,9 @@
 - **Invoice PDF viewer** — opens stored invoices in an in-app popup
 - **Settings modal** — configure credentials, database URL, sync locale, and UI language; trigger a full or incremental sync with a live progress log
 
----
+<p align="center">
+  <img src="docs/screenshot.png" alt="QoQa Compta dashboard screenshot" width="900" />
+</p>
 
 ## Getting started
 
@@ -27,14 +27,7 @@ Pre-built binaries are available on the [Releases](https://github.com/nyg/qoqa-c
 
 ### Run it yourself
 
-<details>
-<summary>Requirements: <a href="https://bun.sh">Bun</a> ≥ 1.x</summary>
-
-```bash
-bun install
-```
-
-</details>
+QoQa Compta uses [Bun](https://bun.sh).
 
 #### Development — web
 
@@ -70,7 +63,7 @@ Runs `vite build` first (via the ElectroBun `preBuild` hook) then packages the a
 
 ---
 
-## Architecture
+## Tech stack
 
 | Layer | Technology |
 |---|---|
@@ -79,7 +72,3 @@ Runs `vite build` first (via the ElectroBun `preBuild` hook) then packages the a
 | **Desktop** | [ElectroBun](https://github.com/blackboardsh/electrobun) — native macOS & Windows app |
 | **Database** | SQLite (default, via `@libsql/client`) or PostgreSQL (via `@neondatabase/serverless`) |
 | **i18n** | [react-i18next](https://react.i18next.com/) — 5 locales: en, fr, de, it, rm |
-
-In **web development**, Vite runs on `:3000` and proxies `/api/*` to Hono on `:3001`.
-In **web production**, Hono serves the Vite build from `dist/` and the API from the same port.
-In **desktop mode**, ElectroBun serves the SPA via `views://` and Hono runs as a local API-only server on `127.0.0.1:3001`.

@@ -32,7 +32,8 @@
     "prevPage": "← Zurück",
     "nextPage": "Weiter →",
     "pageSize": "pro Seite",
-    "csvExport": "CSV exportieren"
+    "csvExport": "CSV exportieren",
+    "viewOnQoqa": "Auf QoQa ansehen"
   },
   "PdfDialog": {
     "title": "Rechnung {{orderNumber}}",
