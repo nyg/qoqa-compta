@@ -19,6 +19,14 @@
 
 ---
 
+## Screenshot
+
+<p align="center">
+  <img src="docs/screenshot.png" alt="QoQa Compta dashboard screenshot" width="900" />
+</p>
+
+---
+
 ## Getting started
 
 ### Download

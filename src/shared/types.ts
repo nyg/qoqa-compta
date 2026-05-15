@@ -74,6 +74,7 @@ export interface DashboardData {
   universes: UniverseOption[];
   pieData: SpendingByGroup[] | null;
   pieMode: "universe" | "subuniverse" | null;
+  syncLocale: "fr" | "de";
 }
 
 export interface OrdersResponse {

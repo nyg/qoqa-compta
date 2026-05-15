@@ -32,7 +32,8 @@
     "prevPage": "← Precedente",
     "nextPage": "Successivo →",
     "pageSize": "per pagina",
-    "csvExport": "Esporta CSV"
+    "csvExport": "Esporta CSV",
+    "viewOnQoqa": "Visualizza su QoQa"
   },
   "PdfDialog": {
     "title": "Fattura {{orderNumber}}",
@@ -89,6 +90,7 @@
     "saved": "Salvato",
     "close": "Chiudi",
     "dbLocation": "Posizione del database",
-    "showInFinder": "Mostra nel Finder"
+    "showInFinder": "Mostra nel Finder",
+    "copyPath": "Copia percorso"
   }
 }
