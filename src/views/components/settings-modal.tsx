@@ -392,6 +392,26 @@ export function SettingsModal({ open: controlledOpen, onOpenChange }: { open?: b
                   </div>
                 </section>
 
+                {/* ── Interface language ── */}
+                <div>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium">{t("uiLocale")}</span>
+                    <select
+                      value={uiLocale}
+                      onChange={(e) =>
+                        setUiLocale(e.target.value as SupportedLocale)
+                      }
+                      className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
+                    >
+                      {SUPPORTED_LOCALES.map((loc) => (
+                        <option key={loc} value={loc}>
+                          {LOCALE_NAMES[loc] ?? loc.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
                 {/* ── Save ── */}
                 <div className="flex items-center gap-2">
                   <Button
@@ -415,24 +435,8 @@ export function SettingsModal({ open: controlledOpen, onOpenChange }: { open?: b
                     {t("syncSection")}
                   </h3>
 
-                  {/* Locale selects */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="flex flex-col gap-1">
-                      <span className="text-xs font-medium">{t("uiLocale")}</span>
-                      <select
-                        value={uiLocale}
-                        onChange={(e) =>
-                          setUiLocale(e.target.value as SupportedLocale)
-                        }
-                        className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
-                      >
-                        {SUPPORTED_LOCALES.map((loc) => (
-                          <option key={loc} value={loc}>
-                            {LOCALE_NAMES[loc] ?? loc.toUpperCase()}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                  {/* Sync locale select */}
+                  <div>
                     <label className="flex flex-col gap-1">
                       <span className="text-xs font-medium">{t("syncLocale")}</span>
                       <select

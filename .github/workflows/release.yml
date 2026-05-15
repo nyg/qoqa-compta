@@ -129,8 +129,8 @@ jobs:
       - name: Create GitHub release
         run: |
           gh release create "v${{ needs.prepare.outputs.release_version }}" \
-            artifacts/* \
-            --title "Release v${{ needs.prepare.outputs.release_version }}" \
+            artifacts/*.dmg artifacts/*.exe \
+            --title "v${{ needs.prepare.outputs.release_version }}" \
             --verify-tag \
             --generate-notes
         env:

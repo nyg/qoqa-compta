@@ -101,6 +101,29 @@ export function OrdersTable({
     to: to || undefined,
   });
 
+  const [csvDownloading, setCsvDownloading] = useState(false);
+
+  const handleCsvDownload = useCallback(async () => {
+    setCsvDownloading(true);
+    try {
+      const res = await fetch(csvUrl);
+      if (!res.ok) throw new Error(`${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "qoqa-orders.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("CSV download failed:", e);
+    } finally {
+      setCsvDownloading(false);
+    }
+  }, [csvUrl]);
+
   return (
     <Card>
       <CardHeader>
@@ -131,12 +154,10 @@ export function OrdersTable({
                   </option>
                 ))}
               </select>
-              <a href={csvUrl} download="qoqa-orders.csv">
-                <Button variant="outline">
-                  <Download className="h-3.5 w-3.5 mr-1.5" />
-                  {t("csvExport")}
-                </Button>
-              </a>
+              <Button variant="outline" onClick={handleCsvDownload} disabled={csvDownloading}>
+                <Download className="h-3.5 w-3.5 mr-1.5" />
+                {t("csvExport")}
+              </Button>
             </div>
           </div>
         </div>
