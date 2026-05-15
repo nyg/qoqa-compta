@@ -99,6 +99,10 @@ jobs:
       - name: Build desktop app
         run: bunx electrobun build --env=stable
 
+      - name: Install NSIS
+        if: runner.os == 'Windows'
+        run: choco install nsis -y --no-progress
+
       - name: Wrap Windows artifacts in NSIS installer
         if: runner.os == 'Windows'
         shell: pwsh
