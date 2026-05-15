@@ -157,7 +157,7 @@ export function DashboardPage() {
               </>
             )}
             <ThemeToggle />
-            <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
+            <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} onDataChanged={() => loadDashboard(filters)} />
           </div>
         </div>
       </header>

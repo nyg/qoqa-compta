@@ -40,7 +40,7 @@ function logEntryColor(type: SyncProgressEvent["type"]): string {
   return "text-muted-foreground";
 }
 
-export function SettingsModal({ open: controlledOpen, onOpenChange }: { open?: boolean; onOpenChange?: (open: boolean) => void } = {}) {
+export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChanged }: { open?: boolean; onOpenChange?: (open: boolean) => void; onDataChanged?: () => void } = {}) {
   const { t } = useTranslation("Settings");
   const [internalOpen, setInternalOpen] = useState(false);
 
@@ -147,6 +147,7 @@ export function SettingsModal({ open: controlledOpen, onOpenChange }: { open?: b
       await apiClient.resetDatabase();
       setResetSuccess(true);
       setConfirmReset(false);
+      onDataChanged?.();
       setTimeout(() => setResetSuccess(false), 3000);
     } catch (e) {
       console.error(e);
@@ -202,6 +203,7 @@ export function SettingsModal({ open: controlledOpen, onOpenChange }: { open?: b
           }
           setSyncRunning(false);
           setSyncDone(true);
+          if (parsed.type === "done") onDataChanged?.();
           es.close();
           esRef.current = null;
         }
