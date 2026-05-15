@@ -126,10 +126,15 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Rename release assets
+        run: |
+          find artifacts -name '*.dmg' -exec mv {} 'artifacts/QoQa Compta.dmg' \;
+          find artifacts -name '*.exe' -exec mv {} 'artifacts/QoQa Compta.exe' \; || true
+
       - name: Create GitHub release
         run: |
           gh release create "v${{ needs.prepare.outputs.release_version }}" \
-            artifacts/*.dmg artifacts/*.exe \
+            "artifacts/QoQa Compta.dmg" "artifacts/QoQa Compta.exe" \
             --title "v${{ needs.prepare.outputs.release_version }}" \
             --verify-tag \
             --generate-notes
