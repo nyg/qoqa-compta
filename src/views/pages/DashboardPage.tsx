@@ -113,7 +113,7 @@ export function DashboardPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center justify-between gap-3 px-3 py-2.5">
+        <div className="flex items-center justify-between gap-3 px-6 py-2.5">
           <div className="flex items-center gap-2 min-w-0">
             <h1 className="font-heading text-sm font-semibold truncate">QoQa Compta</h1>
             {loading && data && (
@@ -163,7 +163,7 @@ export function DashboardPage() {
       </header>
 
       {/* Main */}
-      <main className="px-3 py-6 space-y-4">
+      <main className="px-6 py-6 space-y-4">
         {!data && loading && <LoadingSkeleton />}
         {!data && !loading && error && (
           <ErrorState message={error} onRetry={() => loadDashboard(filters)} />
