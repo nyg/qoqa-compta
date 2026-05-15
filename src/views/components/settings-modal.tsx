@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { Settings, X, RefreshCw, AlertTriangle, Check } from "lucide-react";
+import { Settings, X, RefreshCw, AlertTriangle, Check, FolderOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,9 @@ export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChange
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const isDesktop = window.location.protocol === "views:";
+  const [dbPath, setDbPath] = useState<string | null>(null);
+
   // Reset DB
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -102,6 +105,9 @@ export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChange
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+    if (isDesktop) {
+      apiClient.getDbPath().then((r) => setDbPath(r.path)).catch(console.error);
+    }
   }, [open]);
 
   // Auto-scroll log
@@ -153,6 +159,14 @@ export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChange
       console.error(e);
     } finally {
       setResetting(false);
+    }
+  }
+
+  async function handleRevealDb() {
+    try {
+      await apiClient.revealDbInFinder();
+    } catch (e) {
+      console.error(e);
     }
   }
 
@@ -390,6 +404,18 @@ export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChange
                         <Check className="size-3" />
                         {t("resetDbSuccess")}
                       </span>
+                    )}
+                    {isDesktop && dbPath && (
+                      <div className="pt-1">
+                        <span className="text-xs font-medium block mb-1">{t("dbLocation")}</span>
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 text-xs font-mono bg-muted/40 rounded px-2 py-1 truncate">{dbPath}</code>
+                          <Button variant="outline" size="sm" onClick={handleRevealDb} className="shrink-0 h-7 px-2 text-xs gap-1">
+                            <FolderOpen className="size-3" />
+                            {t("showInFinder")}
+                          </Button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </section>

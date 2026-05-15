@@ -17,6 +17,7 @@ let _db: AnyDb | null = null;
 let _isSqlite = true;
 let _bunDb: Database | null = null;
 let _neonExecutor: NeonExecutor | null = null;
+let _dbFilePath: string | null = null;
 
 function getDefaultSqlitePath(): string {
   const platform = process.platform;
@@ -43,6 +44,7 @@ export async function initDb(databaseUrl?: string): Promise<void> {
       ? rawUrl.replace(/^(file:|sqlite:\/\/\/)/, "")
       : getDefaultSqlitePath();
     mkdirSync(path.dirname(filePath), { recursive: true });
+    _dbFilePath = filePath;
     _bunDb = new Database(filePath, { create: true });
     _neonExecutor = null;
     _db = drizzleBunSqlite(_bunDb, { schema }) as unknown as AnyDb;
@@ -71,6 +73,10 @@ export function getDb(): AnyDb {
 
 export function isDbSqlite(): boolean {
   return _isSqlite;
+}
+
+export function getDbFilePath(): string | null {
+  return _dbFilePath;
 }
 
 export function getRawBunDb(): Database | null {

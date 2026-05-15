@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { readSettings, writeSettings } from "../settings";
-import { reinitDb } from "../db";
+import { reinitDb, getDbFilePath } from "../db";
 import { bootstrapSchema } from "../schema-bootstrap";
 import { dropAllTables } from "../schema-bootstrap";
 import type { AppSettings } from "../../shared/types";
@@ -57,6 +57,21 @@ router.delete("/settings/database", async (c) => {
     console.error("[settings/database DELETE]", err);
     return c.json({ error: (err as Error).message }, 500);
   }
+});
+
+// GET /api/settings/db-path — returns current SQLite file path (null for Postgres)
+router.get("/settings/db-path", (c) => {
+  return c.json({ path: getDbFilePath() });
+});
+
+// POST /api/settings/reveal-db — reveal SQLite file in Finder (macOS only)
+router.post("/settings/reveal-db", (c) => {
+  const filePath = getDbFilePath();
+  if (!filePath) {
+    return c.json({ error: "Not using local SQLite" }, 400);
+  }
+  Bun.spawn(["open", "-R", filePath]);
+  return c.json({ ok: true });
 });
 
 export default router;

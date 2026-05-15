@@ -134,4 +134,12 @@ export const apiClient = {
   resetDatabase(): Promise<void> {
     return request<void>(`${API_BASE}/api/settings/database`, { method: "DELETE" });
   },
+
+  getDbPath(): Promise<{ path: string | null }> {
+    return request<{ path: string | null }>(`${API_BASE}/api/settings/db-path`);
+  },
+
+  revealDbInFinder(): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>(`${API_BASE}/api/settings/reveal-db`, { method: "POST" });
+  },
 };

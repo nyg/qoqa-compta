@@ -87,6 +87,8 @@
     "syncDone": "Sincronizzazione completata.",
     "save": "Salva",
     "saved": "Salvato",
-    "close": "Chiudi"
+    "close": "Chiudi",
+    "dbLocation": "Posizione del database",
+    "showInFinder": "Mostra nel Finder"
   }
 }

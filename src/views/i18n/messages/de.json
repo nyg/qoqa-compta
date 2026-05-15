@@ -87,6 +87,8 @@
     "syncDone": "Synchronisation abgeschlossen.",
     "save": "Speichern",
     "saved": "Gespeichert",
-    "close": "Schliessen"
+    "close": "Schliessen",
+    "dbLocation": "Datenbankpfad",
+    "showInFinder": "Im Finder zeigen"
   }
 }
