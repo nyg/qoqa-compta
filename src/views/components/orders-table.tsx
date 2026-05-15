@@ -293,7 +293,8 @@ export function OrdersTable({
                       {formatCHF(parseFloat(order.amount_chf))}
                     </td>
                     <td className="px-2 py-3 text-right">
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-end gap-1">
+                        <OrderPdfDialog orderNumber={order.order_number} disabled={!order.has_pdf} />
                         {order.offer_id && (
                           <a
                             href={`https://www.qoqa.ch/${syncLocale}/offers/${order.offer_id}`}
@@ -306,10 +307,6 @@ export function OrdersTable({
                             <Globe className="size-3.5" aria-hidden />
                           </a>
                         )}
-                        <OrderPdfDialog
-                          orderNumber={order.order_number}
-                          disabled={!order.has_pdf}
-                        />
                       </div>
                     </td>
                   </tr>

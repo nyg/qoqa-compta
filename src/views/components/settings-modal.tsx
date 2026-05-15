@@ -427,7 +427,6 @@ export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChange
                               }}
                             >
                               {pathCopied ? <Check className="size-3" /> : <Copy className="size-3" />}
-                              {t("copyPath")}
                             </Button>
                           )}
                         </div>

@@ -90,7 +90,6 @@
     "saved": "Gespeichert",
     "close": "Schliessen",
     "dbLocation": "Datenbankpfad",
-    "showInFinder": "Im Finder zeigen",
-    "copyPath": "Pfad kopieren"
+    "showInFinder": "Im Finder zeigen"
   }
 }

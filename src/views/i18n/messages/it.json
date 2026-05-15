@@ -90,7 +90,6 @@
     "saved": "Salvato",
     "close": "Chiudi",
     "dbLocation": "Posizione del database",
-    "showInFinder": "Mostra nel Finder",
-    "copyPath": "Copia percorso"
+    "showInFinder": "Mostra nel Finder"
   }
 }
