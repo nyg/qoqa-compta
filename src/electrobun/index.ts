@@ -63,7 +63,7 @@ async function main() {
         { role: "hideOthers" },
         { role: "showAll" },
         { type: "separator" },
-        { role: "quit" },
+        { role: "quit", accelerator: "CommandOrControl+Q" },
       ],
     },
     {
@@ -81,6 +81,7 @@ async function main() {
     {
       label: "Window",
       submenu: [
+        { role: "close", accelerator: "CommandOrControl+W" },
         { role: "minimize" },
         { role: "zoom" },
         { type: "separator" },
