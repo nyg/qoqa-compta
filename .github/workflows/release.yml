@@ -99,6 +99,30 @@ jobs:
       - name: Build desktop app
         run: bunx electrobun build --env=stable
 
+      - name: Wrap Windows artifacts in SFX installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem artifacts -Filter "*.zip" | Select-Object -First 1
+          if (-not $zip) { throw "No zip found in artifacts/ — electrobun Windows build may have failed" }
+          Expand-Archive $zip.FullName -DestinationPath sfx-staging
+
+          @'
+          ;!@Install@!UTF-8!
+          Title="QoQa Compta Setup"
+          RunProgram="QoQa Compta-Setup.exe"
+          ;!@InstallEnd@!
+          '@ | Set-Content sfx-config.txt -Encoding UTF8
+
+          & 'C:\Program Files\7-Zip\7z.exe' a -t7z -mx=0 sfx-content.7z sfx-staging\*
+
+          $sfxModule  = [IO.File]::ReadAllBytes('C:\Program Files\7-Zip\7z.sfx')
+          $sfxConfig  = [Text.Encoding]::UTF8.GetBytes((Get-Content sfx-config.txt -Raw))
+          $sfxContent = [IO.File]::ReadAllBytes('sfx-content.7z')
+          [IO.File]::WriteAllBytes('artifacts\QoQa Compta-Setup.exe', $sfxModule + $sfxConfig + $sfxContent)
+
+          Remove-Item artifacts\*.zip
+
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -129,7 +153,7 @@ jobs:
       - name: Rename release assets
         run: |
           find artifacts -name '*.dmg' -exec mv {} 'artifacts/QoQa Compta.dmg' \;
-          find artifacts -name '*.exe' -exec mv {} 'artifacts/QoQa Compta.exe' \; || true
+          find artifacts -name '*.exe' -exec mv {} 'artifacts/QoQa Compta.exe' \;
 
       - name: Create GitHub release
         run: |
