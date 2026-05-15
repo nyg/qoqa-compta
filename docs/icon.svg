@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="-90 -90 1204 1204">
+  <title>Q Compta</title>
+
+  <rect x="0" y="0" width="1024" height="1024" rx="230" ry="230" fill="#FF3C78"/>
+  <rect x="0" y="0" width="1024" height="512" rx="230" ry="230" fill="rgba(255,255,255,0.08)"/>
+
+  <!-- "Q Compta" label at top -->
+  <text x="512" y="148" font-family="-apple-system,'Helvetica Neue',sans-serif" font-size="104" font-weight="700" fill="rgba(255,255,255,0.90)" text-anchor="middle" letter-spacing="-2">Q Compta</text>
+
+  <!-- Receipt white card -->
+  <rect x="232" y="172" width="560" height="704" rx="32" ry="32" fill="white"/>
+
+  <!-- Header -->
+  <rect x="280" y="220" width="192" height="22" rx="11" fill="#FF3C78" opacity="0.9"/>
+  <rect x="496" y="220" width="236" height="22" rx="11" fill="#FF3C78" opacity="0.35"/>
+
+  <!-- Invoice rows -->
+  <rect x="280" y="280" width="456" height="18" rx="9" fill="#ddd"/>
+  <rect x="280" y="318" width="384" height="18" rx="9" fill="#ddd"/>
+  <rect x="280" y="356" width="420" height="18" rx="9" fill="#ddd"/>
+
+  <line x1="280" y1="400" x2="736" y2="400" stroke="#eee" stroke-width="3"/>
+
+  <rect x="280" y="420" width="236" height="16" rx="8" fill="#ddd" opacity="0.7"/>
+  <rect x="636" y="420" width="100" height="16" rx="8" fill="#FF3C78" opacity="0.45"/>
+  <rect x="280" y="456" width="200" height="16" rx="8" fill="#ddd" opacity="0.7"/>
+  <rect x="636" y="456" width="100" height="16" rx="8" fill="#FF3C78" opacity="0.45"/>
+
+  <line x1="280" y1="500" x2="736" y2="500" stroke="#eee" stroke-width="3"/>
+
+  <rect x="280" y="522" width="144" height="22" rx="11" fill="#555" opacity="0.4"/>
+  <rect x="612" y="518" width="124" height="28" rx="14" fill="#FF3C78" opacity="0.9"/>
+
+  <!-- Chart area -->
+  <rect x="264" y="568" width="496" height="276" rx="20" fill="#fff0f4"/>
+
+  <!-- Bars -->
+  <rect x="292" y="756" width="48" height="76" rx="8" fill="#FF3C78" opacity="0.25"/>
+  <rect x="358" y="728" width="48" height="104" rx="8" fill="#FF3C78" opacity="0.38"/>
+  <rect x="424" y="692" width="48" height="140" rx="8" fill="#FF3C78" opacity="0.55"/>
+  <rect x="490" y="652" width="48" height="180" rx="8" fill="#FF3C78" opacity="0.72"/>
+  <rect x="556" y="608" width="48" height="224" rx="8" fill="#FF3C78" opacity="0.88"/>
+  <rect x="622" y="580" width="48" height="252" rx="8" fill="#FF3C78" opacity="0.45"/>
+
+  <!-- Trend line -->
+  <polyline points="316,772 382,744 448,712 514,668 580,624 646,594" fill="none" stroke="#FF3C78" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="316" cy="772" r="10" fill="white" stroke="#FF3C78" stroke-width="5"/>
+  <circle cx="382" cy="744" r="10" fill="white" stroke="#FF3C78" stroke-width="5"/>
+  <circle cx="448" cy="712" r="10" fill="white" stroke="#FF3C78" stroke-width="5"/>
+  <circle cx="514" cy="668" r="10" fill="white" stroke="#FF3C78" stroke-width="5"/>
+  <circle cx="580" cy="624" r="10" fill="white" stroke="#FF3C78" stroke-width="5"/>
+  <circle cx="646" cy="594" r="14" fill="#FF3C78" stroke="white" stroke-width="6"/>
+</svg>

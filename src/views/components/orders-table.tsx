@@ -102,27 +102,44 @@ export function OrdersTable({
   });
 
   const [csvDownloading, setCsvDownloading] = useState(false);
+  const [csvSavedPath, setCsvSavedPath] = useState<string | null>(null);
+
+  const isDesktop = window.location.protocol === "views:";
 
   const handleCsvDownload = useCallback(async () => {
     setCsvDownloading(true);
+    setCsvSavedPath(null);
     try {
-      const res = await fetch(csvUrl);
-      if (!res.ok) throw new Error(`${res.status}`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "qoqa-orders.csv";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (isDesktop) {
+        const result = await apiClient.saveCsv({
+          universes: selectedUniverses.length > 0 ? selectedUniverses : undefined,
+          subuniverses: selectedSubuniverses.length > 0 ? selectedSubuniverses : undefined,
+          from: from || undefined,
+          to: to || undefined,
+        });
+        if ("path" in result) {
+          setCsvSavedPath(result.path);
+          setTimeout(() => setCsvSavedPath(null), 5000);
+        }
+      } else {
+        const res = await fetch(csvUrl);
+        if (!res.ok) throw new Error(`${res.status}`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "qoqa-orders.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
     } catch (e) {
       console.error("CSV download failed:", e);
     } finally {
       setCsvDownloading(false);
     }
-  }, [csvUrl]);
+  }, [csvUrl, isDesktop, selectedUniverses, selectedSubuniverses, from, to]);
 
   return (
     <Card>
@@ -158,6 +175,11 @@ export function OrdersTable({
                 <Download className="h-3.5 w-3.5 mr-1.5" />
                 {t("csvExport")}
               </Button>
+              {csvSavedPath && (
+                <span className="text-xs text-muted-foreground truncate max-w-48" title={csvSavedPath}>
+                  {csvSavedPath.split("/").pop()}
+                </span>
+              )}
             </div>
           </div>
         </div>

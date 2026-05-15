@@ -11,7 +11,7 @@ import settingsRoutes from "./routes/settings";
 // API server. In web mode the SPA and API share the same origin so CORS is not
 // needed.
 
-export function createApp(opts?: { corsOrigins?: string[] }) {
+export function createApp(opts?: { corsOrigins?: string[]; openDirectoryDialog?: () => Promise<string | null> }) {
   const app = new Hono();
 
   if (opts?.corsOrigins?.length) {
@@ -43,7 +43,7 @@ export function createApp(opts?: { corsOrigins?: string[] }) {
   // ── API routes ───────────────────────────────────────────────────────────────
 
   app.route("/api", dashboardRoutes);
-  app.route("/api", ordersRoutes);
+  app.route("/api", ordersRoutes(opts?.openDirectoryDialog));
   app.route("/api", syncRoutes);
   app.route("/api", settingsRoutes);
 

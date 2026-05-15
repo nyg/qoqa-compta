@@ -87,6 +87,8 @@
     "syncDone": "Sincronisaziun terminada.",
     "save": "Memorisar",
     "saved": "Memorisà",
-    "close": "Serrar"
+    "close": "Serrar",
+    "dbLocation": "Posiziun da la banca da datas",
+    "showInFinder": "Mussar en il Finder"
   }
 }

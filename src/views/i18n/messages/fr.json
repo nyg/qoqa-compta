@@ -87,6 +87,8 @@
     "syncDone": "Synchronisation terminée.",
     "save": "Enregistrer",
     "saved": "Enregistré",
-    "close": "Fermer"
+    "close": "Fermer",
+    "dbLocation": "Emplacement de la base de données",
+    "showInFinder": "Afficher dans le Finder"
   }
 }
