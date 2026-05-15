@@ -23,12 +23,7 @@
 
 ### Download
 
-Pre-built binaries are available on the [Releases](https://github.com/nyg/qoqa-compta/releases) page:
-
-| Platform | Download |
-|---|---|
-| **macOS** | `.dmg` installer |
-| **Windows** | `.zip` archive |
+Pre-built binaries are available on the [Releases](https://github.com/nyg/qoqa-compta/releases) page.
 
 ### Run it yourself
 
@@ -72,18 +67,6 @@ bun run build:stable
 ```
 
 Runs `vite build` first (via the ElectroBun `preBuild` hook) then packages the app. Output artifacts are in `artifacts/`: `.dmg` for macOS, `.zip` for Windows.
-
-### Configure
-
-Credentials and the database URL are set from the in-app **Settings** modal (gear icon). No `.env` file is required.
-
-In development you can optionally create a `.env` file with any of the following overrides:
-
-| Variable | Description |
-|---|---|
-| `QOQA_EMAIL` | QoQa.ch login email |
-| `QOQA_PASSWORD` | QoQa.ch login password |
-| `DATABASE_URL` | SQLite or PostgreSQL URL — defaults to `~/Library/Application Support/qoqa-compta/qoqa.db` on macOS |
 
 ---
 
