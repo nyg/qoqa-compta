@@ -1,5 +1,5 @@
 /// <reference types="bun-types" />
-import { BrowserWindow, app } from "electrobun/bun";
+import { ApplicationMenu, BrowserWindow, Utils, app } from "electrobun/bun";
 import { createApp } from "../server/app";
 import { initDb } from "../server/db";
 import { bootstrapSchema } from "../server/schema-bootstrap";
@@ -23,7 +23,14 @@ async function resolveUrl(): Promise<string> {
 async function main() {
   const url = await resolveUrl();
 
-  const honoApp = createApp({ corsOrigins: ["views://", "http://localhost:3000"] });
+  const honoApp = createApp({
+    corsOrigins: ["views://", "http://localhost:3000"],
+    openDirectoryDialog: async () => {
+      const paths = await Utils.openFileDialog({ canChooseDirectory: true, canChooseFiles: false, allowsMultipleSelection: false });
+      const first = paths?.[0];
+      return first?.trim() ? first : null;
+    },
+  });
 
   try {
     await initDb();
@@ -45,6 +52,42 @@ async function main() {
 
   const win = new BrowserWindow({ title: "QoQa Compta", url, frame: { x: 0, y: 0, width: 1280, height: 900 } });
   win.maximize();
+
+  ApplicationMenu.setApplicationMenu([
+    {
+      label: "QoQa Compta",
+      submenu: [
+        { role: "about" },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "showAll" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
+    },
+    {
+      label: "Window",
+      submenu: [
+        { role: "minimize" },
+        { role: "zoom" },
+        { type: "separator" },
+        { role: "bringAllToFront" },
+      ],
+    },
+  ]);
 }
 
 main();

@@ -80,6 +80,25 @@ export const apiClient = {
     return `${API_BASE}/api/orders/csv${qs ? `?${qs}` : ""}`;
   },
 
+  saveCsv(params: {
+    universes?: string[];
+    subuniverses?: string[];
+    from?: string;
+    to?: string;
+  }): Promise<{ path: string } | { cancelled: true }> {
+    const p = new URLSearchParams();
+    if (params.universes?.length) p.set("universes", params.universes.join(","));
+    if (params.subuniverses?.length)
+      p.set("subuniverses", params.subuniverses.join(","));
+    if (params.from) p.set("from", params.from);
+    if (params.to) p.set("to", params.to);
+    const qs = p.toString();
+    return request<{ path: string } | { cancelled: true }>(
+      `${API_BASE}/api/orders/csv-save${qs ? `?${qs}` : ""}`,
+      { method: "POST" }
+    );
+  },
+
   startSync(mode: "full" | "update"): Promise<{ ok: boolean; error?: string }> {
     return request<{ ok: boolean; error?: string }>(`${API_BASE}/api/sync`, {
       method: "POST",
