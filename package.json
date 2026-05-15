@@ -9,7 +9,7 @@
     "dev:server": "bun --watch src/server/index.ts",
     "desktop:dev": "bunx electrobun dev --watch",
     "build": "vite build",
-    "build:stable": "bash scripts/make-iconset.sh && bunx electrobun build --env=stable",
+    "build:stable": "bunx electrobun build --env=stable",
     "start": "NODE_ENV=production bun src/server/index.ts",
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",

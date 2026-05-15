@@ -7,7 +7,6 @@ dist/
 views/main/
 artifacts/
 build
-assets/icon.iconset/
 
 # Environment
 .env
