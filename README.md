@@ -1,7 +1,7 @@
 # QoQa Compta
 
 <p align="center">
-  <img src="docs/icon.svg" width="80" alt="QoQa Compta icon" />
+  <img src="assets/icon.svg" width="80" alt="QoQa Compta icon" />
 </p>
 
 > Desktop-ready spending dashboard for [QoQa.ch](https://www.qoqa.ch) — automatically syncs your orders and PDF invoices to a local SQLite (or PostgreSQL) database and displays spending charts, stats, and a searchable orders table.
@@ -16,7 +16,7 @@
 - **Settings modal** — configure credentials, database URL, sync locale, and UI language; trigger a full or incremental sync with a live progress log
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="QoQa Compta dashboard screenshot" width="900" />
+  <img src="assets/screenshot.png" alt="QoQa Compta dashboard screenshot" width="900" />
 </p>
 
 ## Getting started
