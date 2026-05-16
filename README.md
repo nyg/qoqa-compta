@@ -21,47 +21,37 @@
 
 ## Getting started
 
-### Download
+### Download the app
 
 Pre-built binaries are available on the [Releases](https://github.com/nyg/qoqa-compta/releases) page.
+
+#### macOS Gatekeeper
+
+Because the app is not signed with an Apple Developer certificate, macOS will block it on first launch. To allow it:
+
+1. Try to open the app — macOS will show a warning and block it
+2. Open **System Settings → Privacy & Security**
+3. Scroll down to the security section — you will see *"QoQa Compta was blocked from use because it is not from an identified developer"*
+4. Click **Open Anyway**, then confirm in the dialog
+
+You only need to do this once per installation.
 
 ### Run it yourself
 
 QoQa Compta uses [Bun](https://bun.sh).
 
-#### Development — web
-
 ```bash
+bun install
+
+# Starts the Hono API on :3001 and the Vite dev server on `:3000` concurrently. Open http://localhost:3000.
 bun run dev
-```
 
-Starts the Hono API (`:3001`) and the Vite dev server (`:3000`) concurrently. Open [http://localhost:3000](http://localhost:3000).
+# Starts the ElectroBun desktop app
+bun run desktop:dev
 
-#### Development — desktop
-
-```bash
-bun run dev:vite      # Vite dev server on :3000 (keep this running)
-bun run desktop:dev   # ElectroBun desktop app (separate terminal)
-```
-
-ElectroBun starts the Hono API internally on `127.0.0.1:3001` and opens a native window pointed at the Vite dev server.
-
-#### Build — web production
-
-```bash
-bun run build   # compile the SPA to dist/
-bun run start   # serve dist/ + API from :3001
-```
-
-#### Build — desktop
-
-```bash
+# Runs `vite build` first (via the ElectroBun `preBuild` hook) then packages the app. Output artifacts are in `artifacts/`: `.dmg` for macOS, `.zip` for Windows.
 bun run build:stable
 ```
-
-Runs `vite build` first (via the ElectroBun `preBuild` hook) then packages the app. Output artifacts are in `artifacts/`: `.dmg` for macOS, `.zip` for Windows.
-
----
 
 ## Tech stack
 
