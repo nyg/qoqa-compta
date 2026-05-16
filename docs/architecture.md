@@ -2,30 +2,74 @@
 
 ## Overview
 
-QoQa Compta is a single-process desktop-ready app: a [Hono](https://hono.dev/) server running on [Bun](https://bun.sh) serves both the REST API and (in production) the compiled Vite SPA from `dist/`. The sync engine lives inside the same server process.
+QoQa Compta ships in two modes that share the same Hono API and React SPA:
+
+- **Web mode** — a Hono server on Bun serves the REST API and the compiled Vite SPA from `dist/`. Runs in any browser; no native shell required.
+- **Desktop mode** — [ElectroBun](https://github.com/blackboardsh/electrobun) wraps the same Hono server and renders the SPA in a native WebKit WebView. The resulting `.app` / `.exe` bundle is a self-contained executable.
+
+### Technology stack
+
+| Component | Role |
+|---|---|
+| **[Bun](https://bun.sh)** | JavaScript runtime (replaces Node.js) and package manager. All server-side code runs on Bun; `bun --watch` provides hot-reload in development. |
+| **[Vite](https://vitejs.dev)** | Dev server (`:3000`) and production bundler for the React SPA. In development it proxies `/api/*` to Hono on `:3001`. |
+| **[Hono](https://hono.dev/)** | Lightweight web framework for the REST API. Handles routing, CORS, request logging, and SSE. Shared between web and desktop modes via `src/server/app.ts`. |
+| **[ElectroBun](https://github.com/blackboardsh/electrobun)** | Desktop container built on Bun + WebKit. Provides a native `BrowserWindow`, a `views://` custom protocol to serve the SPA, a native application menu, and OS utilities (file dialogs, etc.). The Hono server starts inside the same process, bound to `127.0.0.1:3001`. |
+| **[Drizzle ORM](https://orm.drizzle.team)** | Type-safe ORM for all database access. Supports SQLite (default, no setup) and PostgreSQL (remote). |
+| **[React 19](https://react.dev)** | SPA UI library with React Router v7 for client-side routing and Recharts for charts. |
 
 ```mermaid
 flowchart TD
-    Browser["Browser\n(React SPA)"]
-    Hono["Hono API\n(Bun server :3001)"]
-    Sync["Sync engine\n(src/server/sync.ts)"]
-    Auth["auth.ts\nPOST /v2/login → JWT"]
-    QoqaAPI["QoQa REST API\napi.qoqa.ch"]
-    DB["SQLite\n(default)\nor PostgreSQL"]
+    subgraph WEB["Web mode (bun run start)"]
+        Browser["Browser"]
+        HonoWeb["Hono API · Bun :3001"]
+        Browser -->|"HTTP /api/*"| HonoWeb
+        HonoWeb -->|"dist/ + index.html"| Browser
+    end
 
-    Browser -->|HTTP /api/*| Hono
-    Hono --> Sync
+    subgraph DESKTOP["Desktop mode (ElectroBun)"]
+        WebView["WebKit WebView\nviews://main/index.html"]
+        HonoDesk["Hono API · Bun 127.0.0.1:3001"]
+        WebView -->|"HTTP /api/*"| HonoDesk
+    end
+
+    Sync["Sync engine\nsrc/server/sync.ts"]
+    Auth["auth.ts — POST /v2/login → JWT"]
+    QoqaAPI["QoQa REST API\napi.qoqa.ch"]
+    DB["SQLite (default)\nor PostgreSQL"]
+
+    HonoWeb --> Sync
+    HonoDesk --> Sync
     Sync --> Auth
     Auth -->|JWT| QoqaAPI
-    QoqaAPI -->|JSON + PDF bytes| Sync
+    QoqaAPI -->|"JSON + PDF bytes"| Sync
     Sync -->|Drizzle upsert| DB
-    Hono -->|Drizzle query| DB
+    HonoWeb -->|Drizzle query| DB
+    HonoDesk -->|Drizzle query| DB
 ```
 
-In **development** Vite's dev server runs on `:3000` and proxies `/api/*` to Hono on `:3001`.
-In **production** Hono serves `dist/` directly and falls back to `index.html` for SPA routing.
+In **web development** Vite's dev server runs on `:3000` and proxies `/api/*` to Hono on `:3001`; in **web production** Hono serves `dist/` and falls back to `index.html` for SPA routing.
 
-The codebase is structured for an eventual [ElectroBun](https://github.com/blackboardsh/electrobun) migration: all API calls in the SPA are isolated behind `src/views/lib/api-client.ts`, making the HTTP transport trivially swappable for ElectroBun RPC.
+In **desktop development** (`desktop:dev`), ElectroBun probes the Vite dev server first and falls back to the bundled `views://` SPA if it is not running. All API calls in the SPA go through `src/views/lib/api-client.ts`, keeping the HTTP transport swappable.
+
+---
+
+## Scripts
+
+All scripts are run with `bun run <name>`.
+
+| Script | Command | Purpose |
+|---|---|---|
+| `dev` | `concurrently vite + bun --watch src/server/index.ts` | Start both Vite dev server (`:3000`) and Hono API (`:3001`) with hot-reload. The standard entry point for web development. |
+| `dev:vite` | `vite` | Start only the Vite dev server. Useful when the API is already running separately. |
+| `dev:server` | `bun --watch src/server/index.ts` | Start only the Hono API server with hot-reload. |
+| `desktop:dev` | `bunx electrobun dev --watch` | Launch the app in ElectroBun desktop dev mode with live-reload. Probes the Vite dev server (`:3000`) and uses it if running, otherwise serves the bundled SPA. |
+| `build` | `vite build` | Compile the React SPA to `dist/`. Used both for web production and as the `preBuild` step for desktop releases. |
+| `build:stable` | `bunx electrobun build --env=stable` | Build a production desktop bundle (`.app` on macOS, `.exe` on Windows). Runs `scripts/prebuild.ts` (`vite build`) first, then packages everything with ElectroBun, and finally runs `scripts/postwrap.ts` (ad-hoc code-signing on macOS). |
+| `start` | `NODE_ENV=production bun src/server/index.ts` | Start the Hono server in web production mode. Serves the pre-built SPA from `dist/` in addition to the API. Run `build` first. |
+| `lint` | `eslint src --ext .ts,.tsx` | Lint all TypeScript source files. |
+| `typecheck` | `tsc --noEmit` | Type-check the whole project without emitting output. |
+| `db:push` | `drizzle-kit push` | Push the Drizzle schema to the database (creates or alters tables). |
 
 ---
 
@@ -40,11 +84,18 @@ qoqa-compta/
 ├── vite.config.ts
 ├── tsconfig.json
 ├── drizzle.config.ts
+├── electrobun.config.ts          # ElectroBun build config (app name, icons, entry, hooks)
 ├── docs/
 │   └── architecture.md           # this file
+├── scripts/
+│   ├── prebuild.ts               # Runs `vite build` before ElectroBun packages the app
+│   └── postwrap.ts               # Ad-hoc code-signs the .app bundle on macOS after wrapping
 └── src/
+    ├── electrobun/
+    │   └── index.ts              # Desktop entry — starts Hono, opens BrowserWindow, sets app menu
     ├── server/                   # Hono API + sync engine (Bun)
-    │   ├── index.ts              # Server entry point — mounts routes, bootstraps DB
+    │   ├── index.ts              # Web entry point — mounts routes, bootstraps DB, serves dist/
+    │   ├── app.ts                # Hono app factory (shared by web and desktop entry points)
     │   ├── auth.ts               # POST /v2/login → Bearer token
     │   ├── api.ts                # QoQa REST API client (universes, purchases, PDFs)
     │   ├── sync.ts               # Full / incremental sync pipeline (SSE progress)
@@ -80,7 +131,7 @@ qoqa-compta/
     │   │   ├── index.ts          # react-i18next setup + locale detection
     │   │   └── messages/         # en.json, fr.json, de.json, it.json, rm.json
     │   └── lib/
-    │       ├── api-client.ts     # All fetch calls — swap for ElectroBun RPC here
+    │       ├── api-client.ts     # All fetch calls — single place to swap transport
     │       ├── formatter-context.tsx  # React context for fr-CH number/date formatters
     │       ├── formatters.ts     # formatCHF, formatDate, formatMonth
     │       ├── use-filter-state.ts    # URL-state hook for universe/date filters
