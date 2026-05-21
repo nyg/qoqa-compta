@@ -59,9 +59,21 @@ jobs:
             exit 1
           fi
 
+      - name: Install git-cliff
+        run: |
+          gh release download --repo orhun/git-cliff --pattern 'git-cliff-*-x86_64-unknown-linux-gnu.tar.gz'
+          tar xzf git-cliff-*-x86_64-unknown-linux-gnu.tar.gz --strip-components=1 --wildcards '*/git-cliff'
+          sudo mv git-cliff /usr/local/bin/
+          git cliff --version
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Update changelog
+        run: git cliff --tag "v${{ env.RELEASE_VERSION }}" -o CHANGELOG.md
+
       - name: Commit and tag
         run: |
-          git add package.json
+          git add package.json CHANGELOG.md
           git commit -m "chore(release): bump version to v${{ env.RELEASE_VERSION }}"
           git tag "v${{ env.RELEASE_VERSION }}"
 
@@ -118,7 +130,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: v${{ needs.prepare.outputs.release_version }}
-          sparse-checkout: .github
+          fetch-depth: 0
 
       - name: Download all artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -131,12 +143,17 @@ jobs:
           find artifacts -name '*.dmg' -exec mv {} 'artifacts/QoQa Compta.dmg' \;
           find artifacts -name '*.zip' -exec mv {} 'artifacts/QoQa Compta.zip' \;
 
+      - name: Generate release notes
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4
+        with:
+          args: --latest --strip all
+
       - name: Create GitHub release
         run: |
           gh release create "v${{ needs.prepare.outputs.release_version }}" \
             "artifacts/QoQa Compta.dmg" "artifacts/QoQa Compta.zip" \
             --title "v${{ needs.prepare.outputs.release_version }}" \
             --verify-tag \
-            --generate-notes
+            -F git-cliff/CHANGELOG.md
         env:
           GH_TOKEN: ${{ github.token }}
