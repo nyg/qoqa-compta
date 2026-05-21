@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.0.9](https://github.com/nyg/qoqa-compta/compare/v0.0.8..v0.0.9) - 2026-05-21
+
+### ⚙️ Miscellaneous
+
+- [`2103627`](https://github.com/nyg/qoqa-compta/commit/2103627fc97be9a27443fd1812297521fbb58e39) Add git-cliff changelog generation ([#58](https://github.com/nyg/qoqa-compta/issues/58))
+
 ## [0.0.8](https://github.com/nyg/qoqa-compta/compare/v0.0.7..v0.0.8) - 2026-05-18
 
 ### ⛰️  Features
