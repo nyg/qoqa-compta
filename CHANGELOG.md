@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.0.11](https://github.com/nyg/qoqa-compta/compare/v0.0.10..v0.0.11) - 2026-05-30
+
+### ⛰️  Features
+
+- [`8ef6df9`](https://github.com/nyg/qoqa-compta/commit/8ef6df9b6a68da6c5ff33b9576754c0efb749052) Dispatch cask update to homebrew-tap on release ([#60](https://github.com/nyg/qoqa-compta/issues/60))
+
 ## [0.0.10](https://github.com/nyg/qoqa-compta/compare/v0.0.9..v0.0.10) - 2026-05-30
 
 ### 🐛 Bug Fixes
