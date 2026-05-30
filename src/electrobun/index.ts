@@ -53,6 +53,15 @@ async function main() {
   const win = new BrowserWindow({ title: "QoQa Compta", url, frame: { x: 0, y: 0, width: 1280, height: 900 } });
   win.maximize();
 
+  // Open target="_blank" links in the default system browser instead of the WebView.
+  (win.webview as any).on("new-window-open", (event: any) => {
+    const detail = event?.data?.detail;
+    const href: string | undefined = typeof detail === "string" ? detail : detail?.url;
+    if (href) {
+      Utils.openExternal(href);
+    }
+  });
+
   ApplicationMenu.setApplicationMenu([
     {
       label: "QoQa Compta",
