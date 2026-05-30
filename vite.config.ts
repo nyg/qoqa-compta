@@ -31,10 +31,7 @@ function esToolkitEsmPlugin() {
       // e.g. module.exports = require('../dist/compat/object/get.js').get
       const requireMatch = stub.match(/require\(['"](\.\.[^'"]+)\.js['"]\)\.(\w+)/)
       if (!requireMatch) return
-      const mjsPath = path.resolve(
-        __dirname,
-        `node_modules/es-toolkit/${requireMatch[1].replace("../", "")}.mjs`,
-      )
+      const mjsPath = path.resolve(path.dirname(stubPath), requireMatch[1] + ".mjs")
       if (!fs.existsSync(mjsPath)) return
       // Store the shim content and return a virtual ID
       const exportName = requireMatch[2]
