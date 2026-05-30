@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.0.10](https://github.com/nyg/qoqa-compta/compare/v0.0.9..v0.0.10) - 2026-05-30
+
+### 🐛 Bug Fixes
+
+- [`c681809`](https://github.com/nyg/qoqa-compta/commit/c681809424101d3967442b3829653ed1f799a4b1) Open external links in default system browser ([#59](https://github.com/nyg/qoqa-compta/issues/59))
+
 ## [0.0.9](https://github.com/nyg/qoqa-compta/compare/v0.0.8..v0.0.9) - 2026-05-21
 
 ### ⚙️ Miscellaneous
