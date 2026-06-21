@@ -1,6 +1,7 @@
 {
   "name": "qoqa-compta",
   "version": "0.0.11",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "packageManager": "bun@1.3.14",
