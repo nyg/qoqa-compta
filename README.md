@@ -23,18 +23,61 @@
 
 ### Download the app
 
-Pre-built binaries are available on the [Releases](https://github.com/nyg/qoqa-compta/releases) page.
+Standalone desktop apps are available for macOS (Apple Silicon) and Windows — no Bun or Git required.
+
+**macOS (recommended — Homebrew):**
+
+```sh
+brew install --cask nyg/tap/qoqa-compta
+```
+
+This handles the Gatekeeper step for you (see below), so the app launches normally.
+
+**Windows (recommended — Scoop):**
+
+```powershell
+scoop bucket add nyg https://github.com/nyg/scoop-bucket
+scoop install qoqa-compta
+```
+
+Scoop installs per-user (no admin rights) and avoids the SmartScreen prompt (see [Windows SmartScreen](#windows-smartscreen) below). If you don't have Scoop, install it first (no admin required):
+
+```powershell
+irm get.scoop.sh | iex
+```
+
+**Manual download:**
+
+1. Download the installer from the [releases page](https://github.com/nyg/qoqa-compta/releases):
+   - macOS: `QoQa.Compta.dmg`
+   - Windows: `QoQa.Compta.zip`
+2. **macOS**: open the DMG, drag **QoQa Compta.app** to your **Applications** folder, then see [macOS Gatekeeper](#macos-gatekeeper) below before first launch
+3. **Windows**: extract the ZIP and run **QoQa Compta-Setup.exe** inside (installs per-user to `%LOCALAPPDATA%` — no admin rights). See [Windows SmartScreen](#windows-smartscreen) below before first launch.
 
 #### macOS Gatekeeper
 
-Because the app is not signed with an Apple Developer certificate, macOS will block it on first launch. To allow it:
+Because the app is not signed with an Apple Developer certificate, macOS quarantines it after download and blocks it on first launch.
+
+The quickest fix is to remove the quarantine flag once, after copying the app to Applications:
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/QoQa Compta.app"
+```
+
+Alternatively, use the GUI path:
 
 1. Try to open the app — macOS will show a warning and block it
 2. Open **System Settings → Privacy & Security**
 3. Scroll down to the security section — you will see *"QoQa Compta was blocked from use because it is not from an identified developer"*
 4. Click **Open Anyway**, then confirm in the dialog
 
-You only need to do this once per installation.
+You only need to do this once per installation. Installing via Homebrew avoids it entirely.
+
+#### Windows SmartScreen
+
+Because the app is not code-signed, Windows SmartScreen shows *"Windows protected your PC"* when you run `QoQa Compta-Setup.exe`. Click **More info → Run anyway** (this option is only offered to administrators).
+
+Installing via Scoop avoids this prompt entirely.
 
 ### Run it yourself
 
