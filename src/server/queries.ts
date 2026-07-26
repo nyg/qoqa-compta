@@ -79,6 +79,22 @@ function ilikeCompat(col: unknown, value: string): SQL<unknown> {
   return sql`${col} ILIKE ${value}` as SQL<unknown>;
 }
 
+// ── Effective universe ────────────────────────────────────────────────────────
+
+/**
+ * The universe an order belongs to in QoQa's *current* taxonomy: the parent of
+ * its sub-universe, falling back to the universe stored on the order.
+ *
+ * QoQa re-parents sub-universes over time (spirits and winegrandcru moved from
+ * `alcohol` to `wine-and-spirits` in May 2026) while past orders keep the
+ * universe they were filed with. Grouping on the stored value would list the
+ * same sub-universe under two parents and split the totals; grouping on the
+ * current parent keeps one entry per sub-universe.
+ */
+function effectiveUniverse(orders: typeof qoqaOrdersSqlite): SQL<string> {
+  return sql<string>`COALESCE((SELECT su.universe_tracking_identifier FROM qoqa_subuniverses su WHERE su.identifier = ${orders.subuniverse}), ${orders.universe})`;
+}
+
 // ── Column subset for list queries ────────────────────────────────────────────
 
 function orderListColumns(orders: typeof qoqaOrdersSqlite) {
@@ -100,6 +116,20 @@ function orderListColumns(orders: typeof qoqaOrdersSqlite) {
     invoice_number: orders.invoice_number,
     pdf_filename: orders.pdf_filename,
     has_pdf: sql<number>`CASE WHEN ${orders.pdf_data} IS NOT NULL THEN 1 ELSE 0 END`.as("has_pdf"),
+  };
+}
+
+/** List columns plus the universe/sub-universe display names. */
+function orderListSelection(
+  orders: typeof qoqaOrdersSqlite,
+  universesT: typeof qoqaUniversesSqlite,
+  subuniversesT: typeof qoqaSubuniversesSqlite
+) {
+  return {
+    ...orderListColumns(orders),
+    universe: sql<string | null>`${effectiveUniverse(orders)}`.as("universe"),
+    universe_name: sql<string | null>`${universesT.name_fr}`.as("universe_name"),
+    subuniverse_name: sql<string | null>`${subuniversesT.name_fr}`.as("subuniverse_name"),
   };
 }
 
@@ -158,7 +188,10 @@ function subuniverseConditions(
   const parts: SQL<unknown>[] = [];
   for (const [universe, subs] of byUniverse) {
     parts.push(
-      and(eq(orders.universe, universe), inArray(orders.subuniverse, subs)) as SQL<unknown>
+      and(
+        eq(effectiveUniverse(orders), universe),
+        inArray(orders.subuniverse, subs)
+      ) as SQL<unknown>
     );
   }
   if (bare.length > 0) parts.push(inArray(orders.subuniverse, bare) as SQL<unknown>);
@@ -175,7 +208,8 @@ function buildUniverseFilter(
   const conditions: SQL<unknown>[] = [];
 
   const parts: SQL<unknown>[] = [];
-  if (universes.length > 0) parts.push(inArray(orders.universe, universes) as SQL<unknown>);
+  if (universes.length > 0)
+    parts.push(inArray(effectiveUniverse(orders), universes) as SQL<unknown>);
   parts.push(...subuniverseConditions(orders, subuniverses));
   if (parts.length > 0) conditions.push(or(...parts) as SQL<unknown>);
 
@@ -281,13 +315,9 @@ export async function fetchInitialOrders(
   const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
 
   const rows = await getDb()
-    .select({
-      ...orderListColumns(orders),
-      universe_name: sql<string | null>`${universesT.name_fr}`.as("universe_name"),
-      subuniverse_name: sql<string | null>`${subuniversesT.name_fr}`.as("subuniverse_name"),
-    })
+    .select(orderListSelection(orders, universesT, subuniversesT))
     .from(orders)
-    .leftJoin(universesT, eq(universesT.universe_tracking_identifier, orders.universe!))
+    .leftJoin(universesT, eq(universesT.universe_tracking_identifier, effectiveUniverse(orders)))
     .leftJoin(subuniversesT, eq(subuniversesT.identifier, orders.subuniverse!))
     .where(where)
     .orderBy(sql`${orders.order_date} DESC`)
@@ -327,13 +357,9 @@ export async function fetchOrders(
     .where(where);
 
   const rows = await getDb()
-    .select({
-      ...orderListColumns(orders),
-      universe_name: sql<string | null>`${universesT.name_fr}`.as("universe_name"),
-      subuniverse_name: sql<string | null>`${subuniversesT.name_fr}`.as("subuniverse_name"),
-    })
+    .select(orderListSelection(orders, universesT, subuniversesT))
     .from(orders)
-    .leftJoin(universesT, eq(universesT.universe_tracking_identifier, orders.universe!))
+    .leftJoin(universesT, eq(universesT.universe_tracking_identifier, effectiveUniverse(orders)))
     .leftJoin(subuniversesT, eq(subuniversesT.identifier, orders.subuniverse!))
     .where(where)
     .orderBy(sql`${orders.order_date} DESC`)
@@ -360,13 +386,9 @@ export async function fetchAllOrders(params: {
   );
 
   const rows = await getDb()
-    .select({
-      ...orderListColumns(orders),
-      universe_name: sql<string | null>`${universesT.name_fr}`.as("universe_name"),
-      subuniverse_name: sql<string | null>`${subuniversesT.name_fr}`.as("subuniverse_name"),
-    })
+    .select(orderListSelection(orders, universesT, subuniversesT))
     .from(orders)
-    .leftJoin(universesT, eq(universesT.universe_tracking_identifier, orders.universe!))
+    .leftJoin(universesT, eq(universesT.universe_tracking_identifier, effectiveUniverse(orders)))
     .leftJoin(subuniversesT, eq(subuniversesT.identifier, orders.subuniverse!))
     .where(where)
     .orderBy(sql`${orders.order_date} DESC`) as unknown as Record<string, unknown>[];
@@ -377,14 +399,14 @@ export async function fetchAllOrders(params: {
 export async function fetchUniverses(): Promise<UniverseOption[]> {
   const { orders, universes, subuniverses } = t();
 
-  // The tree is derived from the distinct universe/sub-universe pairs the orders
-  // actually carry: qoqa_subuniverses stores a single parent per sub-universe,
-  // which does not always match the universe an order was filed under.
+  // The tree is derived from the universe/sub-universe pairs the orders actually
+  // carry, each mapped to the universe its sub-universe belongs to today — see
+  // effectiveUniverse().
   const pairs = (await getDb()
-    .select({ universe: orders.universe, subuniverse: orders.subuniverse })
+    .select({ universe: effectiveUniverse(orders), subuniverse: orders.subuniverse })
     .from(orders)
     .where(isNotNull(orders.universe))
-    .groupBy(orders.universe, orders.subuniverse)) as unknown as {
+    .groupBy(effectiveUniverse(orders), orders.subuniverse)) as unknown as {
     universe: string | null;
     subuniverse: string | null;
   }[];
@@ -440,7 +462,8 @@ export async function fetchSpendingByGroup(
 ): Promise<SpendingByGroup[]> {
   const { orders } = t();
   const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
-  const groupCol = mode === "universe" ? orders.universe : orders.subuniverse;
+  const groupCol =
+    mode === "universe" ? effectiveUniverse(orders) : orders.subuniverse;
 
   const nameSubquery =
     mode === "universe"
