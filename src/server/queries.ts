@@ -85,11 +85,15 @@ function ilikeCompat(col: unknown, value: string): SQL<unknown> {
  * The universe an order belongs to in QoQa's *current* taxonomy: the parent of
  * its sub-universe, falling back to the universe stored on the order.
  *
- * QoQa re-parents sub-universes over time (spirits and winegrandcru moved from
- * `alcohol` to `wine-and-spirits` in May 2026) while past orders keep the
- * universe they were filed with. Grouping on the stored value would list the
- * same sub-universe under two parents and split the totals; grouping on the
- * current parent keeps one entry per sub-universe.
+ * The two sources disagree. An order stores the universe its offer carried at
+ * sync time (`offer.universe_tracking_identifier`) and is never asked again,
+ * while the sub-universe tree comes from the alerts endpoint and is refreshed
+ * on every sync. QoQa is also re-tagging offers one by one rather than at a
+ * cutover — mid-2026 orders arrive under `alcohol` and `wine-and-spirits`
+ * interleaved, though the alerts tree files spirits/wine/winegrandcru under
+ * `wine-and-spirits`. Grouping on the stored value therefore lists the same
+ * sub-universe under two parents and splits its totals; grouping on the current
+ * parent keeps one entry per sub-universe.
  */
 function effectiveUniverse(orders: typeof qoqaOrdersSqlite): SQL<string> {
   return sql<string>`COALESCE((SELECT su.universe_tracking_identifier FROM qoqa_subuniverses su WHERE su.identifier = ${orders.subuniverse}), ${orders.universe})`;
