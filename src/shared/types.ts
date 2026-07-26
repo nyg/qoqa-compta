@@ -89,6 +89,7 @@ export type SyncEventType =
   | "universes_ok"
   | "universes_error"
   | "purchases_fetched"
+  | "info"
   | "order_synced"
   | "order_skipped"
   | "order_error"

@@ -1,7 +1,9 @@
 import { useState, useCallback } from "react";
+import { parseSubuniverseKey } from "../../shared/filters";
 
 export interface FilterState {
   universes: string[];
+  /** `universe:subuniverse` keys — see shared/filters */
   subuniverses: string[];
   from?: string;
   to?: string;
@@ -16,7 +18,14 @@ function readFromStorage(): FilterState {
       const parsed = JSON.parse(raw);
       return {
         universes: Array.isArray(parsed.universes) ? parsed.universes : [],
-        subuniverses: Array.isArray(parsed.subuniverses) ? parsed.subuniverses : [],
+        // Selections stored before sub-universes were namespaced by universe are
+        // dropped: they cannot be mapped back to a single universe.
+        subuniverses: Array.isArray(parsed.subuniverses)
+          ? parsed.subuniverses.filter(
+              (s: unknown) =>
+                typeof s === "string" && parseSubuniverseKey(s).universe !== null
+            )
+          : [],
         from: typeof parsed.from === "string" ? parsed.from : undefined,
         to: typeof parsed.to === "string" ? parsed.to : undefined,
       };

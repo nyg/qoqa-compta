@@ -4,7 +4,8 @@
     "errorTitle": "Verbindung zur Datenbank fehlgeschlagen.",
     "errorDetail": "Stellen Sie sicher, dass <code>DATABASE_URL</code> in den Einstellungen korrekt konfiguriert ist.",
     "emptyTitle": "Keine Bestellungen in der Datenbank gefunden.",
-    "emptyDetail": "Öffnen Sie die <settings>Einstellungen</settings>, um Ihre Datenbankverbindung zu konfigurieren und eine Synchronisation zu starten."
+    "emptyDetail": "Öffnen Sie die <settings>Einstellungen</settings>, um Ihre Datenbankverbindung zu konfigurieren und eine Synchronisation zu starten.",
+    "syncNow": "Jetzt synchronisieren"
   },
   "StatsCards": {
     "totalSpent": "Gesamtausgaben",
@@ -33,12 +34,14 @@
     "nextPage": "Weiter →",
     "pageSize": "pro Seite",
     "csvExport": "CSV exportieren",
-    "viewOnQoqa": "Auf QoQa ansehen"
+    "viewOnQoqa": "Auf QoQa ansehen",
+    "savedTo": "Gespeichert unter {{file}}"
   },
   "PdfDialog": {
     "title": "Rechnung {{orderNumber}}",
     "close": "Schliessen",
-    "download": "PDF herunterladen"
+    "download": "PDF herunterladen",
+    "savedTo": "Gespeichert unter {{file}}"
   },
   "UniversePicker": {
     "allUniverses": "Alle Universen",

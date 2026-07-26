@@ -12,6 +12,7 @@ import {
   upsertUniverse,
   upsertSubuniverse,
   getOrderByNumber,
+  fetchOrderNumbersMissingPdf,
   type NewOrderData,
 } from "./queries";
 import type { SyncProgressEvent, SyncEventType } from "../shared/types";
@@ -144,7 +145,14 @@ export async function syncOrders(
   }
 
   // 4. Process each purchase
+  //
+  // An invoice is not always issued by the time an order is first synced, so
+  // orders stored without a PDF are revisited on every update sync — including
+  // the ones behind the "already synced" cut-off — until the PDF is available.
+  const missingPdf = new Set(mode === "update" ? await fetchOrderNumbersMissingPdf() : []);
+
   let consecutiveUnchanged = 0;
+  let reachedKnownOrders = false;
   let syncedCount = 0;
   let skippedCount = 0;
   let pdfCount = 0;
@@ -160,19 +168,30 @@ export async function syncOrders(
     // reference is the human-readable order number (e.g. "QO-12345") stored in DB
     const orderReference = purchase.reference ? String(purchase.reference) : orderId;
 
+    const awaitingPdf = missingPdf.has(orderReference);
+
     if (mode === "update") {
-      const existing = await getOrderByNumber(orderReference);
-      if (existing !== null) {
-        consecutiveUnchanged++;
-        skippedCount++;
-        emit(makeEvent("order_skipped", `Skipped already-synced order ${orderReference}`));
-        if (consecutiveUnchanged >= 5) {
-          emit(makeEvent("done", `Reached already-synced orders — ${syncedCount} synced, ${pdfCount} with PDF`, { synced: syncedCount, withPdf: pdfCount, skipped: skippedCount, errors: errorCount }));
-          return;
+      if (reachedKnownOrders) {
+        // Everything from here on is already synced — only orders still waiting
+        // for their invoice are worth another round-trip.
+        if (!awaitingPdf) continue;
+      } else {
+        const existing = await getOrderByNumber(orderReference);
+        if (existing === null) {
+          consecutiveUnchanged = 0;
+        } else {
+          consecutiveUnchanged++;
+          if (consecutiveUnchanged >= 5) {
+            reachedKnownOrders = true;
+            emit(makeEvent("info", "Reached already-synced orders — checking for pending invoices only"));
+          }
+          if (!awaitingPdf) {
+            skippedCount++;
+            emit(makeEvent("order_skipped", `Skipped already-synced order ${orderReference}`));
+            continue;
+          }
         }
-        continue;
       }
-      consecutiveUnchanged = 0;
     }
 
     try {
@@ -193,7 +212,17 @@ export async function syncOrders(
 
       await upsertOrder(orderData);
       syncedCount++;
-      emit(makeEvent("order_synced", `Synced order ${orderData.order_number}${hasPdf ? " (with PDF)" : ""}`, { hasPdf }));
+      emit(
+        makeEvent(
+          "order_synced",
+          awaitingPdf
+            ? hasPdf
+              ? `Downloaded pending invoice for order ${orderData.order_number}`
+              : `Invoice not available yet for order ${orderData.order_number}`
+            : `Synced order ${orderData.order_number}${hasPdf ? " (with PDF)" : ""}`,
+          { hasPdf }
+        )
+      );
     } catch (err) {
       errorCount++;
       emit(makeEvent("order_error", `Error syncing order ${orderReference}: ${(err as Error).message}`));

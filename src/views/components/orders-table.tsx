@@ -8,6 +8,7 @@ import { OrderPdfDialog } from "@/components/order-pdf-dialog";
 import { useFormatter } from "@/lib/formatter-context";
 import { useTranslation } from "react-i18next";
 import { apiClient } from "@/lib/api-client";
+import { fileName, saveFile } from "@/lib/downloads";
 import type { QoqaOrder, Pagination } from "../../shared/types";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -106,42 +107,32 @@ export function OrdersTable({
   const [csvDownloading, setCsvDownloading] = useState(false);
   const [csvSavedPath, setCsvSavedPath] = useState<string | null>(null);
 
-  const isDesktop = window.location.protocol === "views:";
-
   const handleCsvDownload = useCallback(async () => {
     setCsvDownloading(true);
     setCsvSavedPath(null);
     try {
-      if (isDesktop) {
-        const result = await apiClient.saveCsv({
-          universes: selectedUniverses.length > 0 ? selectedUniverses : undefined,
-          subuniverses: selectedSubuniverses.length > 0 ? selectedSubuniverses : undefined,
-          from: from || undefined,
-          to: to || undefined,
-        });
-        if ("path" in result) {
-          setCsvSavedPath(result.path);
-          setTimeout(() => setCsvSavedPath(null), 5000);
-        }
-      } else {
-        const res = await fetch(csvUrl);
-        if (!res.ok) throw new Error(`${res.status}`);
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "qoqa-orders.csv";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+      const path = await saveFile({
+        save: () =>
+          apiClient.saveCsv({
+            universes: selectedUniverses.length > 0 ? selectedUniverses : undefined,
+            subuniverses:
+              selectedSubuniverses.length > 0 ? selectedSubuniverses : undefined,
+            from: from || undefined,
+            to: to || undefined,
+          }),
+        url: csvUrl,
+        filename: "qoqa-orders.csv",
+      });
+      if (path) {
+        setCsvSavedPath(path);
+        setTimeout(() => setCsvSavedPath(null), 5000);
       }
     } catch (e) {
       console.error("CSV download failed:", e);
     } finally {
       setCsvDownloading(false);
     }
-  }, [csvUrl, isDesktop, selectedUniverses, selectedSubuniverses, from, to]);
+  }, [csvUrl, selectedUniverses, selectedSubuniverses, from, to]);
 
   return (
     <Card>
@@ -179,7 +170,7 @@ export function OrdersTable({
               </Button>
               {csvSavedPath && (
                 <span className="text-xs text-muted-foreground truncate max-w-48" title={csvSavedPath}>
-                  {csvSavedPath.split("/").pop()}
+                  {t("savedTo", { file: fileName(csvSavedPath) })}
                 </span>
               )}
             </div>

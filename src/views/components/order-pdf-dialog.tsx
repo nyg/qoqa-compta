@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { Download, FileText, X } from "lucide-react";
+import { Check, Download, FileText, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
+import { fileName, saveFile } from "@/lib/downloads";
 
 interface OrderPdfDialogProps {
   orderNumber: string;
@@ -21,9 +22,28 @@ export function OrderPdfDialog({
   const { t } = useTranslation("PdfDialog");
   const { t: tTable } = useTranslation("OrdersTable");
   const [open, setOpen] = useState(false);
+  const [savedPath, setSavedPath] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   const pdfUrl = apiClient.getPdfUrl(orderNumber);
   const label = disabled ? tTable("noInvoice") : tTable("viewInvoice");
+
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      const path = await saveFile({
+        save: () => apiClient.savePdf(orderNumber),
+        url: pdfUrl,
+        filename: `invoice-${orderNumber}.pdf`,
+      });
+      setSavedPath(path ?? "");
+      setTimeout(() => setSavedPath(null), 5000);
+    } catch (e) {
+      console.error("PDF download failed:", e);
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
@@ -57,15 +77,28 @@ export function OrderPdfDialog({
               {t("title", { orderNumber })}
             </DialogPrimitive.Title>
             <div className="flex items-center gap-1">
-              <a
-                href={pdfUrl}
-                download
+              {savedPath && (
+                <span
+                  className="max-w-64 truncate text-xs text-muted-foreground"
+                  title={savedPath}
+                >
+                  {t("savedTo", { file: fileName(savedPath) })}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={downloading}
                 title={t("download")}
                 aria-label={t("download")}
-                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
               >
-                <Download className="size-3.5" aria-hidden />
-              </a>
+                {savedPath !== null ? (
+                  <Check className="size-3.5" aria-hidden />
+                ) : (
+                  <Download className="size-3.5" aria-hidden />
+                )}
+              </button>
               <DialogPrimitive.Close
                 type="button"
                 title={t("close")}

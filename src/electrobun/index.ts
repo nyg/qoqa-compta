@@ -25,11 +25,7 @@ async function main() {
 
   const honoApp = createApp({
     corsOrigins: ["views://", "http://localhost:3000"],
-    openDirectoryDialog: async () => {
-      const paths = await Utils.openFileDialog({ canChooseDirectory: true, canChooseFiles: false, allowsMultipleSelection: false });
-      const first = paths?.[0];
-      return first?.trim() ? first : null;
-    },
+    desktop: true,
   });
 
   try {

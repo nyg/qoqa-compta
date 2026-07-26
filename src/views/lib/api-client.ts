@@ -80,12 +80,13 @@ export const apiClient = {
     return `${API_BASE}/api/orders/csv${qs ? `?${qs}` : ""}`;
   },
 
+  /** Desktop only — writes the export to the user's Downloads folder. */
   saveCsv(params: {
     universes?: string[];
     subuniverses?: string[];
     from?: string;
     to?: string;
-  }): Promise<{ path: string } | { cancelled: true }> {
+  }): Promise<{ path: string }> {
     const p = new URLSearchParams();
     if (params.universes?.length) p.set("universes", params.universes.join(","));
     if (params.subuniverses?.length)
@@ -93,8 +94,16 @@ export const apiClient = {
     if (params.from) p.set("from", params.from);
     if (params.to) p.set("to", params.to);
     const qs = p.toString();
-    return request<{ path: string } | { cancelled: true }>(
+    return request<{ path: string }>(
       `${API_BASE}/api/orders/csv-save${qs ? `?${qs}` : ""}`,
+      { method: "POST" }
+    );
+  },
+
+  /** Desktop only — writes the invoice to the user's Downloads folder. */
+  savePdf(orderNumber: string): Promise<{ path: string }> {
+    return request<{ path: string }>(
+      `${API_BASE}/api/orders/${encodeURIComponent(orderNumber)}/pdf-save`,
       { method: "POST" }
     );
   },

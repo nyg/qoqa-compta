@@ -9,6 +9,7 @@ import {
   fetchSpendingByGroup,
 } from "../queries";
 import { readSettings } from "../settings";
+import { parseSubuniverseKey } from "../../shared/filters";
 import type { DashboardData, SpendingByGroup } from "../../shared/types";
 
 const router = new Hono();
@@ -52,7 +53,10 @@ router.get("/dashboard", async (c) => {
       const activeUniverseIds = new Set([
         ...effectiveUniverses,
         ...subuniverseList
-          .map((s) => subToUniverse.get(s))
+          .map((key) => {
+            const { universe, subuniverse } = parseSubuniverseKey(key);
+            return universe ?? subToUniverse.get(subuniverse);
+          })
           .filter((v): v is string => v !== undefined),
       ]);
       pieMode =

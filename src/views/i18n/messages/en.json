@@ -4,7 +4,8 @@
     "errorTitle": "Failed to connect to the database.",
     "errorDetail": "Make sure <code>DATABASE_URL</code> is configured correctly in the Settings.",
     "emptyTitle": "No orders found in the database.",
-    "emptyDetail": "Open <settings>Settings</settings> to configure your database connection and run a sync to import your QoQa orders."
+    "emptyDetail": "Open <settings>Settings</settings> to configure your database connection and run a sync to import your QoQa orders.",
+    "syncNow": "Sync now"
   },
   "StatsCards": {
     "totalSpent": "Total spent",
@@ -33,12 +34,14 @@
     "nextPage": "Next →",
     "pageSize": "per page",
     "csvExport": "Export CSV",
-    "viewOnQoqa": "View on QoQa"
+    "viewOnQoqa": "View on QoQa",
+    "savedTo": "Saved to {{file}}"
   },
   "PdfDialog": {
     "title": "Invoice {{orderNumber}}",
     "close": "Close",
-    "download": "Download PDF"
+    "download": "Download PDF",
+    "savedTo": "Saved to {{file}}"
   },
   "UniversePicker": {
     "allUniverses": "All universes",
