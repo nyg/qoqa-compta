@@ -11,7 +11,11 @@ export default {
   },
   build: {
     mac: {
+      // Generated from assets/icon.svg, see scripts/generate-icons.sh.
       icons: "assets/icon.iconset",
+    },
+    win: {
+      icon: "assets/icon.ico",
     },
     bun: {
       entrypoint: "src/electrobun/index.ts",
