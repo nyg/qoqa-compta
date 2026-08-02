@@ -1,6 +1,42 @@
 # Changelog
 
 
+## [0.1.0](https://github.com/nyg/qoqa-compta/compare/v0.0.11..v0.1.0) - 2026-08-02
+
+### ⛰️  Features
+
+- [`2bfa772`](https://github.com/nyg/qoqa-compta/commit/2bfa7722911c57e2c7f0d6c92aa60080b5167359) Distribute Windows builds via Scoop ([#84](https://github.com/nyg/qoqa-compta/issues/84))
+
+### 🐛 Bug Fixes
+
+- [`d8daeea`](https://github.com/nyg/qoqa-compta/commit/d8daeeaad938370feb0ec17ede3988643397bd4f) Universe grouping, desktop downloads, invoice backfill, sync shortcut ([#85](https://github.com/nyg/qoqa-compta/issues/85))
+- [`47cd80d`](https://github.com/nyg/qoqa-compta/commit/47cd80d1d2ef0a2154e31a70f3758b6a67bf0055) *(deps)* Update all stable non-major dependencies ([#86](https://github.com/nyg/qoqa-compta/issues/86))
+- [`d8cd341`](https://github.com/nyg/qoqa-compta/commit/d8cd341d4efb3c628670472028c6105f1c61ebbf) *(deps)* Update dependency react-router to v8.3.0 [security] ([#83](https://github.com/nyg/qoqa-compta/issues/83))
+- [`af1fed5`](https://github.com/nyg/qoqa-compta/commit/af1fed5e12616d3eaab110bb5aadd0c6aad79b95) *(deps)* Update dependency lucide-react to v1.22.0 ([#76](https://github.com/nyg/qoqa-compta/issues/76))
+- [`353106c`](https://github.com/nyg/qoqa-compta/commit/353106c7c531b653101721a71171f6c1c90b4be1) *(deps)* Update all stable non-major dependencies ([#75](https://github.com/nyg/qoqa-compta/issues/75))
+- [`3089a38`](https://github.com/nyg/qoqa-compta/commit/3089a386ba01f24b629ae1686a3abd75fc5013c8) *(deps)* Update react-router monorepo to v8 ([#73](https://github.com/nyg/qoqa-compta/issues/73))
+- [`791c82c`](https://github.com/nyg/qoqa-compta/commit/791c82c4c22109318a315bb0616fd768df340117) *(deps)* Update dependency hono to v4.12.25 [security] ([#71](https://github.com/nyg/qoqa-compta/issues/71))
+- [`18d21b7`](https://github.com/nyg/qoqa-compta/commit/18d21b73e5ab5a8b1757352188eab99093876668) *(deps)* Update all stable non-major dependencies ([#63](https://github.com/nyg/qoqa-compta/issues/63))
+
+### ⚙️ Miscellaneous
+
+- [`be7e048`](https://github.com/nyg/qoqa-compta/commit/be7e048b39804d6ed9305ac2b535a21f7be74c1a) *(deps)* Update dependency typescript to v7 ([#82](https://github.com/nyg/qoqa-compta/issues/82))
+- [`ecb3e97`](https://github.com/nyg/qoqa-compta/commit/ecb3e97bc257f175f563256a451ece03f107914b) *(deps)* Lock file maintenance ([#81](https://github.com/nyg/qoqa-compta/issues/81))
+- [`1180796`](https://github.com/nyg/qoqa-compta/commit/11807961ab3234abe54856b3f8eda99657a49a9e) *(deps)* Lock file maintenance ([#80](https://github.com/nyg/qoqa-compta/issues/80))
+- [`9c15744`](https://github.com/nyg/qoqa-compta/commit/9c15744fe957d581ba837efaf07e3698b299b7bb) *(deps)* Lock file maintenance ([#79](https://github.com/nyg/qoqa-compta/issues/79))
+- [`5b94d8b`](https://github.com/nyg/qoqa-compta/commit/5b94d8b0d3996ff942c9c125fd191a5883f2cad7) *(deps)* Lock file maintenance ([#78](https://github.com/nyg/qoqa-compta/issues/78))
+- [`1459549`](https://github.com/nyg/qoqa-compta/commit/1459549b08e5fbd2c5bf2a83726ed575fe22c909) *(deps)* Lock file maintenance ([#77](https://github.com/nyg/qoqa-compta/issues/77))
+- [`9f461a2`](https://github.com/nyg/qoqa-compta/commit/9f461a2f1c287a4b2a7108c62f094493387b69f3) Add MIT license ([#74](https://github.com/nyg/qoqa-compta/issues/74))
+- [`7fc923d`](https://github.com/nyg/qoqa-compta/commit/7fc923df4cf40ee8a45d75c811e661e3f6e0c965) *(deps)* Update actions/checkout action to v7 ([#72](https://github.com/nyg/qoqa-compta/issues/72))
+- [`61ddcce`](https://github.com/nyg/qoqa-compta/commit/61ddccee63f9b5fa5309a74abae2c7386756fac4) *(deps)* Update dependency vite to v8.0.16 [security] ([#70](https://github.com/nyg/qoqa-compta/issues/70))
+- [`833dd49`](https://github.com/nyg/qoqa-compta/commit/833dd49cbd30bbc0e1791f8b0c57cdf1f4644c0b) *(deps)* Update dependency concurrently to v10 ([#62](https://github.com/nyg/qoqa-compta/issues/62))
+- [`a6ded79`](https://github.com/nyg/qoqa-compta/commit/a6ded796ca2713e36843a2e0ce623dd0c8d26226) Add packageManager field for Renovate Bun version detection ([#69](https://github.com/nyg/qoqa-compta/issues/69))
+- [`fc7606e`](https://github.com/nyg/qoqa-compta/commit/fc7606ec1a30c72765e7ac6cf899b6810a0f9a45) *(deps)* Pin dependencies ([#64](https://github.com/nyg/qoqa-compta/issues/64))
+- [`d79c2c7`](https://github.com/nyg/qoqa-compta/commit/d79c2c7e5b15f5074b0eed1ed47f9fcdabbc01d9) *(deps)* Lock file maintenance ([#68](https://github.com/nyg/qoqa-compta/issues/68))
+- [`07e3f24`](https://github.com/nyg/qoqa-compta/commit/07e3f245035c535d21c7b135390364ae0fe9637c) *(deps)* Update actions/checkout digest to df4cb1c ([#67](https://github.com/nyg/qoqa-compta/issues/67))
+- [`183b757`](https://github.com/nyg/qoqa-compta/commit/183b7573370383aba70d890d8626704488d955ce) *(deps)* Lock file maintenance ([#66](https://github.com/nyg/qoqa-compta/issues/66))
+- [`376b9e6`](https://github.com/nyg/qoqa-compta/commit/376b9e6a47b94e01aa657e9d1cf110b22e02ea21) *(deps)* Lock file maintenance ([#65](https://github.com/nyg/qoqa-compta/issues/65))
+
 ## [0.0.11](https://github.com/nyg/qoqa-compta/compare/v0.0.10..v0.0.11) - 2026-05-30
 
 ### ⛰️  Features
