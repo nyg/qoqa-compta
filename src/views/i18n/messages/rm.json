@@ -4,7 +4,8 @@
     "errorTitle": "Impossibel da connectar cun la banca da datas.",
     "errorDetail": "Controllai che <code>DATABASE_URL</code> saja configurà correctamain en ils Parameters.",
     "emptyTitle": "Naginas ordinaziuns chattas en la banca da datas.",
-    "emptyDetail": "Avra ils <settings>Parameters</settings> per configurar la connexiun cun la banca da datas ed aviar ina sincronisaziun."
+    "emptyDetail": "Avra ils <settings>Parameters</settings> per configurar la connexiun cun la banca da datas ed aviar ina sincronisaziun.",
+    "syncNow": "Sincronisar ussa"
   },
   "StatsCards": {
     "totalSpent": "Total spendì",
@@ -33,12 +34,14 @@
     "nextPage": "Suandant →",
     "pageSize": "per pagina",
     "csvExport": "Exportar CSV",
-    "viewOnQoqa": "Vesair sin QoQa"
+    "viewOnQoqa": "Vesair sin QoQa",
+    "savedTo": "Memorisà en {{file}}"
   },
   "PdfDialog": {
     "title": "Fattura {{orderNumber}}",
     "close": "Serrar",
-    "download": "Telechargiar il PDF"
+    "download": "Telechargiar il PDF",
+    "savedTo": "Memorisà en {{file}}"
   },
   "UniversePicker": {
     "allUniverses": "Tut ils univers",

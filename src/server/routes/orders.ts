@@ -1,6 +1,6 @@
-import path from "node:path";
 import { Hono } from "hono";
 import { fetchOrders, fetchOrderPdf, fetchAllOrders } from "../queries";
+import { saveToDownloads } from "../downloads";
 import type { OrdersResponse, QoqaOrder } from "../../shared/types";
 
 function parseList(param: string | undefined): string[] {
@@ -56,7 +56,7 @@ function ordersToCsv(orders: QoqaOrder[]): string {
   return [headers.join(","), ...rows].join("\n");
 }
 
-export default function ordersRouter(openDirectoryDialog?: () => Promise<string | null>) {
+export default function ordersRouter(opts?: { desktop?: boolean }) {
   const router = new Hono();
   // GET /api/orders/csv  (must be defined before /:orderNumber/pdf)
   router.get("/orders/csv", async (c) => {
@@ -87,17 +87,16 @@ export default function ordersRouter(openDirectoryDialog?: () => Promise<string 
     }
   });
 
-  // POST /api/orders/csv-save  (desktop only — requires openDirectoryDialog)
-  if (openDirectoryDialog) {
+  // Desktop only: the WebView cannot download files itself, so the server writes
+  // them straight to the user's Downloads folder.
+  if (opts?.desktop) {
+    // POST /api/orders/csv-save
     router.post("/orders/csv-save", async (c) => {
       try {
         const universeList = parseList(c.req.query("universes"));
         const subuniverseList = parseList(c.req.query("subuniverses"));
         const from = c.req.query("from");
         const to = c.req.query("to");
-
-        const dir = await openDirectoryDialog();
-        if (!dir) return c.json({ cancelled: true });
 
         const orders = await fetchAllOrders({
           universes: universeList.length ? universeList : undefined,
@@ -106,14 +105,35 @@ export default function ordersRouter(openDirectoryDialog?: () => Promise<string 
           to,
         });
 
-        const csv = ordersToCsv(orders);
         const date = new Date().toISOString().slice(0, 10);
-        const filePath = path.join(dir, `qoqa-orders-${date}.csv`);
-        await Bun.write(filePath, csv);
+        const filePath = await saveToDownloads(
+          `qoqa-orders-${date}.csv`,
+          ordersToCsv(orders)
+        );
 
         return c.json({ path: filePath });
       } catch (err) {
         console.error("[orders/csv-save]", err);
+        return c.json({ error: (err as Error).message }, 500);
+      }
+    });
+
+    // POST /api/orders/:orderNumber/pdf-save
+    router.post("/orders/:orderNumber/pdf-save", async (c) => {
+      try {
+        const orderNumber = c.req.param("orderNumber");
+        const pdfBuffer = await fetchOrderPdf(orderNumber);
+        if (!pdfBuffer) return c.json({ error: "PDF not found" }, 404);
+
+        const safeName = orderNumber.replace(/[^A-Za-z0-9_-]/g, "_");
+        const filePath = await saveToDownloads(
+          `invoice-${safeName}.pdf`,
+          new Uint8Array(pdfBuffer)
+        );
+
+        return c.json({ path: filePath });
+      } catch (err) {
+        console.error("[orders/pdf-save]", err);
         return c.json({ error: (err as Error).message }, 500);
       }
     });

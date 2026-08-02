@@ -9,8 +9,10 @@ import { DateRangePicker } from "@/components/date-range-picker";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SettingsModal } from "@/components/settings-modal";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
 import { useFilterState, type FilterState } from "@/lib/use-filter-state";
+import { useSyncRunner } from "@/lib/use-sync-runner";
 import type { DashboardData } from "../../shared/types";
 
 function LoadingSkeleton() {
@@ -99,6 +101,20 @@ export function DashboardPage() {
     loadDashboard(filters);
   }, [filters, loadDashboard]);
 
+  // Shared by the header shortcut and the settings dialog, so a sync started
+  // from either shows its progress in the other.
+  const sync = useSyncRunner(() => loadDashboard(filters));
+
+  // A sync started from the header has nowhere to report a failure (missing
+  // credentials, bad login…), so surface the dialog holding the log.
+  useEffect(() => {
+    if (!sync.done) return;
+    const failed = sync.log.some(
+      (e) => e.type === "error" || e.type === "auth_error"
+    );
+    if (failed) setSettingsOpen(true);
+  }, [sync.done, sync.log]);
+
   // Build a subuniverse name lookup for the orders table
   const subuniverseNames: Record<string, string> = {};
   if (data?.universes) {
@@ -157,7 +173,22 @@ export function DashboardPage() {
               </>
             )}
             <ThemeToggle />
-            <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} onDataChanged={() => loadDashboard(filters)} />
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={t("syncNow")}
+              title={t("syncNow")}
+              disabled={sync.running}
+              onClick={() => sync.start("update")}
+            >
+              <RefreshCw className={cn(sync.running && "animate-spin")} />
+            </Button>
+            <SettingsModal
+              open={settingsOpen}
+              onOpenChange={setSettingsOpen}
+              onDataChanged={() => loadDashboard(filters)}
+              sync={sync}
+            />
           </div>
         </div>
       </header>

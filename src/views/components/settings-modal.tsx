@@ -6,10 +6,10 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiClient } from "@/lib/api-client";
+import { isDesktop } from "@/lib/downloads";
+import type { SyncMode, SyncRunner } from "@/lib/use-sync-runner";
 import type { AppSettings, SyncProgressEvent } from "../../shared/types";
 import i18n, { SUPPORTED_LOCALES, type SupportedLocale } from "@/i18n/index";
-
-type SyncMode = "full" | "update";
 
 const LOCALE_NAMES: Record<string, string> = {
   en: "English",
@@ -18,12 +18,6 @@ const LOCALE_NAMES: Record<string, string> = {
   it: "Italiano",
   rm: "Rumantsch",
 };
-
-interface LogEntry {
-  type: SyncProgressEvent["type"];
-  message: string;
-  timestamp: string;
-}
 
 function logEntryColor(type: SyncProgressEvent["type"]): string {
   if (
@@ -40,7 +34,17 @@ function logEntryColor(type: SyncProgressEvent["type"]): string {
   return "text-muted-foreground";
 }
 
-export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChanged }: { open?: boolean; onOpenChange?: (open: boolean) => void; onDataChanged?: () => void } = {}) {
+export function SettingsModal({
+  open: controlledOpen,
+  onOpenChange,
+  onDataChanged,
+  sync,
+}: {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onDataChanged?: () => void;
+  sync: SyncRunner;
+}) {
   const { t } = useTranslation("Settings");
   const [internalOpen, setInternalOpen] = useState(false);
 
@@ -62,7 +66,6 @@ export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChange
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const isDesktop = window.location.protocol === "views:";
   const [dbPath, setDbPath] = useState<string | null>(null);
   const [pathCopied, setPathCopied] = useState(false);
 
@@ -73,12 +76,8 @@ export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChange
 
   // Sync
   const [syncMode, setSyncMode] = useState<SyncMode>("update");
-  const [syncRunning, setSyncRunning] = useState(false);
-  const [syncDone, setSyncDone] = useState(false);
-  const [syncLog, setSyncLog] = useState<LogEntry[]>([]);
-  const [syncStats, setSyncStats] = useState({ synced: 0, skipped: 0, withPdf: 0, errors: 0 });
+  const { running: syncRunning, done: syncDone, log: syncLog, stats: syncStats } = sync;
   const logEndRef = useRef<HTMLDivElement>(null);
-  const esRef = useRef<EventSource | null>(null);
 
   // Load settings on open
   useEffect(() => {
@@ -87,9 +86,10 @@ export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChange
     setSaved(false);
     setConfirmReset(false);
     setResetSuccess(false);
-    setSyncDone(false);
-    setSyncLog([]);
-    setSyncStats({ synced: 0, skipped: 0, withPdf: 0, errors: 0 });
+    // The sync log is deliberately left alone: the dialog is opened
+    // automatically when a run started from the header fails, and clearing it
+    // here would discard the very log the user is being shown. `start()`
+    // clears it at the beginning of each run.
     apiClient
       .getSettings()
       .then((s: AppSettings) => {
@@ -113,13 +113,6 @@ export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChange
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [syncLog]);
-
-  // Cleanup EventSource on unmount
-  useEffect(() => {
-    return () => {
-      esRef.current?.close();
-    };
-  }, []);
 
   async function handleSave() {
     setSaving(true);
@@ -166,83 +159,6 @@ export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChange
       await apiClient.revealDbInFinder();
     } catch (e) {
       console.error(e);
-    }
-  }
-
-  function handleRunSync() {
-    setSyncRunning(true);
-    setSyncDone(false);
-    setSyncLog([]);
-    setSyncStats({ synced: 0, skipped: 0, withPdf: 0, errors: 0 });
-
-    apiClient.startSync(syncMode).catch(console.error);
-
-    const es = apiClient.createSyncEventSource();
-    esRef.current = es;
-
-    es.onmessage = (event) => {
-      try {
-        const parsed: SyncProgressEvent = JSON.parse(event.data);
-        setSyncLog((prev) => [
-          ...prev,
-          {
-            type: parsed.type,
-            message: parsed.message,
-            timestamp: parsed.timestamp,
-          },
-        ]);
-        // Update running counters
-        if (parsed.type === "order_synced") {
-          setSyncStats((prev) => ({
-            ...prev,
-            synced: prev.synced + 1,
-            withPdf: prev.withPdf + (parsed.data?.hasPdf ? 1 : 0),
-          }));
-        } else if (parsed.type === "order_skipped") {
-          setSyncStats((prev) => ({ ...prev, skipped: prev.skipped + 1 }));
-        } else if (parsed.type === "order_error") {
-          setSyncStats((prev) => ({ ...prev, errors: prev.errors + 1 }));
-        }
-        // Sync finished
-        if (parsed.type === "done" || parsed.type === "error" || parsed.type === "cancelled") {
-          // Overwrite with authoritative final stats from the server payload if available
-          if (parsed.data && "synced" in parsed.data) {
-            setSyncStats({
-              synced: Number(parsed.data.synced ?? 0),
-              withPdf: Number(parsed.data.withPdf ?? 0),
-              skipped: Number(parsed.data.skipped ?? 0),
-              errors: Number(parsed.data.errors ?? 0),
-            });
-          }
-          setSyncRunning(false);
-          setSyncDone(true);
-          if (parsed.type === "done") onDataChanged?.();
-          es.close();
-          esRef.current = null;
-        }
-      } catch {
-        // ignore parse errors
-      }
-    };
-
-    es.onerror = () => {
-      setSyncRunning(false);
-      setSyncDone(true);
-      es.close();
-      esRef.current = null;
-    };
-  }
-
-  async function handleCancelSync() {
-    try {
-      await apiClient.cancelSync();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      esRef.current?.close();
-      esRef.current = null;
-      setSyncRunning(false);
-      setSyncDone(true);
     }
   }
 
@@ -472,6 +388,8 @@ export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChange
                   </Button>
                 </div>
 
+                <hr className="border-border" />
+
                 {/* ── Sync ── */}
                 <section className="space-y-3">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -527,7 +445,7 @@ export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChange
                       variant="default"
                       size="sm"
                       disabled={syncRunning}
-                      onClick={handleRunSync}
+                      onClick={() => sync.start(syncMode)}
                     >
                       <RefreshCw className={cn("size-3", syncRunning && "animate-spin")} />
                       {t("runSync")}
@@ -536,7 +454,7 @@ export function SettingsModal({ open: controlledOpen, onOpenChange, onDataChange
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleCancelSync}
+                        onClick={sync.cancel}
                       >
                         {t("cancelSync")}
                       </Button>

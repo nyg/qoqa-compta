@@ -9,9 +9,10 @@ import settingsRoutes from "./routes/settings";
 // ── Factory ────────────────────────────────────────────────────────────────────
 // In desktop mode pass corsOrigins so the views:// WebView can reach the local
 // API server. In web mode the SPA and API share the same origin so CORS is not
-// needed.
+// needed. `desktop` also enables the routes that save files to the local
+// Downloads folder, which only make sense when server and user share a machine.
 
-export function createApp(opts?: { corsOrigins?: string[]; openDirectoryDialog?: () => Promise<string | null> }) {
+export function createApp(opts?: { corsOrigins?: string[]; desktop?: boolean }) {
   const app = new Hono();
 
   if (opts?.corsOrigins?.length) {
@@ -43,7 +44,7 @@ export function createApp(opts?: { corsOrigins?: string[]; openDirectoryDialog?:
   // ── API routes ───────────────────────────────────────────────────────────────
 
   app.route("/api", dashboardRoutes);
-  app.route("/api", ordersRoutes(opts?.openDirectoryDialog));
+  app.route("/api", ordersRoutes({ desktop: opts?.desktop }));
   app.route("/api", syncRoutes);
   app.route("/api", settingsRoutes);
 

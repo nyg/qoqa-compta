@@ -4,7 +4,8 @@
     "errorTitle": "Impossible de se connecter à la base de données.",
     "errorDetail": "Assurez-vous que <code>DATABASE_URL</code> est correctement configuré dans les Paramètres.",
     "emptyTitle": "Aucune commande trouvée dans la base de données.",
-    "emptyDetail": "Ouvrez les <settings>Paramètres</settings> pour configurer votre base de données et lancer une synchronisation pour importer vos commandes QoQa."
+    "emptyDetail": "Ouvrez les <settings>Paramètres</settings> pour configurer votre base de données et lancer une synchronisation pour importer vos commandes QoQa.",
+    "syncNow": "Synchroniser maintenant"
   },
   "StatsCards": {
     "totalSpent": "Total dépensé",
@@ -33,12 +34,14 @@
     "nextPage": "Suivant →",
     "pageSize": "par page",
     "csvExport": "Exporter CSV",
-    "viewOnQoqa": "Voir sur QoQa"
+    "viewOnQoqa": "Voir sur QoQa",
+    "savedTo": "Enregistré dans {{file}}"
   },
   "PdfDialog": {
     "title": "Facture {{orderNumber}}",
     "close": "Fermer",
-    "download": "Télécharger le PDF"
+    "download": "Télécharger le PDF",
+    "savedTo": "Enregistré dans {{file}}"
   },
   "UniversePicker": {
     "allUniverses": "Tous les univers",

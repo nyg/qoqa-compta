@@ -4,7 +4,8 @@
     "errorTitle": "Impossibile connettersi al database.",
     "errorDetail": "Assicurati che <code>DATABASE_URL</code> sia correttamente configurato nelle Impostazioni.",
     "emptyTitle": "Nessun ordine trovato nel database.",
-    "emptyDetail": "Apri le <settings>Impostazioni</settings> per configurare la connessione al database ed eseguire una sincronizzazione per importare i tuoi ordini QoQa."
+    "emptyDetail": "Apri le <settings>Impostazioni</settings> per configurare la connessione al database ed eseguire una sincronizzazione per importare i tuoi ordini QoQa.",
+    "syncNow": "Sincronizza ora"
   },
   "StatsCards": {
     "totalSpent": "Totale speso",
@@ -33,12 +34,14 @@
     "nextPage": "Successivo →",
     "pageSize": "per pagina",
     "csvExport": "Esporta CSV",
-    "viewOnQoqa": "Visualizza su QoQa"
+    "viewOnQoqa": "Visualizza su QoQa",
+    "savedTo": "Salvato in {{file}}"
   },
   "PdfDialog": {
     "title": "Fattura {{orderNumber}}",
     "close": "Chiudi",
-    "download": "Scarica PDF"
+    "download": "Scarica PDF",
+    "savedTo": "Salvato in {{file}}"
   },
   "UniversePicker": {
     "allUniverses": "Tutti gli universi",

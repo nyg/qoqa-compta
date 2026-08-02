@@ -12,9 +12,23 @@ import {
   upsertUniverse,
   upsertSubuniverse,
   getOrderByNumber,
+  fetchOrderNumbersMissingPdf,
+  fetchStaleOrderNumbers,
   type NewOrderData,
 } from "./queries";
 import type { SyncProgressEvent, SyncEventType } from "../shared/types";
+
+/**
+ * QoQa keeps editing an offer's universe after the sale, and the tags only
+ * exist on the per-order endpoint — the purchases list carries none of them —
+ * so keeping stored details current costs one call per order. An update sync
+ * therefore refreshes only the oldest few, and only once they have aged past
+ * the interval: a fresh database settles down instead of re-fetching forever,
+ * and a large one converges over a handful of syncs. A full sync still
+ * refreshes everything at once.
+ */
+const REFRESH_BATCH_SIZE = 20;
+const REFRESH_INTERVAL_DAYS = 7;
 
 export interface SyncOptions {
   email: string;
@@ -144,7 +158,24 @@ export async function syncOrders(
   }
 
   // 4. Process each purchase
+  //
+  // An invoice is not always issued by the time an order is first synced, so
+  // orders stored without a PDF are revisited on every update sync — including
+  // the ones behind the "already synced" cut-off — until the PDF is available.
+  const missingPdf = new Set(mode === "update" ? await fetchOrderNumbersMissingPdf() : []);
+
+  const refreshCutoff = new Date(
+    Date.now() - REFRESH_INTERVAL_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
+  const stale = new Set(
+    mode === "update" ? await fetchStaleOrderNumbers(refreshCutoff, REFRESH_BATCH_SIZE) : []
+  );
+  if (stale.size > 0) {
+    emit(makeEvent("info", `Refreshing ${stale.size} order(s) not updated in ${REFRESH_INTERVAL_DAYS} days`));
+  }
+
   let consecutiveUnchanged = 0;
+  let reachedKnownOrders = false;
   let syncedCount = 0;
   let skippedCount = 0;
   let pdfCount = 0;
@@ -160,20 +191,38 @@ export async function syncOrders(
     // reference is the human-readable order number (e.g. "QO-12345") stored in DB
     const orderReference = purchase.reference ? String(purchase.reference) : orderId;
 
+    const awaitingPdf = missingPdf.has(orderReference);
+    const needsRefresh = stale.has(orderReference);
+    let alreadyStored = false;
+
     if (mode === "update") {
-      const existing = await getOrderByNumber(orderReference);
-      if (existing !== null) {
-        consecutiveUnchanged++;
-        skippedCount++;
-        emit(makeEvent("order_skipped", `Skipped already-synced order ${orderReference}`));
-        if (consecutiveUnchanged >= 5) {
-          emit(makeEvent("done", `Reached already-synced orders — ${syncedCount} synced, ${pdfCount} with PDF`, { synced: syncedCount, withPdf: pdfCount, skipped: skippedCount, errors: errorCount }));
-          return;
+      if (reachedKnownOrders) {
+        // Everything from here on is already synced — only orders waiting for
+        // their invoice or due a refresh are worth another round-trip.
+        alreadyStored = true;
+        if (!awaitingPdf && !needsRefresh) continue;
+      } else {
+        const existing = await getOrderByNumber(orderReference);
+        alreadyStored = existing !== null;
+        if (!alreadyStored) {
+          consecutiveUnchanged = 0;
+        } else {
+          consecutiveUnchanged++;
+          if (consecutiveUnchanged >= 5) {
+            reachedKnownOrders = true;
+            emit(makeEvent("info", "Reached already-synced orders — checking for pending invoices and refreshes only"));
+          }
+          if (!awaitingPdf && !needsRefresh) {
+            skippedCount++;
+            emit(makeEvent("order_skipped", `Skipped already-synced order ${orderReference}`));
+            continue;
+          }
         }
-        continue;
       }
-      consecutiveUnchanged = 0;
     }
+
+    // A refresh only re-reads the order's details; its invoice is already stored.
+    const keepStoredPdf = alreadyStored && !awaitingPdf;
 
     try {
       const detail = await fetchOrderDetail(token, orderId, locale);
@@ -182,7 +231,7 @@ export async function syncOrders(
       // PDF URL: accounting_documents[0].pdf_link, fallback to invoice_link
       let hasPdf = false;
       const pdfUrl = detail.accounting_documents?.[0]?.pdf_link ?? detail.invoice_link;
-      if (pdfUrl) {
+      if (pdfUrl && !keepStoredPdf) {
         const pdfBytes = await downloadPdf(pdfUrl);
         if (pdfBytes) {
           hasPdf = true;
@@ -193,7 +242,19 @@ export async function syncOrders(
 
       await upsertOrder(orderData);
       syncedCount++;
-      emit(makeEvent("order_synced", `Synced order ${orderData.order_number}${hasPdf ? " (with PDF)" : ""}`, { hasPdf }));
+      emit(
+        makeEvent(
+          "order_synced",
+          awaitingPdf
+            ? hasPdf
+              ? `Downloaded pending invoice for order ${orderData.order_number}`
+              : `Invoice not available yet for order ${orderData.order_number}`
+            : keepStoredPdf
+            ? `Refreshed order ${orderData.order_number}`
+            : `Synced order ${orderData.order_number}${hasPdf ? " (with PDF)" : ""}`,
+          { hasPdf }
+        )
+      );
     } catch (err) {
       errorCount++;
       emit(makeEvent("order_error", `Error syncing order ${orderReference}: ${(err as Error).message}`));

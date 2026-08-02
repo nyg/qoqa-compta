@@ -3,11 +3,13 @@ import { Check, ChevronDown, Minus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { subuniverseKey } from "../../shared/filters";
 import type { UniverseOption } from "../../shared/types";
 
 interface UniversePickerProps {
   available: UniverseOption[];
   selected: string[];
+  /** `universe:subuniverse` keys — see shared/filters */
   selectedSubuniverses: string[];
   onFiltersChange: (universes: string[], subuniverses: string[]) => void;
 }
@@ -51,7 +53,7 @@ export function UniversePicker({
     }
   }
 
-  function toggleUniverse(uid: string, subs: string[]) {
+  function toggleUniverse(uid: string, subKeys: string[]) {
     if (isAllMode) {
       const nextU = new Set(available.map((u) => u.identifier));
       nextU.delete(uid);
@@ -63,25 +65,25 @@ export function UniversePicker({
 
     if (nextU.has(uid)) {
       nextU.delete(uid);
-      for (const s of subs) nextS.delete(s);
+      for (const s of subKeys) nextS.delete(s);
     } else {
       nextU.add(uid);
-      for (const s of subs) nextS.delete(s);
+      for (const s of subKeys) nextS.delete(s);
     }
     applyFilters(nextU, nextS);
   }
 
   function toggleSubuniverse(
-    subId: string,
+    subKey: string,
     parentUid: string,
-    allSubs: string[]
+    allSubKeys: string[]
   ) {
     if (isAllMode) {
       const nextU = new Set(available.map((u) => u.identifier));
       nextU.delete(parentUid);
       const nextS = new Set<string>();
-      for (const s of allSubs) {
-        if (s !== subId) nextS.add(s);
+      for (const s of allSubKeys) {
+        if (s !== subKey) nextS.add(s);
       }
       applyFilters(nextU, nextS);
       return;
@@ -91,18 +93,18 @@ export function UniversePicker({
 
     if (nextU.has(parentUid)) {
       // Universe is selected — explode into individual subs, then remove this one
-      for (const s of allSubs) {
-        if (s !== subId) nextS.add(s);
+      for (const s of allSubKeys) {
+        if (s !== subKey) nextS.add(s);
       }
       nextU.delete(parentUid);
-    } else if (nextS.has(subId)) {
-      nextS.delete(subId);
+    } else if (nextS.has(subKey)) {
+      nextS.delete(subKey);
     } else {
-      nextS.add(subId);
+      nextS.add(subKey);
       // If all subs are now selected, collapse to universe level
-      const allNowSelected = allSubs.every((s) => nextS.has(s));
+      const allNowSelected = allSubKeys.every((s) => nextS.has(s));
       if (allNowSelected) {
-        for (const s of allSubs) nextS.delete(s);
+        for (const s of allSubKeys) nextS.delete(s);
         nextU.add(parentUid);
       }
     }
@@ -144,26 +146,26 @@ export function UniversePicker({
           className="absolute right-0 top-full z-50 mt-1 min-w-[13rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md"
         >
           {available.map(({ identifier: uid, name, subuniverses }) => {
-            const allSubIds = subuniverses.map((s) => s.identifier);
+            const allSubKeys = subuniverses.map((s) => subuniverseKey(uid, s.identifier));
             const isUniverseSelected = isAllMode || selected.includes(uid);
-            const selectedSubCount = allSubIds.filter((s) =>
+            const selectedSubCount = allSubKeys.filter((s) =>
               selectedSubuniverses.includes(s)
             ).length;
             const isIndeterminate =
               !isUniverseSelected &&
               selectedSubCount > 0 &&
-              selectedSubCount < allSubIds.length;
+              selectedSubCount < allSubKeys.length;
             const isChecked =
               isUniverseSelected ||
-              (allSubIds.length > 0 &&
-                selectedSubCount === allSubIds.length);
+              (allSubKeys.length > 0 &&
+                selectedSubCount === allSubKeys.length);
 
             return (
               <div key={uid}>
                 <button
                   role="option"
                   aria-selected={isChecked}
-                  onClick={() => toggleUniverse(uid, allSubIds)}
+                  onClick={() => toggleUniverse(uid, allSubKeys)}
                   className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
                 >
                   <span
@@ -185,16 +187,17 @@ export function UniversePicker({
                 </button>
 
                 {subuniverses.map(({ identifier: subId, name: subName }) => {
+                  const subKey = subuniverseKey(uid, subId);
                   const isSubSelected =
                     isUniverseSelected ||
-                    selectedSubuniverses.includes(subId);
+                    selectedSubuniverses.includes(subKey);
                   return (
                     <button
-                      key={subId}
+                      key={subKey}
                       role="option"
                       aria-selected={isSubSelected}
                       onClick={() =>
-                        toggleSubuniverse(subId, uid, allSubIds)
+                        toggleSubuniverse(subKey, uid, allSubKeys)
                       }
                       className="flex w-full items-center gap-2 pl-8 pr-3 py-1.5 text-sm hover:bg-muted transition-colors text-left"
                     >
