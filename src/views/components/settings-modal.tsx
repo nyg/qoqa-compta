@@ -86,7 +86,10 @@ export function SettingsModal({
     setSaved(false);
     setConfirmReset(false);
     setResetSuccess(false);
-    sync.reset();
+    // The sync log is deliberately left alone: the dialog is opened
+    // automatically when a run started from the header fails, and clearing it
+    // here would discard the very log the user is being shown. `start()`
+    // clears it at the beginning of each run.
     apiClient
       .getSettings()
       .then((s: AppSettings) => {

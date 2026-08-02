@@ -51,14 +51,6 @@ export function useSyncRunner(onComplete?: () => void) {
     setDone(true);
   }, []);
 
-  /** Clears the previous run's log, unless a sync is still in progress. */
-  const reset = useCallback(() => {
-    if (runningRef.current) return;
-    setDone(false);
-    setLog([]);
-    setStats(EMPTY_STATS);
-  }, []);
-
   const start = useCallback(
     async (mode: SyncMode) => {
       if (runningRef.current) return;
@@ -143,7 +135,7 @@ export function useSyncRunner(onComplete?: () => void) {
     }
   }, [closeStream]);
 
-  return { running, done, log, stats, start, cancel, reset };
+  return { running, done, log, stats, start, cancel };
 }
 
 export type SyncRunner = ReturnType<typeof useSyncRunner>;
