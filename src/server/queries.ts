@@ -520,6 +520,24 @@ export async function getOrderByNumber(orderNumber: string): Promise<QoqaOrder |
   return rows.length > 0 ? normalizeOrder(rows[0]) : null;
 }
 
+/**
+ * Order numbers last written before `cutoff`, oldest first. QoQa re-tags offers
+ * after the fact (an order filed under `alcohol` comes back as
+ * `wine-and-spirits` months later), so stored details go stale; refreshing the
+ * oldest few per sync converges without re-fetching every order every time.
+ */
+export async function fetchStaleOrderNumbers(cutoff: string, limit: number): Promise<string[]> {
+  const { orders } = t();
+  const rows = await getDb()
+    .select({ order_number: orders.order_number })
+    .from(orders)
+    .where(sql`${orders.updated_at} < ${cutoff}`)
+    .orderBy(sql`${orders.updated_at} ASC`)
+    .limit(limit);
+
+  return rows.map((r) => String(r.order_number));
+}
+
 /** Order numbers stored without an invoice PDF — candidates for a later retry. */
 export async function fetchOrderNumbersMissingPdf(): Promise<string[]> {
   const { orders } = t();
