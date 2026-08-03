@@ -49,8 +49,8 @@ irm get.scoop.sh | iex
 **Manual download:**
 
 1. Download the installer from the [releases page](https://github.com/nyg/qoqa-compta/releases):
-   - macOS: `QoQa.Compta.dmg`
-   - Windows: `QoQa.Compta.zip`
+   - macOS: `…-macos-arm64.dmg`
+   - Windows: `…-windows-x64-setup.zip`
 2. **macOS**: open the DMG, drag **QoQa Compta.app** to your **Applications** folder, then see [macOS Gatekeeper](#macos-gatekeeper) below before first launch
 3. **Windows**: extract the ZIP and run **QoQa Compta-Setup.exe** inside (installs per-user to `%LOCALAPPDATA%` — no admin rights). See [Windows SmartScreen](#windows-smartscreen) below before first launch.
 

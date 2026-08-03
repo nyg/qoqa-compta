@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import os from "os";
+import { resolveConfigDir } from "./paths";
 import type { AppSettings } from "../shared/types";
 
 const DEFAULTS: AppSettings = {
@@ -12,19 +12,7 @@ const DEFAULTS: AppSettings = {
 };
 
 export function getSettingsPath(): string {
-  const platform = process.platform;
-  let dir: string;
-  if (platform === "darwin") {
-    dir = path.join(os.homedir(), "Library", "Application Support", "qoqa-compta");
-  } else if (platform === "win32") {
-    dir = path.join(process.env.APPDATA ?? os.homedir(), "qoqa-compta");
-  } else {
-    dir = path.join(
-      process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), ".config"),
-      "qoqa-compta"
-    );
-  }
-  return path.join(dir, "settings.json");
+  return path.join(resolveConfigDir(), "settings.json");
 }
 
 export function readSettings(): AppSettings {

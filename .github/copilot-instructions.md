@@ -69,7 +69,7 @@ POST /api/sync { mode: "full" | "update" }
 
 ### Settings
 
-- Persisted to `~/Library/Application Support/qoqa-compta/settings.json` on macOS (see `src/server/settings.ts` for platform paths)
+- Persisted to `~/Library/Application Support/QoQa Compta/settings.json` on macOS (see `src/server/paths.ts` for platform paths and the legacy-directory migration)
 - In development only, env vars (`QOQA_EMAIL`, `QOQA_PASSWORD`, `DATABASE_URL`, `PORT`) override the settings file
 - All settings are configurable from the in-app Settings modal — no `.env` file required in production
 
