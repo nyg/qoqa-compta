@@ -1,6 +1,18 @@
 # Changelog
 
 
+## [0.1.1](https://github.com/nyg/qoqa-compta/compare/v0.1.0..v0.1.1) - 2026-08-03
+
+### ⛰️  Features
+
+- [`af11b0b`](https://github.com/nyg/qoqa-compta/commit/af11b0b2773d1c3dcb628da8fe7753ce3661892e) Version release assets and name data dirs after the app ([#90](https://github.com/nyg/qoqa-compta/issues/90))
+
+### ⚙️ Miscellaneous
+
+- [`9fc71bf`](https://github.com/nyg/qoqa-compta/commit/9fc71bf9a9c96483f3c88a0202ce6866963f3920) *(deps)* Lock file maintenance ([#89](https://github.com/nyg/qoqa-compta/issues/89))
+- [`aefc36b`](https://github.com/nyg/qoqa-compta/commit/aefc36b81679f87ebf1174a2bf711ad37c6aebc4) *(deps)* Lock file maintenance ([#88](https://github.com/nyg/qoqa-compta/issues/88))
+- [`d8f4f7b`](https://github.com/nyg/qoqa-compta/commit/d8f4f7bcf70c6ad3b9939d647a04741123c47472) *(deps)* Lock file maintenance ([#87](https://github.com/nyg/qoqa-compta/issues/87))
+
 ## [0.1.0](https://github.com/nyg/qoqa-compta/compare/v0.0.11..v0.1.0) - 2026-08-02
 
 ### ⛰️  Features
