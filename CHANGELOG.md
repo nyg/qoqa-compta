@@ -1,6 +1,18 @@
 # Changelog
 
 
+## [0.1.2](https://github.com/nyg/qoqa-compta/compare/v0.1.1..v0.1.2) - 2026-08-03
+
+### 🐛 Bug Fixes
+
+- [`5b53b58`](https://github.com/nyg/qoqa-compta/commit/5b53b584b6182090ba2a67efd0a74dd7b619f412) Give the Scoop bin entry an alias ([#94](https://github.com/nyg/qoqa-compta/issues/94))
+
+### ⚙️ Miscellaneous
+
+- [`44be039`](https://github.com/nyg/qoqa-compta/commit/44be039ee4bdd79819e044befde1d87721c754eb) *(deps)* Lock file maintenance ([#93](https://github.com/nyg/qoqa-compta/issues/93))
+- [`92fd965`](https://github.com/nyg/qoqa-compta/commit/92fd965c6efa90411b2aa51c68bf8c0cac2265d5) *(deps)* Lock file maintenance ([#92](https://github.com/nyg/qoqa-compta/issues/92))
+- [`f4ea1c8`](https://github.com/nyg/qoqa-compta/commit/f4ea1c8212b9faee44485b5b3275a17f7c2c1ca9) *(deps)* Lock file maintenance ([#91](https://github.com/nyg/qoqa-compta/issues/91))
+
 ## [0.1.1](https://github.com/nyg/qoqa-compta/compare/v0.1.0..v0.1.1) - 2026-08-03
 
 ### ⛰️  Features
