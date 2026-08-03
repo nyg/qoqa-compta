@@ -4,8 +4,8 @@ import { drizzle as drizzleBunSqlite, type BunSQLiteDatabase } from "drizzle-orm
 import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
 import { mkdirSync } from "fs";
 import path from "path";
-import os from "os";
 import * as schema from "./schema";
+import { resolveDataDir } from "./paths";
 import { readSettings } from "./settings";
 
 // A simple callable type for the neon query function used in schema-bootstrap
@@ -20,19 +20,7 @@ let _neonExecutor: NeonExecutor | null = null;
 let _dbFilePath: string | null = null;
 
 function getDefaultSqlitePath(): string {
-  const platform = process.platform;
-  let dir: string;
-  if (platform === "darwin") {
-    dir = path.join(os.homedir(), "Library", "Application Support", "qoqa-compta");
-  } else if (platform === "win32") {
-    dir = path.join(process.env.APPDATA ?? os.homedir(), "qoqa-compta");
-  } else {
-    dir = path.join(
-      process.env.XDG_DATA_HOME ?? path.join(os.homedir(), ".local", "share"),
-      "qoqa-compta"
-    );
-  }
-  return path.join(dir, "qoqa.db");
+  return path.join(resolveDataDir(), "qoqa.db");
 }
 
 export async function initDb(databaseUrl?: string): Promise<void> {

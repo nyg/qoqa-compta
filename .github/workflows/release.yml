@@ -138,12 +138,20 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      # Electrobun names its artifacts after the channel, OS and arch; the release
+      # assets instead say which OS and CPU they are for and which version they are,
+      # so a download is unambiguous once it sits in a Downloads folder.
       - name: Rename release assets
+        env:
+          VERSION: ${{ needs.prepare.outputs.release_version }}
         run: |
-          find artifacts -name '*.dmg' -exec mv {} 'artifacts/QoQa Compta.dmg' \;
-          find artifacts -name '*.zip' -exec mv {} 'artifacts/QoQa Compta.zip' \;
+          set -euo pipefail
+          find artifacts -name '*.dmg' -exec mv {} "artifacts/qoqa-compta-${VERSION}-macos-arm64.dmg" \;
+          find artifacts -name '*.zip' -exec mv {} "artifacts/qoqa-compta-${VERSION}-windows-x64-setup.zip" \;
 
       - name: Create Scoop ZIP
+        env:
+          VERSION: ${{ needs.prepare.outputs.release_version }}
         run: |
           set -euo pipefail
           mkdir -p _scoop_build
@@ -158,7 +166,7 @@ jobs:
           # files are in .installer/*.tar.zst inside the same ZIP. Extract them
           # into a flat zip that Scoop can consume directly (bin\launcher.exe
           # at the root), so no Scoop installer script is required.
-          unzip -q 'artifacts/QoQa Compta.zip' '.installer/*' -d _scoop_build
+          unzip -q "artifacts/qoqa-compta-${VERSION}-windows-x64-setup.zip" '.installer/*' -d _scoop_build
           mapfile -t tarballs < <(find _scoop_build/.installer -mindepth 1 -maxdepth 1 -type f -name '*.tar.zst' -print)
           if [ "${#tarballs[@]}" -ne 1 ]; then
             found='(none)'
@@ -183,9 +191,7 @@ jobs:
             echo "::error::bin/launcher.exe not found under ${appdirs[0]} — Electrobun layout may have changed"
             exit 1
           fi
-          # No space in the asset name: GitHub rewrites spaces to dots in asset
-          # names, which would leak into the Scoop manifest URL.
-          ( cd "${appdirs[0]}" && zip -r "$GITHUB_WORKSPACE/artifacts/QoQaCompta-Scoop.zip" . )
+          ( cd "${appdirs[0]}" && zip -r "$GITHUB_WORKSPACE/artifacts/qoqa-compta-${VERSION}-windows-x64-scoop.zip" . )
           rm -rf _scoop_build
 
       - name: Generate release notes
@@ -225,8 +231,8 @@ jobs:
           scoop install qoqa-compta
           ```
 
-          **Manual ZIP** — download `QoQa Compta.zip`, extract it, and run
-          `QoQa Compta-Setup.exe` inside. The app installs per-user to
+          **Manual ZIP** — download the `…-windows-x64-setup.zip` asset, extract it, and
+          run `QoQa Compta-Setup.exe` inside. The app installs per-user to
           `%LOCALAPPDATA%` (no admin rights needed). Because the app is not
           code-signed, SmartScreen shows *"Windows protected your PC"* — click
           **More info → Run anyway** (offered to administrators only). Installing
@@ -234,38 +240,44 @@ jobs:
           EOF
 
       - name: Create GitHub release
-        run: |
-          gh release create "v${{ needs.prepare.outputs.release_version }}" \
-            "artifacts/QoQa Compta.dmg" "artifacts/QoQa Compta.zip" \
-            "artifacts/QoQaCompta-Scoop.zip" \
-            --title "v${{ needs.prepare.outputs.release_version }}" \
-            --verify-tag \
-            -F git-cliff/CHANGELOG.md
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.release_version }}
+        run: |
+          set -euo pipefail
+          gh release create "v${VERSION}" \
+            "artifacts/qoqa-compta-${VERSION}-macos-arm64.dmg" \
+            "artifacts/qoqa-compta-${VERSION}-windows-x64-setup.zip" \
+            "artifacts/qoqa-compta-${VERSION}-windows-x64-scoop.zip" \
+            --title "v${VERSION}" \
+            --verify-tag \
+            -F git-cliff/CHANGELOG.md
 
       - name: Compute DMG SHA256
         id: sha
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.release_version }}
         run: |
-          # GitHub converts spaces to dots in asset names
-          gh release download "v${{ needs.prepare.outputs.release_version }}" \
-            --repo nyg/qoqa-compta --pattern "QoQa.Compta.dmg" --output qoqa-compta.dmg
+          set -euo pipefail
+          gh release download "v${VERSION}" --repo nyg/qoqa-compta \
+            --pattern "qoqa-compta-${VERSION}-macos-arm64.dmg" --output qoqa-compta.dmg
           SHA256=$(sha256sum qoqa-compta.dmg | awk '{print $1}')
           echo "dmg_sha256=$SHA256" >> "$GITHUB_OUTPUT"
           rm qoqa-compta.dmg
-        env:
-          GH_TOKEN: ${{ github.token }}
 
       - name: Compute ZIP SHA256
         id: zip_sha
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.release_version }}
         run: |
-          gh release download "v${{ needs.prepare.outputs.release_version }}" \
-            --repo nyg/qoqa-compta --pattern "QoQaCompta-Scoop.zip" --output qoqa-compta-scoop.zip
+          set -euo pipefail
+          gh release download "v${VERSION}" --repo nyg/qoqa-compta \
+            --pattern "qoqa-compta-${VERSION}-windows-x64-scoop.zip" --output qoqa-compta-scoop.zip
           SHA256=$(sha256sum qoqa-compta-scoop.zip | awk '{print $1}')
           echo "zip_sha256=$SHA256" >> "$GITHUB_OUTPUT"
           rm qoqa-compta-scoop.zip
-        env:
-          GH_TOKEN: ${{ github.token }}
 
       - name: Trigger homebrew tap cask update
         uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4.0.1
@@ -293,7 +305,7 @@ jobs:
           mkdir -p bucket
           jq -n \
             --arg version "$VERSION" \
-            --arg url "https://github.com/nyg/qoqa-compta/releases/download/v${VERSION}/QoQaCompta-Scoop.zip" \
+            --arg url "https://github.com/nyg/qoqa-compta/releases/download/v${VERSION}/qoqa-compta-${VERSION}-windows-x64-scoop.zip" \
             --arg hash "sha256:${ZIP_SHA256}" \
             '{
               version: $version,

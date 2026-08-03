@@ -168,9 +168,11 @@ User settings are persisted to a platform-aware JSON file:
 
 | Platform | Path |
 |---|---|
-| macOS | `~/Library/Application Support/qoqa-compta/settings.json` |
-| Windows | `%APPDATA%\qoqa-compta\settings.json` |
+| macOS | `~/Library/Application Support/QoQa Compta/settings.json` |
+| Windows | `%APPDATA%\QoQa Compta\settings.json` |
 | Linux | `$XDG_CONFIG_HOME/qoqa-compta/settings.json` (or `~/.config/…`) |
+
+macOS and Windows name the folder after the app as the user sees it; the XDG spec wants a lowercase, machine-readable name. Both used to be `qoqa-compta`: on macOS and Windows a directory left behind by an earlier version is moved across on first launch (see `src/server/paths.ts`). If the move fails the old location keeps being used, so data is never lost.
 
 In **development** only, env vars (`QOQA_EMAIL`, `QOQA_PASSWORD`, `DATABASE_URL`) take precedence over the file.
 
@@ -186,9 +188,11 @@ The database file defaults to:
 
 | Platform | Path |
 |---|---|
-| macOS | `~/Library/Application Support/qoqa-compta/qoqa.db` |
-| Windows | `%APPDATA%\qoqa-compta\qoqa.db` |
+| macOS | `~/Library/Application Support/QoQa Compta/qoqa.db` |
+| Windows | `%APPDATA%\QoQa Compta\qoqa.db` |
 | Linux | `$XDG_DATA_HOME/qoqa-compta/qoqa.db` |
+
+The same first-launch migration described under [Settings](#settings) applies here; on macOS and Windows both files live in one directory, so a single rename carries them across together.
 
 ### PostgreSQL
 
