@@ -55,7 +55,7 @@ POST /api/sync { mode: "full" | "update" }
 - Charts use Recharts (`ComposedChart` with bar + line dual-axis; pie chart for spending breakdown)
 - UI text internationalised with react-i18next (5 locales: `en`, `fr`, `de`, `it`, `rm`); message files live in `src/views/i18n/messages/`
 - Locale auto-detected from the browser in `src/views/i18n/index.ts`; Romansh (`rm`) falls back to `de-CH` for `Intl` formatting
-- Number/date formatting uses `fr-CH` locale for Swiss conventions; helpers in `src/views/lib/formatters.ts` + `src/views/lib/formatter-context.tsx`
+- Number/date formatting pairs the UI language with region `CH` (`de` → `de-CH`) so amounts follow Swiss conventions; helpers in `src/views/lib/formatters.ts` + `src/views/lib/formatter-context.tsx`
 - Filter state (universe, subuniverse, date range) is managed in URL search params via `src/views/lib/use-filter-state.ts`
 
 ### Database

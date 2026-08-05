@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFormatter } from "@/lib/formatter-context";
@@ -16,44 +17,52 @@ interface SpendingPieChartProps {
   title: string;
 }
 
-function renderPctLabel({
-  cx,
-  cy,
-  midAngle,
-  innerRadius,
-  outerRadius,
-  percent,
-}: {
+interface PctLabelProps {
   cx: number;
   cy: number;
   midAngle: number;
   innerRadius: number;
   outerRadius: number;
   percent: number;
-}) {
-  if (percent < 0.06) return null;
-  const r = innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = cx + r * Math.cos(-(midAngle * Math.PI) / 180);
-  const y = cy + r * Math.sin(-(midAngle * Math.PI) / 180);
-  return (
-    <text
-      x={x}
-      y={y}
-      textAnchor="middle"
-      dominantBaseline="central"
-      fill="white"
-      fontSize={11}
-      fontWeight="700"
-      pointerEvents="none"
-    >
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
-  );
+}
+
+function pctLabelRenderer(formatPercent: (fraction: number) => string) {
+  return function renderPctLabel({
+    cx,
+    cy,
+    midAngle,
+    innerRadius,
+    outerRadius,
+    percent,
+  }: PctLabelProps) {
+    if (percent < 0.06) return null;
+    const r = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + r * Math.cos(-(midAngle * Math.PI) / 180);
+    const y = cy + r * Math.sin(-(midAngle * Math.PI) / 180);
+    return (
+      <text
+        x={x}
+        y={y}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill="white"
+        fontSize={11}
+        fontWeight="700"
+        pointerEvents="none"
+      >
+        {formatPercent(percent)}
+      </text>
+    );
+  };
 }
 
 export function SpendingPieChart({ data, title }: SpendingPieChartProps) {
-  const { formatCHF } = useFormatter();
+  const { formatCHF, formatPercent, formatPercentPrecise } = useFormatter();
   const grandTotal = data.reduce((sum, d) => sum + d.total, 0);
+  const renderPctLabel = useMemo(
+    () => pctLabelRenderer(formatPercent),
+    [formatPercent]
+  );
 
   return (
     <Card>
@@ -92,11 +101,10 @@ export function SpendingPieChart({ data, title }: SpendingPieChartProps) {
                 boxShadow: "0 4px 12px rgb(0 0 0 / 0.08)",
               }}
               formatter={(value, name) => {
-                const pct =
-                  grandTotal > 0
-                    ? ((Number(value) / grandTotal) * 100).toFixed(1)
-                    : "0";
-                return [`${formatCHF(Number(value))} · ${pct}%`, name];
+                const pct = formatPercentPrecise(
+                  grandTotal > 0 ? Number(value) / grandTotal : 0
+                );
+                return [`${formatCHF(Number(value))} · ${pct}`, name];
               }}
             />
             <Legend
