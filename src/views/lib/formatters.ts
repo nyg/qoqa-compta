@@ -1,15 +1,20 @@
+import { resolveRegion } from "./locale";
+
 export const LOCALES = ["fr", "de", "it", "rm", "en"] as const;
 export type Locale = (typeof LOCALES)[number];
 
-const RM_INTL_LOCALE = "de-CH"; // Romansh falls back to de-CH for Intl
-const REGION = "CH";
+const RM_INTL_LANGUAGE = "de"; // Romansh falls back to German for Intl
 
-export function withSwissRegion(locale: string): string {
+function withRegion(language: string, region: string): string {
   try {
-    return new Intl.Locale(locale, { region: REGION }).toString();
+    return new Intl.Locale(language, { region }).toString();
   } catch {
-    return locale;
+    return language;
   }
+}
+
+export function documentLocale(locale: string): string {
+  return withRegion(locale, resolveRegion(locale));
 }
 
 export type Formatters = {
@@ -23,8 +28,11 @@ export type Formatters = {
 };
 
 export function createFormatters(locale: string): Formatters {
-  const intlLocale =
-    locale === "rm" ? RM_INTL_LOCALE : withSwissRegion(locale);
+  const region = resolveRegion(locale);
+  const intlLocale = withRegion(
+    locale === "rm" ? RM_INTL_LANGUAGE : locale,
+    region
+  );
   const currencyFmt = new Intl.NumberFormat(intlLocale, {
     style: "currency",
     currency: "CHF",
