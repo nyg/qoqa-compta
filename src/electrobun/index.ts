@@ -4,6 +4,7 @@ import { createApp } from "../server/app";
 import { initDb } from "../server/db";
 import { bootstrapSchema } from "../server/schema-bootstrap";
 import { backfillOrderSubuniverses } from "../server/queries";
+import { systemLocales } from "./locale";
 
 const PORT = 3001;
 const DEV_SERVER_URL = "http://localhost:3000";
@@ -48,7 +49,12 @@ async function main() {
 
   console.log(`✓ API server listening on http://127.0.0.1:${PORT}`);
 
-  const win = new BrowserWindow({ title: "QoQa Compta", url, frame: { x: 0, y: 0, width: 1280, height: 900 } });
+  const locales = systemLocales();
+  const preload = locales.length
+    ? `window.__LOCALES__ = ${JSON.stringify(locales)};`
+    : null;
+
+  const win = new BrowserWindow({ title: "QoQa Compta", url, preload, frame: { x: 0, y: 0, width: 1280, height: 900 } });
   win.maximize();
 
   // Open target="_blank" links in the default system browser instead of the WebView.
