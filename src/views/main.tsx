@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router";
 import { I18nextProvider } from "react-i18next";
 import { ThemeProvider } from "./components/theme-provider";
 import { FormatterProvider } from "./lib/formatter-context";
+import { documentLocale } from "./lib/formatters";
 import { DashboardPage } from "./pages/DashboardPage";
 import i18n from "./i18n/index";
 
@@ -17,6 +18,10 @@ function App() {
     i18n.on("languageChanged", handler);
     return () => i18n.off("languageChanged", handler);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = documentLocale(locale);
+  }, [locale]);
 
   return (
     <ThemeProvider
