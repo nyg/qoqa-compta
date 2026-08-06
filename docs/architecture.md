@@ -22,7 +22,7 @@ QoQa Compta ships in two modes that share the same Hono API and React SPA:
 flowchart TD
     subgraph WEB["Web mode (bun run start)"]
         Browser["Browser"]
-        HonoWeb["Hono API · Bun :3001"]
+        HonoWeb["Hono API · Bun 127.0.0.1:3001"]
         Browser -->|"HTTP /api/*"| HonoWeb
         HonoWeb -->|"dist/ + index.html"| Browser
     end
@@ -52,6 +52,12 @@ In **web development** Vite's dev server runs on `:3000` and proxies `/api/*` to
 
 In **desktop development** (`desktop:dev`), ElectroBun probes the Vite dev server first and falls back to the bundled `views://` SPA if it is not running. All API calls in the SPA go through `src/views/lib/api-client.ts`, keeping the HTTP transport swappable.
 
+### Network binding
+
+Every listening socket the app opens is bound to `127.0.0.1`, so nothing is reachable from the local network and Windows Firewall never prompts on first launch.
+
+Two of the three are ours: the Hono API in desktop mode (`src/electrobun/index.ts`) and in web mode (`src/server/index.ts`, overridable with `HOST` for reverse-proxy or container deployments). The third belongs to ElectroBun — it opens a WebSocket RPC server between the Bun process and the WebView on the first free port from 50000 upwards, and up to and including 1.18.1 it passes no `hostname` to `Bun.serve`, so Bun binds the wildcard address. On Windows that is what triggers *"Do you want to allow public and private networks to access this app?"* attributed to Bun (publisher Oven). `patches/electrobun@1.18.1.patch` adds the missing `hostname`; Bun applies it on `bun install` via `patchedDependencies` in `package.json`. Revisit the patch when upgrading ElectroBun — 1.18.4 moves this socket into the native core, so it may become unnecessary or need reworking.
+
 ---
 
 ## Scripts
@@ -66,7 +72,7 @@ All scripts are run with `bun run <name>`.
 | `desktop:dev` | `bunx electrobun dev --watch` | Launch the app in ElectroBun desktop dev mode with live-reload. Probes the Vite dev server (`:3000`) and uses it if running, otherwise serves the bundled SPA. |
 | `build` | `vite build` | Compile the React SPA to `dist/`. Used both for web production and as the `preBuild` step for desktop releases. |
 | `build:stable` | `bunx electrobun build --env=stable` | Build a production desktop bundle (`.app` on macOS, `.exe` on Windows). Runs `scripts/prebuild.ts` (`vite build`) first, then packages everything with ElectroBun, and finally runs `scripts/postwrap.ts` (ad-hoc code-signing on macOS). |
-| `start` | `NODE_ENV=production bun src/server/index.ts` | Start the Hono server in web production mode. Serves the pre-built SPA from `dist/` in addition to the API. Run `build` first. |
+| `start` | `NODE_ENV=production bun src/server/index.ts` | Start the Hono server in web production mode. Serves the pre-built SPA from `dist/` in addition to the API. Run `build` first. Binds `127.0.0.1` by default; set `HOST=0.0.0.0` to expose it on the network. |
 | `lint` | `eslint src --ext .ts,.tsx` | Lint all TypeScript source files. |
 | `typecheck` | `tsc --noEmit` | Type-check the whole project without emitting output. |
 | `db:push` | `drizzle-kit push` | Push the Drizzle schema to the database (creates or alters tables). |
