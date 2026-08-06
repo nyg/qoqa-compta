@@ -4,6 +4,7 @@ import { createApp } from "../server/app";
 import { initDb } from "../server/db";
 import { bootstrapSchema } from "../server/schema-bootstrap";
 import { systemLocales } from "./locale";
+import { resolveInitialWindowState, trackWindowState } from "./window-state";
 
 const PORT = 3001;
 const DEV_SERVER_URL = "http://localhost:3000";
@@ -52,8 +53,15 @@ async function main() {
     ? `window.__LOCALES__ = ${JSON.stringify(locales)};`
     : null;
 
-  const win = new BrowserWindow({ title: "QoQa Compta", url, preload, frame: { x: 0, y: 0, width: 1280, height: 900 } });
-  win.maximize();
+  const initialWindowState = resolveInitialWindowState();
+
+  const win = new BrowserWindow({
+    title: "QoQa Compta",
+    url,
+    preload,
+    frame: initialWindowState.frame,
+    hidden: true,
+  });
 
   // Open target="_blank" links in the default system browser instead of the WebView.
   (win.webview as any).on("new-window-open", (event: any) => {
@@ -63,6 +71,18 @@ async function main() {
       Utils.openExternal(href);
     }
   });
+
+  trackWindowState(win, initialWindowState);
+
+  try {
+    if (initialWindowState.maximized && !win.isMaximized()) {
+      win.maximize();
+    }
+  } catch (err) {
+    console.error("✗ Could not restore the maximized window state:", err);
+  }
+
+  win.show();
 
   ApplicationMenu.setApplicationMenu([
     {
