@@ -3,6 +3,7 @@ import { ApplicationMenu, BrowserWindow, Utils, app } from "electrobun/bun";
 import { createApp } from "../server/app";
 import { initDb } from "../server/db";
 import { bootstrapSchema } from "../server/schema-bootstrap";
+import { backfillOrderSubuniverses } from "../server/queries";
 import { systemLocales } from "./locale";
 import { resolveInitialWindowState, trackWindowState } from "./window-state";
 
@@ -33,6 +34,7 @@ async function main() {
   try {
     await initDb();
     await bootstrapSchema();
+    await backfillOrderSubuniverses();
     console.log("✓ Database ready");
   } catch (err) {
     console.error("✗ Database initialisation failed:", err);
