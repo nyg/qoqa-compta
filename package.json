@@ -13,7 +13,7 @@
     "build": "vite build",
     "build:stable": "bunx electrobun build --env=stable",
     "start": "NODE_ENV=production bun src/server/index.ts",
-    "lint": "eslint src --ext .ts,.tsx",
+    "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "db:push": "drizzle-kit push"
   },
@@ -38,6 +38,10 @@
     "unpdf": "1.8.0"
   },
   "devDependencies": {
+    "@babel/core": "8.0.1",
+    "@babel/eslint-parser": "8.0.1",
+    "@babel/plugin-syntax-jsx": "8.0.1",
+    "@babel/preset-typescript": "8.0.1",
     "@tailwindcss/vite": "4.3.3",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
@@ -48,6 +52,7 @@
     "drizzle-kit": "0.31.10",
     "electrobun": "1.18.1",
     "eslint": "10.8.0",
+    "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.8.0",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
