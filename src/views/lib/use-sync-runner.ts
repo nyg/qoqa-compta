@@ -34,7 +34,9 @@ export function useSyncRunner(onComplete?: () => void) {
 
   // Keep the callback fresh without restarting the stream.
   const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  });
 
   useEffect(() => {
     return () => {
