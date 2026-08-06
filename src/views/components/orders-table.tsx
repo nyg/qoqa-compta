@@ -13,6 +13,22 @@ import type { QoqaOrder, Pagination } from "../../shared/types";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
+function subuniverseLabels(
+  order: QoqaOrder,
+  subuniverseNames: Record<string, string>
+): string[] {
+  const tags =
+    order.subuniverses.length > 0
+      ? order.subuniverses.map((s) => s.name || subuniverseNames[s.identifier] || s.identifier)
+      : [
+          order.subuniverse_name ??
+            (order.subuniverse ? subuniverseNames[order.subuniverse] : null) ??
+            order.subuniverse,
+        ];
+
+  return tags.filter((label): label is string => Boolean(label));
+}
+
 interface OrdersTableProps {
   initialOrders: QoqaOrder[];
   initialPagination: Pagination;
@@ -245,21 +261,16 @@ export function OrdersTable({
                           <Badge variant="outline" className="font-normal text-xs">
                             {order.universe_name ?? order.universe}
                           </Badge>
-                          {(order.subuniverse_name ??
-                            (order.subuniverse
-                              ? subuniverseNames[order.subuniverse]
-                              : null) ??
-                            order.subuniverse) && (
-                            <Badge
-                              variant="outline"
-                              className="font-normal text-xs"
-                            >
-                              {order.subuniverse_name ??
-                                (order.subuniverse
-                                  ? subuniverseNames[order.subuniverse]
-                                  : null) ??
-                                order.subuniverse}
-                            </Badge>
+                          {subuniverseLabels(order, subuniverseNames).map(
+                            (label) => (
+                              <Badge
+                                key={label}
+                                variant="outline"
+                                className="font-normal text-xs"
+                              >
+                                {label}
+                              </Badge>
+                            )
                           )}
                         </div>
                       ) : (

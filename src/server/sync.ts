@@ -46,11 +46,12 @@ function extractOrderFields(detail: OrderDetailData): NewOrderData {
   const offer = (detail.offer ?? {}) as NonNullable<OrderDetailData["offer"]>;
   const universe = offer.universe_tracking_identifier ?? null;
 
-  let subuniverse: string | null = null;
-  const subIds = offer.sub_universe_tracking_identifiers;
-  if (subIds && subIds.length > 0) {
-    subuniverse = cleanSubuniverseIdentifier(subIds[0]);
-  }
+  const subuniverses = [
+    ...new Set(
+      (offer.sub_universe_tracking_identifiers ?? []).map(cleanSubuniverseIdentifier)
+    ),
+  ].filter(Boolean);
+  const subuniverse = subuniverses[0] ?? null;
 
   const createdAt = detail.created_at ?? "";
   const orderDate = createdAt.length >= 10 ? createdAt.slice(0, 10) : createdAt;
@@ -84,6 +85,7 @@ function extractOrderFields(detail: OrderDetailData): NewOrderData {
     offer_subtitle: offer.subtitle ?? null,
     universe,
     subuniverse,
+    subuniverses,
     item_description: itemDescription,
     invoice_number: invoiceNumber,
     raw_json: JSON.stringify(detail),

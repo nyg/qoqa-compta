@@ -46,6 +46,14 @@ CREATE TABLE IF NOT EXISTS qoqa_subuniverses (
   updated_at                    TEXT NOT NULL DEFAULT (datetime('now'))
 )`;
 
+const SQLITE_ORDER_SUBUNIVERSES = `
+CREATE TABLE IF NOT EXISTS qoqa_order_subuniverses (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_number  TEXT    NOT NULL,
+  subuniverse   TEXT    NOT NULL,
+  position      INTEGER NOT NULL
+)`;
+
 const SQLITE_IDX_ORDERS = `
 CREATE UNIQUE INDEX IF NOT EXISTS idx_qoqa_orders_order_number
   ON qoqa_orders(order_number)`;
@@ -57,6 +65,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_qoqa_universes_identifier
 const SQLITE_IDX_SUBUNIVERSES = `
 CREATE UNIQUE INDEX IF NOT EXISTS idx_qoqa_subuniverses_identifier
   ON qoqa_subuniverses(identifier)`;
+
+const SQLITE_IDX_ORDER_SUBUNIVERSES_PAIR = `
+CREATE UNIQUE INDEX IF NOT EXISTS idx_qoqa_order_subuniverses_pair
+  ON qoqa_order_subuniverses(order_number, subuniverse)`;
+
+const SQLITE_IDX_ORDER_SUBUNIVERSES_SUB = `
+CREATE INDEX IF NOT EXISTS idx_qoqa_order_subuniverses_sub
+  ON qoqa_order_subuniverses(subuniverse)`;
 
 // ── PostgreSQL DDL ─────────────────────────────────────────────────────────────
 
@@ -104,6 +120,14 @@ CREATE TABLE IF NOT EXISTS qoqa_subuniverses (
   updated_at                    TEXT NOT NULL DEFAULT NOW()
 )`;
 
+const PG_ORDER_SUBUNIVERSES = `
+CREATE TABLE IF NOT EXISTS qoqa_order_subuniverses (
+  id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  order_number  TEXT    NOT NULL,
+  subuniverse   TEXT    NOT NULL,
+  position      INTEGER NOT NULL
+)`;
+
 const PG_IDX_ORDERS = `
 CREATE UNIQUE INDEX IF NOT EXISTS idx_qoqa_orders_order_number
   ON qoqa_orders(order_number)`;
@@ -115,6 +139,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_qoqa_universes_identifier
 const PG_IDX_SUBUNIVERSES = `
 CREATE UNIQUE INDEX IF NOT EXISTS idx_qoqa_subuniverses_identifier
   ON qoqa_subuniverses(identifier)`;
+
+const PG_IDX_ORDER_SUBUNIVERSES_PAIR = `
+CREATE UNIQUE INDEX IF NOT EXISTS idx_qoqa_order_subuniverses_pair
+  ON qoqa_order_subuniverses(order_number, subuniverse)`;
+
+const PG_IDX_ORDER_SUBUNIVERSES_SUB = `
+CREATE INDEX IF NOT EXISTS idx_qoqa_order_subuniverses_sub
+  ON qoqa_order_subuniverses(subuniverse)`;
 
 // ── Public API ─────────────────────────────────────────────────────────────────
 
@@ -128,18 +160,24 @@ export async function bootstrapSchema(): Promise<void> {
     db.exec(SQLITE_ORDERS);
     db.exec(SQLITE_UNIVERSES);
     db.exec(SQLITE_SUBUNIVERSES);
+    db.exec(SQLITE_ORDER_SUBUNIVERSES);
     db.exec(SQLITE_IDX_ORDERS);
     db.exec(SQLITE_IDX_UNIVERSES);
     db.exec(SQLITE_IDX_SUBUNIVERSES);
+    db.exec(SQLITE_IDX_ORDER_SUBUNIVERSES_PAIR);
+    db.exec(SQLITE_IDX_ORDER_SUBUNIVERSES_SUB);
   } else {
     const exec = getRawNeonExecutor();
     if (!exec) throw new Error("No neon executor available");
     await exec(PG_ORDERS);
     await exec(PG_UNIVERSES);
     await exec(PG_SUBUNIVERSES);
+    await exec(PG_ORDER_SUBUNIVERSES);
     await exec(PG_IDX_ORDERS);
     await exec(PG_IDX_UNIVERSES);
     await exec(PG_IDX_SUBUNIVERSES);
+    await exec(PG_IDX_ORDER_SUBUNIVERSES_PAIR);
+    await exec(PG_IDX_ORDER_SUBUNIVERSES_SUB);
   }
 }
 
@@ -150,11 +188,13 @@ export async function dropAllTables(): Promise<void> {
     db.exec("DROP TABLE IF EXISTS qoqa_orders");
     db.exec("DROP TABLE IF EXISTS qoqa_universes");
     db.exec("DROP TABLE IF EXISTS qoqa_subuniverses");
+    db.exec("DROP TABLE IF EXISTS qoqa_order_subuniverses");
   } else {
     const exec = getRawNeonExecutor();
     if (!exec) throw new Error("No neon executor available");
     await exec("DROP TABLE IF EXISTS qoqa_orders");
     await exec("DROP TABLE IF EXISTS qoqa_universes");
     await exec("DROP TABLE IF EXISTS qoqa_subuniverses");
+    await exec("DROP TABLE IF EXISTS qoqa_order_subuniverses");
   }
 }

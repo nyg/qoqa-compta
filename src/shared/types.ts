@@ -26,6 +26,8 @@ export interface QoqaOrder {
   universe_name: string | null;
   subuniverse: string | null;
   subuniverse_name: string | null;
+  /** Every sub-universe the offer was tagged with, primary first */
+  subuniverses: SubuniverseOption[];
   item_description: string | null;
   invoice_number: string | null;
   pdf_filename: string | null;

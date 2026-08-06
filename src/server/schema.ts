@@ -4,6 +4,7 @@ import {
   numeric,
   text,
   blob,
+  index,
   sqliteTable,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
@@ -12,6 +13,7 @@ import {
   numeric as pgNumeric,
   text as pgText,
   pgTable,
+  index as pgIndex,
   uniqueIndex as pgUniqueIndex,
   customType,
 } from "drizzle-orm/pg-core";
@@ -90,6 +92,20 @@ export const qoqaSubuniversesSqlite = sqliteTable(
   (t) => [uniqueIndex("idx_qoqa_subuniverses_identifier").on(t.identifier)]
 );
 
+export const qoqaOrderSubuniversesSqlite = sqliteTable(
+  "qoqa_order_subuniverses",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    order_number: text("order_number").notNull(),
+    subuniverse: text("subuniverse").notNull(),
+    position: integer("position").notNull(),
+  },
+  (t) => [
+    uniqueIndex("idx_qoqa_order_subuniverses_pair").on(t.order_number, t.subuniverse),
+    index("idx_qoqa_order_subuniverses_sub").on(t.subuniverse),
+  ]
+);
+
 // ── PostgreSQL schema ──────────────────────────────────────────────────────────
 
 export const qoqaOrdersPg = pgTable(
@@ -147,4 +163,18 @@ export const qoqaSubuniversesPg = pgTable(
     updated_at: pgText("updated_at").notNull().default(sql`NOW()`),
   },
   (t) => [pgUniqueIndex("idx_qoqa_subuniverses_identifier").on(t.identifier)]
+);
+
+export const qoqaOrderSubuniversesPg = pgTable(
+  "qoqa_order_subuniverses",
+  {
+    id: pgInteger("id").primaryKey().generatedAlwaysAsIdentity(),
+    order_number: pgText("order_number").notNull(),
+    subuniverse: pgText("subuniverse").notNull(),
+    position: pgInteger("position").notNull(),
+  },
+  (t) => [
+    pgUniqueIndex("idx_qoqa_order_subuniverses_pair").on(t.order_number, t.subuniverse),
+    pgIndex("idx_qoqa_order_subuniverses_sub").on(t.subuniverse),
+  ]
 );

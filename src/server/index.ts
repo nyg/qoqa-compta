@@ -3,6 +3,7 @@ import { existsSync, statSync } from "fs";
 import path from "path";
 import { initDb } from "./db";
 import { bootstrapSchema } from "./schema-bootstrap";
+import { backfillOrderSubuniverses } from "./queries";
 import { createApp } from "./app";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
@@ -37,6 +38,7 @@ async function main() {
   try {
     await initDb();
     await bootstrapSchema();
+    await backfillOrderSubuniverses();
     console.log("✓ Database ready");
   } catch (err) {
     console.error("✗ Database initialisation failed:", err);

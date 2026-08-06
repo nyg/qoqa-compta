@@ -154,7 +154,7 @@ POST /api/sync { mode: "full" | "update" }
   → for each order:
       api.ts         — fetchOrderDetail → extract fields
       api.ts         — downloadPdf → pdf_data bytes
-      queries.ts     — upsertOrder (INSERT … ON CONFLICT DO UPDATE)
+      queries.ts     — upsertOrder (INSERT … ON CONFLICT DO UPDATE) + replace its sub-universe tags
   → SSE stream emits typed SyncProgressEvent at each step
 ```
 
@@ -216,7 +216,7 @@ CREATE TABLE qoqa_orders (
     offer_title      TEXT,
     offer_subtitle   TEXT,
     universe         TEXT,          -- universe_tracking_identifier (FK → qoqa_universes)
-    subuniverse      TEXT,          -- cleaned identifier (FK → qoqa_subuniverses)
+    subuniverse      TEXT,          -- primary cleaned identifier (FK → qoqa_subuniverses)
     item_description TEXT,
     invoice_number   TEXT,
     pdf_filename     TEXT,
@@ -244,7 +244,24 @@ CREATE TABLE qoqa_subuniverses (
     universe_tracking_identifier TEXT NOT NULL,  -- FK → qoqa_universes
     updated_at                   TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Every sub-universe tag an order carries, primary at position 0
+CREATE TABLE qoqa_order_subuniverses (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_number TEXT NOT NULL,     -- FK → qoqa_orders.order_number
+    subuniverse  TEXT NOT NULL,     -- cleaned identifier (FK → qoqa_subuniverses)
+    position     INTEGER NOT NULL,  -- order the QoQa API returned the tags in
+    UNIQUE (order_number, subuniverse)
+);
 ```
+
+### Multiple sub-universes per order
+
+A QoQa offer can carry several sub-universe tags — a tawny port is filed under both `wine` and `spirits` — with no primary marker in the API. The first tag of the array is treated as the primary and stays on `qoqa_orders.subuniverse`; `qoqa_order_subuniverses` holds the full list.
+
+The two are used for different things. **Filtering and the filter tree** address the full list, so picking *Spiritueux* also returns the port; the condition is an `EXISTS` subquery, so an order matching several selected tags is still counted once. **Money grouping** (the sub-universe pie) stays on the primary tag: the order has one item and one amount, so its CHF lands in exactly one slice and the pie keeps summing to the total on the stats card. A consequence worth knowing: under a single-tag filter the pie can show a slice for another sub-universe, because a matched order is grouped under its own primary.
+
+Databases synced before this table existed are filled in at startup from `raw_json`, which already carries the tag arrays — see `backfillOrderSubuniverses()` in `src/server/queries.ts`. No re-sync is required.
 
 ### Invoice PDFs
 
