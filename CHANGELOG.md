@@ -1,6 +1,24 @@
 # Changelog
 
 
+## [0.2.0](https://github.com/nyg/qoqa-compta/compare/v0.1.2..v0.2.0) - 2026-08-07
+
+### ⛰️  Features
+
+- [`ec52a01`](https://github.com/nyg/qoqa-compta/commit/ec52a01f488347bbae684fdcdb476cb7c360f733) *(desktop)* Remember window geometry and open without the maximize animation ([#103](https://github.com/nyg/qoqa-compta/issues/103))
+- [`eff1f8b`](https://github.com/nyg/qoqa-compta/commit/eff1f8bd4e90b2d10be1494eceeea9b7cf7ad6ea) Keep every sub-universe an order is tagged with ([#102](https://github.com/nyg/qoqa-compta/issues/102))
+
+### 🐛 Bug Fixes
+
+- [`bb901a6`](https://github.com/nyg/qoqa-compta/commit/bb901a60f4893beb1c0631aea802144a69e66f96) *(lint)* Add flat ESLint config and repair the lint script ([#101](https://github.com/nyg/qoqa-compta/issues/101))
+- [`60abc4d`](https://github.com/nyg/qoqa-compta/commit/60abc4d1fed30f6e40febe0621a6ce1e8898e733) *(format)* Respect the user's locale, resolving the region from the host ([#98](https://github.com/nyg/qoqa-compta/issues/98))
+- [`7750032`](https://github.com/nyg/qoqa-compta/commit/7750032aeff63cc01dc273c43289f1009896bd35) *(deps)* Update dependency hono to v4.12.34 [security] ([#96](https://github.com/nyg/qoqa-compta/issues/96))
+
+### ⚙️ Miscellaneous
+
+- [`ec25faa`](https://github.com/nyg/qoqa-compta/commit/ec25faa561d422ae4bd7e00b2b909387615192e2) Retry GitHub release creation on transient API failures ([#97](https://github.com/nyg/qoqa-compta/issues/97))
+- [`2051047`](https://github.com/nyg/qoqa-compta/commit/20510476e48944e52c921f90f175fe26606a8e13) *(deps)* Lock file maintenance ([#95](https://github.com/nyg/qoqa-compta/issues/95))
+
 ## [0.1.2](https://github.com/nyg/qoqa-compta/compare/v0.1.1..v0.1.2) - 2026-08-03
 
 ### 🐛 Bug Fixes
