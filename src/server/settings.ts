@@ -14,6 +14,11 @@ export function getSettingsPath(): string {
   return path.join(resolveConfigDir(), "settings.json");
 }
 
+// The interface language moved to the view. A file written by an earlier version still
+// carries it, and spreading the file over DEFAULTS would keep serving it forever, so
+// the response shape would depend on how old the install is.
+const RETIRED_KEYS = ["uiLocale"];
+
 export function readSettings(): AppSettings {
   const settingsPath = getSettingsPath();
   let stored: Partial<AppSettings> = {};
@@ -24,6 +29,10 @@ export function readSettings(): AppSettings {
     }
   } catch {
     // Corrupt or unreadable settings file — fall back to defaults
+  }
+
+  for (const key of RETIRED_KEYS) {
+    delete (stored as Record<string, unknown>)[key];
   }
 
   const settings: AppSettings = { ...DEFAULTS, ...stored };

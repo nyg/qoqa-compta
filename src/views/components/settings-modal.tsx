@@ -19,11 +19,11 @@ const LOCALE_NAMES: Record<string, string> = {
   rm: "Rumantsch",
 };
 
+// supportedLngs is configured in views/i18n, so i18next has already narrowed whatever
+// was detected to one of SUPPORTED_LOCALES — de-CH arrives as de, an unsupported tag as
+// the configured fallback. Re-checking the list here would only duplicate that config.
 function activeLocale(): SupportedLocale {
-  const resolved = i18n.resolvedLanguage ?? i18n.language;
-  return SUPPORTED_LOCALES.includes(resolved as SupportedLocale)
-    ? (resolved as SupportedLocale)
-    : "en";
+  return (i18n.resolvedLanguage ?? i18n.language) as SupportedLocale;
 }
 
 function logEntryColor(type: SyncProgressEvent["type"]): string {
@@ -93,7 +93,6 @@ export function SettingsModal({
     setSaved(false);
     setConfirmReset(false);
     setResetSuccess(false);
-    setUiLocale(activeLocale());
     // The sync log is deliberately left alone: the dialog is opened
     // automatically when a run started from the header fails, and clearing it
     // here would discard the very log the user is being shown. `start()`
@@ -133,10 +132,6 @@ export function SettingsModal({
       };
       await apiClient.updateSettings(settings);
       setSaved(true);
-      // Apply locale change immediately
-      if (uiLocale !== activeLocale()) {
-        await i18n.changeLanguage(uiLocale);
-      }
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
       console.error(e);
@@ -363,9 +358,14 @@ export function SettingsModal({
                     <span className="text-xs font-medium">{t("uiLocale")}</span>
                     <select
                       value={uiLocale}
-                      onChange={(e) =>
-                        setUiLocale(e.target.value as SupportedLocale)
-                      }
+                      onChange={(e) => {
+                        const next = e.target.value as SupportedLocale;
+                        setUiLocale(next);
+                        // Applied here rather than on Save: the language is not part
+                        // of what Save sends any more, so leaving it behind the
+                        // request meant a failing server silently kept the old one.
+                        i18n.changeLanguage(next);
+                      }}
                       className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
                     >
                       {SUPPORTED_LOCALES.map((loc) => (
