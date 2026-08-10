@@ -36,10 +36,18 @@ export function isNothingSelected(selection: UniverseSelection): boolean {
   );
 }
 
-export function selectedEntryCount(selection: UniverseSelection): number {
+export interface SelectionCounts {
+  universes: number;
+  subuniverses: number;
+}
+
+export function selectionCounts(selection: UniverseSelection): SelectionCounts {
   return selection.mode === "custom"
-    ? selection.universes.length + selection.subuniverses.length
-    : 0;
+    ? {
+        universes: selection.universes.length,
+        subuniverses: selection.subuniverses.length,
+      }
+    : { universes: 0, subuniverses: 0 };
 }
 
 export function selectionParams(selection: UniverseSelection): {

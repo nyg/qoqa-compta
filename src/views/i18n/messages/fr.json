@@ -48,7 +48,11 @@
   "UniversePicker": {
     "allUniverses": "Tous les univers",
     "label": "Filtre par univers",
-    "nSelected": "{{count}} sélectionné(s)",
+    "universesSelected_one": "{{count}} univers",
+    "universesSelected_other": "{{count}} univers",
+    "subuniversesSelected_one": "{{count}} sous-univers",
+    "subuniversesSelected_other": "{{count}} sous-univers",
+    "mixedSelected": "{{universes}}, {{subuniverses}}",
     "noneSelected": "Aucun univers"
   },
   "SpendingChart": {
@@ -63,7 +67,7 @@
   },
   "DateRangePicker": {
     "label": "Période",
-    "allDates": "Toutes les dates",
+    "allTime": "Toute la période",
     "from": "Du",
     "to": "Au",
     "clear": "Effacer"
