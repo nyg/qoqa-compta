@@ -15,6 +15,30 @@ import { DEFAULT_PAGE_SIZE, type QoqaOrder, type Pagination } from "../../shared
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 const SEARCH_DEBOUNCE_MS = 250;
+const BUSY_DELAY_MS = 250;
+const BUSY_MIN_MS = 400;
+
+function useBusyIndicator(loading: boolean): boolean {
+  const [busy, setBusy] = useState(false);
+  const shownAt = useRef(0);
+
+  useEffect(() => {
+    if (loading) {
+      if (busy) return;
+      const timer = setTimeout(() => {
+        shownAt.current = Date.now();
+        setBusy(true);
+      }, BUSY_DELAY_MS);
+      return () => clearTimeout(timer);
+    }
+    if (!busy) return;
+    const remaining = BUSY_MIN_MS - (Date.now() - shownAt.current);
+    const timer = setTimeout(() => setBusy(false), Math.max(remaining, 0));
+    return () => clearTimeout(timer);
+  }, [loading, busy]);
+
+  return busy;
+}
 
 function subuniverseLabels(
   order: QoqaOrder,
@@ -61,6 +85,7 @@ export function OrdersTable({
   );
   const { formatCHF, formatDate } = useFormatter();
   const { t } = useTranslation("OrdersTable");
+  const busy = useBusyIndicator(loading);
 
   const latestRequest = useRef(0);
   const pendingSearch = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -243,7 +268,7 @@ export function OrdersTable({
               aria-busy={loading}
               className={cn(
                 "transition-opacity duration-150",
-                loading && "opacity-50"
+                busy && "opacity-50"
               )}
             >
               {orders.length === 0 && (
@@ -252,7 +277,7 @@ export function OrdersTable({
                     colSpan={7}
                     className="px-4 py-8 text-center text-muted-foreground"
                   >
-                    {loading ? t("loading") : t("noOrders")}
+                    {busy ? t("loading") : t("noOrders")}
                   </td>
                 </tr>
               )}
