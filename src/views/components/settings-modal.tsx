@@ -19,6 +19,13 @@ const LOCALE_NAMES: Record<string, string> = {
   rm: "Rumantsch",
 };
 
+function activeLocale(): SupportedLocale {
+  const resolved = i18n.resolvedLanguage ?? i18n.language;
+  return SUPPORTED_LOCALES.includes(resolved as SupportedLocale)
+    ? (resolved as SupportedLocale)
+    : "en";
+}
+
 function logEntryColor(type: SyncProgressEvent["type"]): string {
   if (
     type === "auth_ok" ||
@@ -59,7 +66,7 @@ export function SettingsModal({
   const [password, setPassword] = useState("");
   const [dbMode, setDbMode] = useState<"local" | "postgres">("local");
   const [dbUrl, setDbUrl] = useState("");
-  const [uiLocale, setUiLocale] = useState<SupportedLocale>("en");
+  const [uiLocale, setUiLocale] = useState<SupportedLocale>(activeLocale);
   const [syncLocale, setSyncLocale] = useState<"fr" | "de">("fr");
 
   const [loading, setLoading] = useState(false);
@@ -86,6 +93,7 @@ export function SettingsModal({
     setSaved(false);
     setConfirmReset(false);
     setResetSuccess(false);
+    setUiLocale(activeLocale());
     // The sync log is deliberately left alone: the dialog is opened
     // automatically when a run started from the header fails, and clearing it
     // here would discard the very log the user is being shown. `start()`
@@ -101,7 +109,6 @@ export function SettingsModal({
             : "local"
         );
         setDbUrl(s.databaseUrl ?? "");
-        setUiLocale(s.uiLocale ?? "en");
         setSyncLocale(s.syncLocale ?? "fr");
       })
       .catch(console.error)
@@ -122,13 +129,12 @@ export function SettingsModal({
         qoqaEmail: email || null,
         qoqaPassword: password || null,
         databaseUrl: dbMode === "postgres" ? dbUrl || null : null,
-        uiLocale,
         syncLocale,
       };
       await apiClient.updateSettings(settings);
       setSaved(true);
       // Apply locale change immediately
-      if (uiLocale !== i18n.language) {
+      if (uiLocale !== activeLocale()) {
         await i18n.changeLanguage(uiLocale);
       }
       setTimeout(() => setSaved(false), 2500);

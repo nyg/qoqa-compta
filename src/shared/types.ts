@@ -116,6 +116,5 @@ export interface AppSettings {
   databaseUrl: string | null;
   qoqaEmail: string | null;
   qoqaPassword: string | null;
-  uiLocale: "en" | "fr" | "de" | "it" | "rm";
   syncLocale: "fr" | "de";
 }

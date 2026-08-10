@@ -7,7 +7,6 @@ const DEFAULTS: AppSettings = {
   databaseUrl: null,
   qoqaEmail: null,
   qoqaPassword: null,
-  uiLocale: "fr",
   syncLocale: "fr",
 };
 
