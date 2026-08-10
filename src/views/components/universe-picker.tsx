@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   isNothingSelected,
   normalizeSelection,
-  selectedEntryCount,
+  selectionCounts,
   subuniverseKey,
   type UniverseSelection,
 } from "../../shared/filters";
@@ -99,11 +99,24 @@ export function UniversePicker({
     emit(universes, subuniverses);
   }
 
+  const counts = selectionCounts(selection);
+  const universesLabel = t("universesSelected", { count: counts.universes });
+  const subuniversesLabel = t("subuniversesSelected", {
+    count: counts.subuniverses,
+  });
+
   const label = isAllMode
     ? t("allUniverses")
     : isNothingSelected(selection)
     ? t("noneSelected")
-    : t("nSelected", { count: selectedEntryCount(selection) });
+    : counts.subuniverses === 0
+    ? universesLabel
+    : counts.universes === 0
+    ? subuniversesLabel
+    : t("mixedSelected", {
+        universes: universesLabel,
+        subuniverses: subuniversesLabel,
+      });
 
   return (
     <div ref={containerRef} className="relative">
@@ -115,7 +128,7 @@ export function UniversePicker({
         aria-expanded={open}
         aria-label={t("label")}
       >
-        {label}
+        <span className="truncate max-w-[14rem]">{label}</span>
         <ChevronDown
           className={cn(
             "ml-1 h-3 w-3 opacity-60 transition-transform duration-150",

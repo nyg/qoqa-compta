@@ -35,7 +35,7 @@ export function DateRangePicker({ from, to, onFromChange, onToChange }: DateRang
   const hasFilter = Boolean(from || to);
   const label =
     !from && !to
-      ? t("allDates")
+      ? t("allTime")
       : from && to
       ? `${formatDate(from)} – ${formatDate(to)}`
       : from

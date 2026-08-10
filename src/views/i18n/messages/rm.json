@@ -48,7 +48,11 @@
   "UniversePicker": {
     "allUniverses": "Tut ils univers",
     "label": "Filter per univers",
-    "nSelected": "{{count}} tschernids",
+    "universesSelected_one": "{{count}} univers",
+    "universesSelected_other": "{{count}} univers",
+    "subuniversesSelected_one": "{{count}} suot-univers",
+    "subuniversesSelected_other": "{{count}} suot-univers",
+    "mixedSelected": "{{universes}}, {{subuniverses}}",
     "noneSelected": "Nagin univers"
   },
   "SpendingChart": {
@@ -63,7 +67,7 @@
   },
   "DateRangePicker": {
     "label": "Perioda da data",
-    "allDates": "Tut las datas",
+    "allTime": "Tut la perioda",
     "from": "Da",
     "to": "Fin",
     "clear": "Stritgar"

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Download, Globe, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,12 +7,38 @@ import { Button } from "@/components/ui/button";
 import { OrderPdfDialog } from "@/components/order-pdf-dialog";
 import { useFormatter } from "@/lib/formatter-context";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
 import { fileName, saveFile } from "@/lib/downloads";
 import { selectionParams, type UniverseSelection } from "../../shared/filters";
 import { DEFAULT_PAGE_SIZE, type QoqaOrder, type Pagination } from "../../shared/types";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const SEARCH_DEBOUNCE_MS = 250;
+const BUSY_DELAY_MS = 250;
+const BUSY_MIN_MS = 400;
+
+function useBusyIndicator(loading: boolean): boolean {
+  const [busy, setBusy] = useState(false);
+  const shownAt = useRef(0);
+
+  useEffect(() => {
+    if (loading) {
+      if (busy) return;
+      const timer = setTimeout(() => {
+        shownAt.current = Date.now();
+        setBusy(true);
+      }, BUSY_DELAY_MS);
+      return () => clearTimeout(timer);
+    }
+    if (!busy) return;
+    const remaining = BUSY_MIN_MS - (Date.now() - shownAt.current);
+    const timer = setTimeout(() => setBusy(false), Math.max(remaining, 0));
+    return () => clearTimeout(timer);
+  }, [loading, busy]);
+
+  return busy;
+}
 
 function subuniverseLabels(
   order: QoqaOrder,
@@ -59,10 +85,23 @@ export function OrdersTable({
   );
   const { formatCHF, formatDate } = useFormatter();
   const { t } = useTranslation("OrdersTable");
+  const busy = useBusyIndicator(loading);
+
+  const latestRequest = useRef(0);
+  const pendingSearch = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelPendingSearch = useCallback(() => {
+    if (pendingSearch.current === null) return;
+    clearTimeout(pendingSearch.current);
+    pendingSearch.current = null;
+  }, []);
+
+  useEffect(() => cancelPendingSearch, [cancelPendingSearch]);
 
   const fetchOrders = useCallback(
     async (newSearch: string, page: number, newPageSize?: number) => {
       const ps = newPageSize ?? pageSize;
+      const requestId = ++latestRequest.current;
       setLoading(true);
       try {
         const data = await apiClient.getOrders({
@@ -73,12 +112,13 @@ export function OrdersTable({
           from: from || undefined,
           to: to || undefined,
         });
+        if (requestId !== latestRequest.current) return;
         setOrders(data.orders ?? []);
         setPagination(data.pagination ?? { page, pageSize: ps, total: 0, totalPages: 0 });
       } catch (e) {
-        console.error(e);
+        if (requestId === latestRequest.current) console.error(e);
       } finally {
-        setLoading(false);
+        if (requestId === latestRequest.current) setLoading(false);
       }
     },
     [pageSize, selection, from, to]
@@ -89,27 +129,33 @@ export function OrdersTable({
       const value = e.target.value;
       setSearch(value);
       setCurrentPage(1);
-      fetchOrders(value, 1);
+      cancelPendingSearch();
+      pendingSearch.current = setTimeout(() => {
+        pendingSearch.current = null;
+        fetchOrders(value, 1);
+      }, SEARCH_DEBOUNCE_MS);
     },
-    [fetchOrders]
+    [cancelPendingSearch, fetchOrders]
   );
 
   const handlePage = useCallback(
     (page: number) => {
+      cancelPendingSearch();
       setCurrentPage(page);
       fetchOrders(search, page);
     },
-    [fetchOrders, search]
+    [cancelPendingSearch, fetchOrders, search]
   );
 
   const handlePageSizeChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const newSize = parseInt(e.target.value, 10);
+      cancelPendingSearch();
       setPageSize(newSize);
       setCurrentPage(1);
       fetchOrders(search, 1, newSize);
     },
-    [fetchOrders, search]
+    [cancelPendingSearch, fetchOrders, search]
   );
 
   const csvUrl = apiClient.getCsvUrl({
@@ -218,97 +264,92 @@ export function OrdersTable({
                 </th>
               </tr>
             </thead>
-            <tbody>
-              {loading && (
+            <tbody
+              aria-busy={loading}
+              className={cn(
+                "transition-opacity duration-150",
+                busy && "opacity-50"
+              )}
+            >
+              {orders.length === 0 && (
                 <tr>
                   <td
                     colSpan={7}
                     className="px-4 py-8 text-center text-muted-foreground"
                   >
-                    {t("loading")}
+                    {busy ? t("loading") : t("noOrders")}
                   </td>
                 </tr>
               )}
-              {!loading && orders.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-4 py-8 text-center text-muted-foreground"
-                  >
-                    {t("noOrders")}
+              {orders.map((order) => (
+                <tr
+                  key={order.id}
+                  className="border-b last:border-0 hover:bg-muted/30 transition-colors"
+                >
+                  <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">
+                    {order.order_number}
                   </td>
-                </tr>
-              )}
-              {!loading &&
-                orders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="border-b last:border-0 hover:bg-muted/30 transition-colors"
-                  >
-                    <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">
-                      {order.order_number}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                      {formatDate(order.order_date)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {order.universe ? (
-                        <div className="flex flex-nowrap gap-1">
-                          <Badge variant="outline" className="font-normal text-xs">
-                            {order.universe_name ?? order.universe}
-                          </Badge>
-                          {subuniverseLabels(order, subuniverseNames).map(
-                            (label) => (
-                              <Badge
-                                key={label}
-                                variant="outline"
-                                className="font-normal text-xs"
-                              >
-                                {label}
-                              </Badge>
-                            )
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {order.offer_title ? (
-                        <Badge variant="secondary" className="font-normal">
-                          {order.offer_title}
+                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                    {formatDate(order.order_date)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {order.universe ? (
+                      <div className="flex flex-nowrap gap-1">
+                        <Badge variant="outline" className="font-normal text-xs">
+                          {order.universe_name ?? order.universe}
                         </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground truncate">
-                      {order.item_description ?? (
-                        <span className="opacity-40">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums whitespace-nowrap">
-                      {formatCHF(parseFloat(order.amount_chf))}
-                    </td>
-                    <td className="px-2 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <OrderPdfDialog orderNumber={order.order_number} disabled={!order.has_pdf} />
-                        {order.offer_id && (
-                          <a
-                            href={`https://www.qoqa.ch/${syncLocale}/offers/${order.offer_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={t("viewOnQoqa")}
-                            aria-label={t("viewOnQoqa")}
-                            className="inline-flex size-7 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                          >
-                            <Globe className="size-3.5" aria-hidden />
-                          </a>
+                        {subuniverseLabels(order, subuniverseNames).map(
+                          (label) => (
+                            <Badge
+                              key={label}
+                              variant="outline"
+                              className="font-normal text-xs"
+                            >
+                              {label}
+                            </Badge>
+                          )
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {order.offer_title ? (
+                      <Badge variant="secondary" className="font-normal">
+                        {order.offer_title}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground truncate">
+                    {order.item_description ?? (
+                      <span className="opacity-40">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold tabular-nums whitespace-nowrap">
+                    {formatCHF(parseFloat(order.amount_chf))}
+                  </td>
+                  <td className="px-2 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <OrderPdfDialog orderNumber={order.order_number} disabled={!order.has_pdf} />
+                      {order.offer_id && (
+                        <a
+                          href={`https://www.qoqa.ch/${syncLocale}/offers/${order.offer_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={t("viewOnQoqa")}
+                          aria-label={t("viewOnQoqa")}
+                          className="inline-flex size-7 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                        >
+                          <Globe className="size-3.5" aria-hidden />
+                        </a>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

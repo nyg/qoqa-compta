@@ -9,7 +9,7 @@ The selection is a discriminated union (`UniverseSelection` in [`src/shared/filt
 | State | Value | Button label | What the dashboard shows |
 |---|---|---|---|
 | Everything | `{ mode: "all" }` | *All universes* | Every order, no universe condition in the SQL |
-| A subset | `{ mode: "custom", universes, subuniverses }` (at least one entry) | *N selected* | Only orders matching the selected entries |
+| A subset | `{ mode: "custom", universes, subuniverses }` (at least one entry) | *2 universes, 3 sub-universes* | Only orders matching the selected entries |
 | Nothing | `{ mode: "custom", universes: [], subuniverses: [] }` | *No universe* | The "pick a universe" screen instead of the dashboard body |
 
 `mode: "all"` is deliberately not "the list of every universe". The two are not equivalent: filtering on every known universe still drops orders whose universe is `NULL`, and the list of universes changes between syncs. `all` means *no universe condition at all*.
@@ -22,11 +22,21 @@ One screen outranks all three: when the database holds no orders at all, the das
 
 Before this model existed, the state was `{ universes: [], subuniverses: [] }` and **empty meant everything**. `readSelection()` in [`use-filter-state.ts`](../src/views/lib/use-filter-state.ts) still understands that shape: a legacy payload with two empty arrays becomes `all`, and anything else becomes `custom`. Sub-universe keys stored before they were namespaced (`vins` rather than `wine-and-spirits:vins`) are dropped on read — they cannot be mapped back to one universe.
 
-## Entries, not check boxes: what *N selected* counts
+## Entries, not check boxes: what the button counts
 
-An entry is one thing the user picked: a whole universe, or a single sub-universe. Selecting *Vins & Spiritueux* is one entry even though the picker then draws its three sub-universes as checked; selecting *Vins* and *Spiritueux* individually is two entries. The count is `universes.length + subuniverses.length`, and it is only ever shown for the *subset* state — the other two states have their own labels.
+An entry is one thing the user picked: a whole universe, or a single sub-universe. Selecting *Vins & Spiritueux* is one entry even though the picker then draws its three sub-universes as checked; selecting *Vins* and *Spiritueux* individually is two entries.
 
-The count is computed **after normalization** (below). That matters: before, a selection carrying entries QoQa no longer publishes showed a number larger than the number of boxes on screen, and could never reach *All universes* even with every box ticked.
+The two kinds of entry are counted separately and both are shown, because *3 selected* left the user guessing whether that meant three universes or three sub-universes of one. `selectionCounts()` returns `{ universes, subuniverses }` — the lengths of the two arrays, which normalization has already made disjoint (rule 3) — and the picker builds the label from whichever counts are non-zero:
+
+| Counts | Label |
+|---|---|
+| universes only | *1 universe* / *2 universes* |
+| sub-universes only | *1 sub-universe* / *3 sub-universes* |
+| both | *2 universes, 3 sub-universes* |
+
+Singular and plural come from i18next's `_one` / `_other` suffixes on `universesSelected` and `subuniversesSelected`, so each language picks its own form through `Intl.PluralRules` — no `sélectionné(s)`. Languages whose noun does not inflect (French *univers*, Romansh *univers*) simply carry the same text in both keys. `mixedSelected` is the sole place the two halves are joined, so a language that needs another separator or order changes only that string.
+
+The counts are computed **after normalization** (below). That matters: before, a selection carrying entries QoQa no longer publishes showed a number larger than the number of boxes on screen, and could never reach *All universes* even with every box ticked.
 
 ## Normalization
 
@@ -35,7 +45,7 @@ The count is computed **after normalization** (below). That matters: before, a s
 1. **`all` is left alone**, and so is any selection when `available` is empty — an empty tree means the data has not loaded yet, not that everything is stale.
 2. **Unknown entries are dropped**: universes missing from the tree, sub-universe keys whose universe is missing, and sub-universe keys filed under a universe they no longer belong to.
 3. **A sub-universe of an already-selected universe is dropped** — the universe covers it, so keeping both would double-count in the label.
-4. **A universe whose sub-universes are *all* individually selected collapses onto the universe**, so a fully-ticked universe reads as one entry.
+4. **A universe whose sub-universes are *all* individually selected collapses onto the universe**, so a fully-ticked universe reads as one universe entry rather than *n sub-universes*.
 5. **A selection covering every universe becomes `all`** — that is what makes the button say *All universes* when the user ticks the last box.
 6. **A selection whose entries were *all* dropped as stale becomes `all`**, not empty. Losing the filter is recoverable; silently showing an empty dashboard after a QoQa re-tagging looks like data loss.
 
@@ -70,9 +80,9 @@ The picker never mutates the stored selection directly. It expands the current s
 
 ## What to check when changing this
 
-- Ticking every box, in any order, ends at *All universes* — not *N selected*.
+- Ticking every box, in any order, ends at *All universes* — not a count.
 - Unticking the last remaining box lands on the "pick a universe" screen, and the picker stays reachable in the header.
 - The empty state survives a reload.
 - A stored selection naming a universe that no longer exists recovers to *All universes* instead of showing an empty dashboard.
-- The count on the button matches the number of *entries*, and never exceeds the number of universes plus sub-universes on screen.
+- The counts on the button match the number of *entries* of each kind, never exceed what is on screen, and read as singular at one — in every language, not only English.
 - The orders table, the CSV export and the charts all agree with the picker — they share `selectionParams`, so a new call site must use it too.
