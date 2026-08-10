@@ -10,16 +10,17 @@ import {
   qoqaOrderSubuniversesSqlite,
   qoqaOrderSubuniversesPg,
 } from "./schema";
-import type {
-  QoqaOrder,
-  SubuniverseOption,
-  UniverseOption,
-  OrderStats,
-  MonthlySpending,
-  YearlySpending,
-  SpendingByGroup,
+import {
+  DEFAULT_PAGE_SIZE,
+  type QoqaOrder,
+  type SubuniverseOption,
+  type UniverseOption,
+  type OrderStats,
+  type MonthlySpending,
+  type YearlySpending,
+  type SpendingByGroup,
 } from "../shared/types";
-import { parseSubuniverseKey } from "../shared/filters";
+import { NO_UNIVERSE_FILTER, parseSubuniverseKey } from "../shared/filters";
 import { cleanSubuniverseIdentifier } from "./api";
 
 // ── Types for write operations ─────────────────────────────────────────────────
@@ -262,7 +263,11 @@ function buildUniverseFilter(
   subuniverses: string[],
   from?: string,
   to?: string
-) {
+): SQL<unknown> | undefined {
+  if (universes.includes(NO_UNIVERSE_FILTER)) {
+    return sql`1 = 0` as SQL<unknown>;
+  }
+
   const conditions: SQL<unknown>[] = [];
 
   const parts: SQL<unknown>[] = [];
@@ -275,6 +280,36 @@ function buildUniverseFilter(
   if (to) conditions.push(lte(orders.order_date, to) as SQL<unknown>);
 
   return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+function buildSearchFilter(
+  orders: typeof qoqaOrdersSqlite,
+  search: string
+): SQL<unknown> {
+  const pattern = `%${search}%`;
+  const like = (col: unknown) => ilikeCompat(col, pattern);
+  const universe = effectiveUniverse(orders);
+
+  return or(
+    like(orders.order_number),
+    like(orders.invoice_number),
+    like(orders.offer_title),
+    like(orders.offer_subtitle),
+    like(orders.item_description),
+    like(orders.status),
+    like(orders.order_date),
+    like(sql`CAST(${orders.amount_chf} AS TEXT)`),
+    like(universe),
+    like(
+      sql`(SELECT u.name_fr FROM qoqa_universes u WHERE u.universe_tracking_identifier = ${universe})`
+    ),
+    like(
+      sql`(SELECT u.name_de FROM qoqa_universes u WHERE u.universe_tracking_identifier = ${universe})`
+    ),
+    sql`EXISTS (SELECT 1 FROM qoqa_order_subuniverses os LEFT JOIN qoqa_subuniverses su ON su.identifier = os.subuniverse WHERE os.order_number = ${orders.order_number} AND (${like(
+      sql`os.subuniverse`
+    )} OR ${like(sql`su.name_fr`)} OR ${like(sql`su.name_de`)}))`
+  ) as SQL<unknown>;
 }
 
 // ── Read queries ───────────────────────────────────────────────────────────────
@@ -367,7 +402,7 @@ export async function fetchInitialOrders(
   subuniverses: string[],
   from?: string,
   to?: string,
-  pageSize = 20
+  pageSize = DEFAULT_PAGE_SIZE
 ): Promise<QoqaOrder[]> {
   const { orders, universes: universesT, subuniverses: subuniversesT } = t();
   const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
@@ -396,13 +431,7 @@ export async function fetchOrders(
   const { orders, universes: universesT, subuniverses: subuniversesT } = t();
   const filter = buildUniverseFilter(orders, universes, subuniverses, from, to);
 
-  const searchCondition = search
-    ? or(
-        ilikeCompat(orders.order_number, `%${search}%`),
-        ilikeCompat(orders.offer_title, `%${search}%`),
-        ilikeCompat(orders.item_description, `%${search}%`)
-      )
-    : undefined;
+  const searchCondition = search ? buildSearchFilter(orders, search) : undefined;
 
   const where =
     filter && searchCondition

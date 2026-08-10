@@ -5,7 +5,9 @@
     "errorDetail": "Make sure <code>DATABASE_URL</code> is configured correctly in the Settings.",
     "emptyTitle": "No orders found in the database.",
     "emptyDetail": "Open <settings>Settings</settings> to configure your database connection and run a sync to import your QoQa orders.",
-    "syncNow": "Sync now"
+    "syncNow": "Sync now",
+    "noUniverseTitle": "No universe selected.",
+    "noUniverseDetail": "Pick at least one universe in the filter above to see your dashboard."
   },
   "StatsCards": {
     "totalSpent": "Total spent",
@@ -46,7 +48,8 @@
   "UniversePicker": {
     "allUniverses": "All universes",
     "label": "Universe filter",
-    "nSelected": "{{count}} selected"
+    "nSelected": "{{count}} selected",
+    "noneSelected": "No universe"
   },
   "SpendingChart": {
     "monthlyTitle": "Monthly spending",

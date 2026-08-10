@@ -9,7 +9,8 @@ import { useFormatter } from "@/lib/formatter-context";
 import { useTranslation } from "react-i18next";
 import { apiClient } from "@/lib/api-client";
 import { fileName, saveFile } from "@/lib/downloads";
-import type { QoqaOrder, Pagination } from "../../shared/types";
+import { selectionParams, type UniverseSelection } from "../../shared/filters";
+import { DEFAULT_PAGE_SIZE, type QoqaOrder, type Pagination } from "../../shared/types";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
@@ -32,8 +33,7 @@ function subuniverseLabels(
 interface OrdersTableProps {
   initialOrders: QoqaOrder[];
   initialPagination: Pagination;
-  selectedUniverses: string[];
-  selectedSubuniverses: string[];
+  selection: UniverseSelection;
   subuniverseNames: Record<string, string>;
   syncLocale: "fr" | "de";
   from?: string;
@@ -43,8 +43,7 @@ interface OrdersTableProps {
 export function OrdersTable({
   initialOrders,
   initialPagination,
-  selectedUniverses,
-  selectedSubuniverses,
+  selection,
   subuniverseNames,
   syncLocale,
   from,
@@ -55,7 +54,9 @@ export function OrdersTable({
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(initialPagination.pageSize ?? 20);
+  const [pageSize, setPageSize] = useState(
+    initialPagination.pageSize ?? DEFAULT_PAGE_SIZE
+  );
   const { formatCHF, formatDate } = useFormatter();
   const { t } = useTranslation("OrdersTable");
 
@@ -68,9 +69,7 @@ export function OrdersTable({
           search: newSearch || undefined,
           page,
           pageSize: ps,
-          universes: selectedUniverses.length > 0 ? selectedUniverses : undefined,
-          subuniverses:
-            selectedSubuniverses.length > 0 ? selectedSubuniverses : undefined,
+          ...selectionParams(selection),
           from: from || undefined,
           to: to || undefined,
         });
@@ -82,7 +81,7 @@ export function OrdersTable({
         setLoading(false);
       }
     },
-    [pageSize, selectedUniverses, selectedSubuniverses, from, to]
+    [pageSize, selection, from, to]
   );
 
   const handleSearch = useCallback(
@@ -114,8 +113,7 @@ export function OrdersTable({
   );
 
   const csvUrl = apiClient.getCsvUrl({
-    universes: selectedUniverses.length > 0 ? selectedUniverses : undefined,
-    subuniverses: selectedSubuniverses.length > 0 ? selectedSubuniverses : undefined,
+    ...selectionParams(selection),
     from: from || undefined,
     to: to || undefined,
   });
@@ -130,9 +128,7 @@ export function OrdersTable({
       const path = await saveFile({
         save: () =>
           apiClient.saveCsv({
-            universes: selectedUniverses.length > 0 ? selectedUniverses : undefined,
-            subuniverses:
-              selectedSubuniverses.length > 0 ? selectedSubuniverses : undefined,
+            ...selectionParams(selection),
             from: from || undefined,
             to: to || undefined,
           }),
@@ -148,7 +144,7 @@ export function OrdersTable({
     } finally {
       setCsvDownloading(false);
     }
-  }, [csvUrl, selectedUniverses, selectedSubuniverses, from, to]);
+  }, [csvUrl, selection, from, to]);
 
   return (
     <Card>

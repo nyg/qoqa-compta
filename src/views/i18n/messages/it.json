@@ -5,7 +5,9 @@
     "errorDetail": "Assicurati che <code>DATABASE_URL</code> sia correttamente configurato nelle Impostazioni.",
     "emptyTitle": "Nessun ordine trovato nel database.",
     "emptyDetail": "Apri le <settings>Impostazioni</settings> per configurare la connessione al database ed eseguire una sincronizzazione per importare i tuoi ordini QoQa.",
-    "syncNow": "Sincronizza ora"
+    "syncNow": "Sincronizza ora",
+    "noUniverseTitle": "Nessun universo selezionato.",
+    "noUniverseDetail": "Scegli almeno un universo nel filtro qui sopra per vedere il tuo pannello."
   },
   "StatsCards": {
     "totalSpent": "Totale speso",
@@ -46,7 +48,8 @@
   "UniversePicker": {
     "allUniverses": "Tutti gli universi",
     "label": "Filtro per universo",
-    "nSelected": "{{count}} selezionati"
+    "nSelected": "{{count}} selezionati",
+    "noneSelected": "Nessun universo"
   },
   "SpendingChart": {
     "monthlyTitle": "Spese mensili",

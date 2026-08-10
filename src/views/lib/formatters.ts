@@ -42,7 +42,7 @@ export function createFormatters(locale: string): Formatters {
     style: "currency",
     currency: "CHF",
     notation: "compact",
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 1,
   });
   const decimalFmt = new Intl.NumberFormat(intlLocale, {
     maximumFractionDigits: 1,

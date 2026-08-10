@@ -51,9 +51,14 @@ async function main() {
   console.log(`✓ API server listening on http://127.0.0.1:${PORT}`);
 
   const locales = systemLocales();
-  const preload = locales.length
-    ? `window.__LOCALES__ = ${JSON.stringify(locales)};`
-    : null;
+  const insetTitleBar = process.platform === "darwin";
+  const preload =
+    [
+      locales.length ? `window.__LOCALES__ = ${JSON.stringify(locales)};` : null,
+      insetTitleBar ? "window.__INSET_TITLEBAR__ = true;" : null,
+    ]
+      .filter(Boolean)
+      .join(" ") || null;
 
   const initialWindowState = resolveInitialWindowState();
 
@@ -63,6 +68,7 @@ async function main() {
     preload,
     frame: initialWindowState.frame,
     hidden: true,
+    titleBarStyle: insetTitleBar ? "hiddenInset" : "default",
   });
 
   // Open target="_blank" links in the default system browser instead of the WebView.

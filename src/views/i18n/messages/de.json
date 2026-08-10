@@ -5,7 +5,9 @@
     "errorDetail": "Stellen Sie sicher, dass <code>DATABASE_URL</code> in den Einstellungen korrekt konfiguriert ist.",
     "emptyTitle": "Keine Bestellungen in der Datenbank gefunden.",
     "emptyDetail": "Öffnen Sie die <settings>Einstellungen</settings>, um Ihre Datenbankverbindung zu konfigurieren und eine Synchronisation zu starten.",
-    "syncNow": "Jetzt synchronisieren"
+    "syncNow": "Jetzt synchronisieren",
+    "noUniverseTitle": "Kein Universum ausgewählt.",
+    "noUniverseDetail": "Wählen Sie im Filter oben mindestens ein Universum aus, um Ihr Dashboard zu sehen."
   },
   "StatsCards": {
     "totalSpent": "Gesamtausgaben",
@@ -46,7 +48,8 @@
   "UniversePicker": {
     "allUniverses": "Alle Universen",
     "label": "Universum-Filter",
-    "nSelected": "{{count}} ausgewählt"
+    "nSelected": "{{count}} ausgewählt",
+    "noneSelected": "Kein Universum"
   },
   "SpendingChart": {
     "monthlyTitle": "Monatliche Ausgaben",

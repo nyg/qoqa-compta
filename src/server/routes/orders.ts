@@ -1,7 +1,11 @@
 import { Hono } from "hono";
 import { fetchOrders, fetchOrderPdf, fetchAllOrders } from "../queries";
 import { saveToDownloads } from "../downloads";
-import type { OrdersResponse, QoqaOrder } from "../../shared/types";
+import {
+  DEFAULT_PAGE_SIZE,
+  type OrdersResponse,
+  type QoqaOrder,
+} from "../../shared/types";
 
 function parseList(param: string | undefined): string[] {
   return param ? param.split(",").filter(Boolean) : [];
@@ -150,7 +154,13 @@ export default function ordersRouter(opts?: { desktop?: boolean }) {
       const to = c.req.query("to");
       const search = c.req.query("search") ?? "";
       const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10));
-      const pageSize = Math.min(100, Math.max(1, parseInt(c.req.query("pageSize") ?? "20", 10)));
+      const pageSize = Math.min(
+        100,
+        Math.max(
+          1,
+          parseInt(c.req.query("pageSize") ?? String(DEFAULT_PAGE_SIZE), 10)
+        )
+      );
 
       const { orders, total } = await fetchOrders(
         universeList,

@@ -5,7 +5,9 @@
     "errorDetail": "Controllai che <code>DATABASE_URL</code> saja configurà correctamain en ils Parameters.",
     "emptyTitle": "Naginas ordinaziuns chattas en la banca da datas.",
     "emptyDetail": "Avra ils <settings>Parameters</settings> per configurar la connexiun cun la banca da datas ed aviar ina sincronisaziun.",
-    "syncNow": "Sincronisar ussa"
+    "syncNow": "Sincronisar ussa",
+    "noUniverseTitle": "Nagin univers tschernì.",
+    "noUniverseDetail": "Tscherni almain in univers en il filter survart per vesair Voss panel."
   },
   "StatsCards": {
     "totalSpent": "Total spendì",
@@ -46,7 +48,8 @@
   "UniversePicker": {
     "allUniverses": "Tut ils univers",
     "label": "Filter per univers",
-    "nSelected": "{{count}} tschernids"
+    "nSelected": "{{count}} tschernids",
+    "noneSelected": "Nagin univers"
   },
   "SpendingChart": {
     "monthlyTitle": "Spesas mensualas",

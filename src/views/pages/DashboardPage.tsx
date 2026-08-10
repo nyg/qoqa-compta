@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { AlertCircle, Loader2, RefreshCw, Settings } from "lucide-react";
+import { AlertCircle, FilterX, Loader2, RefreshCw, Settings } from "lucide-react";
 import { StatsCards } from "@/components/stats-cards";
 import { SpendingChart } from "@/components/spending-chart";
 import { OrdersTable } from "@/components/orders-table";
@@ -11,8 +11,15 @@ import { SettingsModal } from "@/components/settings-modal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
+import { HAS_INSET_TITLEBAR } from "@/lib/desktop";
 import { useFilterState, type FilterState } from "@/lib/use-filter-state";
 import { useSyncRunner } from "@/lib/use-sync-runner";
+import {
+  isNothingSelected,
+  normalizeSelection,
+  selectionParams,
+  selectionsEqual,
+} from "../../shared/filters";
 import type { DashboardData } from "../../shared/types";
 
 function LoadingSkeleton() {
@@ -66,6 +73,48 @@ function ErrorState({
   );
 }
 
+function NoDataState({ onOpenSettings }: { onOpenSettings: () => void }) {
+  const { t } = useTranslation("Dashboard");
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+      <Settings className="h-10 w-10 text-muted-foreground" />
+      <div>
+        <p className="font-medium">{t("emptyTitle")}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          <Trans
+            i18nKey="emptyDetail"
+            ns="Dashboard"
+            components={{
+              settings: (
+                <button
+                  type="button"
+                  className="underline underline-offset-4 hover:text-foreground transition-colors"
+                  onClick={onOpenSettings}
+                />
+              ),
+            }}
+          />
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function NoUniverseState() {
+  const { t } = useTranslation("Dashboard");
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+      <FilterX className="h-10 w-10 text-muted-foreground" />
+      <div>
+        <p className="font-medium">{t("noUniverseTitle")}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t("noUniverseDetail")}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const { t, i18n } = useTranslation("Dashboard");
   const { filters, setFilters } = useFilterState();
@@ -83,8 +132,7 @@ export function DashboardPage() {
     setError(null);
     try {
       const result = await apiClient.getDashboard({
-        universes: f.universes.length > 0 ? f.universes : undefined,
-        subuniverses: f.subuniverses.length > 0 ? f.subuniverses : undefined,
+        ...selectionParams(f.selection),
         from: f.from,
         to: f.to,
       });
@@ -100,6 +148,14 @@ export function DashboardPage() {
   useEffect(() => {
     loadDashboard(filters);
   }, [filters, loadDashboard]);
+
+  useEffect(() => {
+    if (!data) return;
+    const normalized = normalizeSelection(filters.selection, data.universes);
+    if (!selectionsEqual(normalized, filters.selection)) {
+      setFilters({ selection: normalized });
+    }
+  }, [data, filters.selection, setFilters]);
 
   // Shared by the header shortcut and the settings dialog, so a sync started
   // from either shows its progress in the other.
@@ -129,12 +185,21 @@ export function DashboardPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center justify-between gap-3 px-6 py-2.5">
-          <div className="flex items-center gap-2 min-w-0">
+        <div
+          className={cn(
+            "flex items-center justify-between gap-3 px-6 py-2.5",
+            HAS_INSET_TITLEBAR && "pl-[5.5rem]"
+          )}
+        >
+          <div className="electrobun-webkit-app-region-drag flex items-center gap-2 min-w-0">
             <h1 className="font-heading text-sm font-semibold truncate">QoQa Compta</h1>
-            {loading && data && (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
-            )}
+            <Loader2
+              aria-hidden
+              className={cn(
+                "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-opacity",
+                loading && data ? "animate-spin opacity-100" : "opacity-0"
+              )}
+            />
             <span className="hidden text-xs text-muted-foreground sm:block">
               <Trans
                 i18nKey="subtitle"
@@ -145,7 +210,7 @@ export function DashboardPage() {
                       href={qoqaUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="underline underline-offset-4 hover:text-foreground transition-colors"
+                      className="electrobun-webkit-app-region-no-drag underline underline-offset-4 hover:text-foreground transition-colors"
                     />
                   ),
                 }}
@@ -158,11 +223,8 @@ export function DashboardPage() {
               <>
                 <UniversePicker
                   available={data.universes}
-                  selected={filters.universes}
-                  selectedSubuniverses={filters.subuniverses}
-                  onFiltersChange={(universes, subuniverses) =>
-                    setFilters({ universes, subuniverses })
-                  }
+                  selection={filters.selection}
+                  onSelectionChange={(selection) => setFilters({ selection })}
                 />
                 <DateRangePicker
                   from={filters.from}
@@ -199,60 +261,32 @@ export function DashboardPage() {
         {!data && !loading && error && (
           <ErrorState message={error} onRetry={() => loadDashboard(filters)} />
         )}
-        {data && (
-          <>
-            {data.stats.order_count === 0 &&
-            filters.universes.length === 0 &&
-            filters.subuniverses.length === 0 &&
-            !filters.from &&
-            !filters.to ? (
-              <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
-                <Settings className="h-10 w-10 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">{t("emptyTitle")}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    <Trans
-                      i18nKey="emptyDetail"
-                      ns="Dashboard"
-                      components={{
-                        settings: (
-                          <button
-                            type="button"
-                            className="underline underline-offset-4 hover:text-foreground transition-colors"
-                            onClick={() => {
-                              setSettingsOpen(true);
-                            }}
-                          />
-                        ),
-                      }}
-                    />
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <>
-                <StatsCards stats={data.stats} />
-                <SpendingChart
-                  monthly={data.monthly}
-                  yearly={data.yearly}
-                  pieData={data.pieData}
-                  pieMode={data.pieMode}
-                />
-                <OrdersTable
-                  key={dataVersion}
-                  initialOrders={data.orders}
-                  initialPagination={data.pagination}
-                  selectedUniverses={filters.universes}
-                  selectedSubuniverses={filters.subuniverses}
-                  subuniverseNames={subuniverseNames}
-                  syncLocale={data.syncLocale}
-                  from={filters.from}
-                  to={filters.to}
-                />
-              </>
-            )}
-          </>
-        )}
+        {data &&
+          (data.universes.length === 0 && data.stats.order_count === 0 ? (
+            <NoDataState onOpenSettings={() => setSettingsOpen(true)} />
+          ) : isNothingSelected(filters.selection) ? (
+            <NoUniverseState />
+          ) : (
+            <>
+              <StatsCards stats={data.stats} />
+              <SpendingChart
+                monthly={data.monthly}
+                yearly={data.yearly}
+                pieData={data.pieData}
+                pieMode={data.pieMode}
+              />
+              <OrdersTable
+                key={dataVersion}
+                initialOrders={data.orders}
+                initialPagination={data.pagination}
+                selection={filters.selection}
+                subuniverseNames={subuniverseNames}
+                syncLocale={data.syncLocale}
+                from={filters.from}
+                to={filters.to}
+              />
+            </>
+          ))}
       </main>
     </div>
   );
