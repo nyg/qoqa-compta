@@ -10,7 +10,11 @@ import {
 } from "../queries";
 import { readSettings } from "../settings";
 import { parseSubuniverseKey } from "../../shared/filters";
-import type { DashboardData, SpendingByGroup } from "../../shared/types";
+import {
+  DEFAULT_PAGE_SIZE,
+  type DashboardData,
+  type SpendingByGroup,
+} from "../../shared/types";
 
 const router = new Hono();
 
@@ -24,7 +28,7 @@ router.get("/dashboard", async (c) => {
     const subuniverseList = parseList(c.req.query("subuniverses"));
     const from = c.req.query("from");
     const to = c.req.query("to");
-    const pageSize = 20;
+    const pageSize = DEFAULT_PAGE_SIZE;
 
     const [stats, monthly, yearly, universes, total, orders] = await Promise.all([
       fetchStats(universeList, subuniverseList, from, to),

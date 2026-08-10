@@ -60,6 +60,8 @@ export interface SpendingByGroup {
   count: number;
 }
 
+export const DEFAULT_PAGE_SIZE = 10;
+
 export interface Pagination {
   page: number;
   pageSize: number;

@@ -5,7 +5,9 @@
     "errorDetail": "Assurez-vous que <code>DATABASE_URL</code> est correctement configuré dans les Paramètres.",
     "emptyTitle": "Aucune commande trouvée dans la base de données.",
     "emptyDetail": "Ouvrez les <settings>Paramètres</settings> pour configurer votre base de données et lancer une synchronisation pour importer vos commandes QoQa.",
-    "syncNow": "Synchroniser maintenant"
+    "syncNow": "Synchroniser maintenant",
+    "noUniverseTitle": "Aucun univers sélectionné.",
+    "noUniverseDetail": "Choisissez au moins un univers dans le filtre ci-dessus pour afficher votre tableau de bord."
   },
   "StatsCards": {
     "totalSpent": "Total dépensé",
@@ -46,7 +48,8 @@
   "UniversePicker": {
     "allUniverses": "Tous les univers",
     "label": "Filtre par univers",
-    "nSelected": "{{count}} sélectionné(s)"
+    "nSelected": "{{count}} sélectionné(s)",
+    "noneSelected": "Aucun univers"
   },
   "SpendingChart": {
     "monthlyTitle": "Dépenses mensuelles",

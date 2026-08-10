@@ -86,7 +86,8 @@ qoqa-compta/
 ├── drizzle.config.ts
 ├── electrobun.config.ts          # ElectroBun build config (app name, icons, entry, hooks)
 ├── docs/
-│   └── architecture.md           # this file
+│   ├── architecture.md           # this file
+│   └── universe-filters.md       # how the universe/sub-universe filter behaves
 ├── scripts/
 │   ├── prebuild.ts               # Runs `vite build` before ElectroBun packages the app
 │   └── postwrap.ts               # Ad-hoc code-signs the .app bundle on macOS after wrapping
@@ -132,11 +133,13 @@ qoqa-compta/
     │   │   └── messages/         # en.json, fr.json, de.json, it.json, rm.json
     │   └── lib/
     │       ├── api-client.ts     # All fetch calls — single place to swap transport
+    │       ├── desktop.ts        # Flags injected by the ElectroBun preload (inset title bar)
     │       ├── formatter-context.tsx  # React context for fr-CH number/date formatters
     │       ├── formatters.ts     # formatCHF, formatDate, formatMonth
-    │       ├── use-filter-state.ts    # URL-state hook for universe/date filters
+    │       ├── use-filter-state.ts    # Persisted universe/date filter state (localStorage)
     │       └── utils.ts          # cn() and other utilities
     └── shared/
+        ├── filters.ts            # Universe selection model — see universe-filters.md
         └── types.ts              # Shared TypeScript types (QoqaOrder, AppSettings, …)
 ```
 
@@ -262,6 +265,8 @@ A QoQa offer can carry several sub-universe tags — a tawny port is filed under
 The two are used for different things. **Filtering and the filter tree** address the full list, so picking *Spiritueux* also returns the port; the condition is an `EXISTS` subquery, so an order matching several selected tags is still counted once. **Money grouping** (the sub-universe pie) stays on the primary tag: the order has one item and one amount, so its CHF lands in exactly one slice and the pie keeps summing to the total on the stats card. A consequence worth knowing: under a single-tag filter the pie can show a slice for another sub-universe, because a matched order is grouped under its own primary.
 
 Databases synced before this table existed are filled in at startup from `raw_json`, which already carries the tag arrays — see `backfillOrderSubuniverses()` in `src/server/queries.ts`. No re-sync is required.
+
+How the picker turns a user's choice into those filters — the three selection states, how a stale selection is repaired, and what the button label counts — is documented separately in [universe-filters.md](universe-filters.md).
 
 ### Invoice PDFs
 
