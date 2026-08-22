@@ -89,10 +89,14 @@ bun install
 # Starts the Hono API on :3001 and the Vite dev server on `:3000` concurrently. Open http://localhost:3000.
 bun run dev
 
-# Starts the ElectroBun desktop app
+# Downloads the Electrobun toolchain (Hutch) and generates .hutch/devkit.
+# Only needed for `bun run typecheck` and editor types — the desktop scripts do it themselves.
+bun run desktop:prepare
+
+# Starts the Electrobun desktop app
 bun run desktop:dev
 
-# Runs `vite build` first (via the ElectroBun `preBuild` hook) then packages the app. Output artifacts are in `artifacts/`: `.dmg` for macOS, `.zip` for Windows.
+# Runs `vite build` first (via the Electrobun `preBuild` hook) then packages the app. Output artifacts are in `artifacts/`: `.dmg` for macOS, `.zip` for Windows.
 bun run build:stable
 ```
 
@@ -102,6 +106,6 @@ bun run build:stable
 |---|---|
 | **Backend** | [Hono](https://hono.dev/) on [Bun](https://bun.sh) — REST API + sync engine |
 | **Frontend** | [Vite](https://vitejs.dev/) SPA — React 19, React Router v7, Tailwind v4 |
-| **Desktop** | [ElectroBun](https://github.com/blackboardsh/electrobun) — native macOS & Windows app |
+| **Desktop** | [Electrobun](https://github.com/blackboardsh/electrobun) — native macOS & Windows app |
 | **Database** | SQLite (default, via `@libsql/client`) or PostgreSQL (via `@neondatabase/serverless`) |
 | **i18n** | [react-i18next](https://react.i18next.com/) — 5 locales: en, fr, de, it, rm |

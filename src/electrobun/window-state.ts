@@ -1,8 +1,8 @@
 /// <reference types="bun-types" />
 import fs from "fs";
 import path from "path";
-import { Screen, app } from "electrobun/bun";
-import type { BrowserWindow } from "electrobun/bun";
+import { Screen, app } from "electrobun/main";
+import type { BrowserWindow } from "electrobun/main";
 import { resolveConfigDir } from "../server/paths";
 
 const STATE_VERSION = 1;

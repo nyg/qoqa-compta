@@ -5,7 +5,7 @@
 QoQa Compta ships in two modes that share the same Hono API and React SPA:
 
 - **Web mode** — a Hono server on Bun serves the REST API and the compiled Vite SPA from `dist/`. Runs in any browser; no native shell required.
-- **Desktop mode** — [ElectroBun](https://github.com/blackboardsh/electrobun) wraps the same Hono server and renders the SPA in a native WebKit WebView. The resulting `.app` / `.exe` bundle is a self-contained executable.
+- **Desktop mode** — [Electrobun](https://github.com/blackboardsh/electrobun) wraps the same Hono server and renders the SPA in a native WebKit WebView. The resulting `.app` / `.exe` bundle is a self-contained executable.
 
 ### Technology stack
 
@@ -14,7 +14,7 @@ QoQa Compta ships in two modes that share the same Hono API and React SPA:
 | **[Bun](https://bun.sh)** | JavaScript runtime (replaces Node.js) and package manager. All server-side code runs on Bun; `bun --watch` provides hot-reload in development. |
 | **[Vite](https://vitejs.dev)** | Dev server (`:3000`) and production bundler for the React SPA. In development it proxies `/api/*` to Hono on `:3001`. |
 | **[Hono](https://hono.dev/)** | Lightweight web framework for the REST API. Handles routing, CORS, request logging, and SSE. Shared between web and desktop modes via `src/server/app.ts`. |
-| **[ElectroBun](https://github.com/blackboardsh/electrobun)** | Desktop container built on Bun + WebKit. Provides a native `BrowserWindow`, a `views://` custom protocol to serve the SPA, a native application menu, and OS utilities (file dialogs, etc.). The Hono server starts inside the same process, bound to `127.0.0.1:3001`. |
+| **[Electrobun](https://github.com/blackboardsh/electrobun)** | Desktop container built on Bun + WebKit. Provides a native `BrowserWindow`, a `views://` custom protocol to serve the SPA, a native application menu, and OS utilities (file dialogs, etc.). The Hono server starts inside the same process, bound to `127.0.0.1:3001`. Electrobun 2 builds through **Hutch**, its own native CLI: the `electrobun` npm package is only a bootstrap that downloads Hutch, which in turn generates the `.hutch/devkit/` SDK projection that `electrobun/main` imports resolve against. |
 | **[Drizzle ORM](https://orm.drizzle.team)** | Type-safe ORM for all database access. Supports SQLite (default, no setup) and PostgreSQL (remote). |
 | **[React 19](https://react.dev)** | SPA UI library with React Router v7 for client-side routing and Recharts for charts. |
 
@@ -27,7 +27,7 @@ flowchart TD
         HonoWeb -->|"dist/ + index.html"| Browser
     end
 
-    subgraph DESKTOP["Desktop mode (ElectroBun)"]
+    subgraph DESKTOP["Desktop mode (Electrobun)"]
         WebView["WebKit WebView\nviews://main/index.html"]
         HonoDesk["Hono API · Bun 127.0.0.1:3001"]
         WebView -->|"HTTP /api/*"| HonoDesk
@@ -50,7 +50,7 @@ flowchart TD
 
 In **web development** Vite's dev server runs on `:3000` and proxies `/api/*` to Hono on `:3001`; in **web production** Hono serves `dist/` and falls back to `index.html` for SPA routing.
 
-In **desktop development** (`desktop:dev`), ElectroBun probes the Vite dev server first and falls back to the bundled `views://` SPA if it is not running. All API calls in the SPA go through `src/views/lib/api-client.ts`, keeping the HTTP transport swappable.
+In **desktop development** (`desktop:dev`), Electrobun probes the Vite dev server first and falls back to the bundled `views://` SPA if it is not running. All API calls in the SPA go through `src/views/lib/api-client.ts`, keeping the HTTP transport swappable.
 
 ---
 
@@ -63,12 +63,13 @@ All scripts are run with `bun run <name>`.
 | `dev` | `concurrently vite + bun --watch src/server/index.ts` | Start both Vite dev server (`:3000`) and Hono API (`:3001`) with hot-reload. The standard entry point for web development. |
 | `dev:vite` | `vite` | Start only the Vite dev server. Useful when the API is already running separately. |
 | `dev:server` | `bun --watch src/server/index.ts` | Start only the Hono API server with hot-reload. |
-| `desktop:dev` | `bunx electrobun dev --watch` | Launch the app in ElectroBun desktop dev mode with live-reload. Probes the Vite dev server (`:3000`) and uses it if running, otherwise serves the bundled SPA. |
+| `desktop:prepare` | `bunx electrobun prepare` | Download Hutch and the pinned Electrobun core, and generate `.hutch/devkit/`. Needed once after cloning before `typecheck` or editor type resolution work; `desktop:dev` and `build:stable` do it implicitly. |
+| `desktop:dev` | `bunx electrobun dev --watch` | Launch the app in Electrobun desktop dev mode with live-reload. Probes the Vite dev server (`:3000`) and uses it if running, otherwise serves the bundled SPA. |
 | `build` | `vite build` | Compile the React SPA to `dist/`. Used both for web production and as the `preBuild` step for desktop releases. |
-| `build:stable` | `bunx electrobun build --env=stable` | Build a production desktop bundle (`.app` on macOS, `.exe` on Windows). Runs `scripts/prebuild.ts` (`vite build`) first, then packages everything with ElectroBun, and finally runs `scripts/postwrap.ts` (ad-hoc code-signing on macOS). |
+| `build:stable` | `bunx electrobun build --env=stable` | Build a production desktop bundle (`.app` on macOS, `.exe` on Windows). Runs `scripts/prebuild.ts` (`vite build`) first, then packages everything with Hutch, and finally runs `scripts/postwrap.ts` (ad-hoc code-signing on macOS). Hutch runs both hooks with Cottontail rather than Bun, so they shell out instead of importing from `bun`. |
 | `start` | `NODE_ENV=production bun src/server/index.ts` | Start the Hono server in web production mode. Serves the pre-built SPA from `dist/` in addition to the API. Run `build` first. |
 | `lint` | `eslint src --ext .ts,.tsx` | Lint all TypeScript source files. |
-| `typecheck` | `tsc --noEmit` | Type-check the whole project without emitting output. |
+| `typecheck` | `bunx electrobun prepare && tsc --noEmit` | Type-check the whole project without emitting output. Prepares the devkit first, because `tsconfig.json` maps the `electrobun` and `electrobun/main` specifiers into `.hutch/devkit/`. |
 | `db:push` | `drizzle-kit push` | Push the Drizzle schema to the database (creates or alters tables). |
 
 ---
@@ -84,12 +85,13 @@ qoqa-compta/
 ├── vite.config.ts
 ├── tsconfig.json
 ├── drizzle.config.ts
-├── electrobun.config.ts          # ElectroBun build config (app name, icons, entry, hooks)
+├── electrobun.config.ts          # Electrobun build config (app name, icons, entry, hooks)
+├── hutch.config.ts               # Hutch workspace config — keeps Bun as the package manager
 ├── docs/
 │   ├── architecture.md           # this file
 │   └── universe-filters.md       # how the universe/sub-universe filter behaves
 ├── scripts/
-│   ├── prebuild.ts               # Runs `vite build` before ElectroBun packages the app
+│   ├── prebuild.ts               # Runs `vite build` before Electrobun packages the app
 │   └── postwrap.ts               # Ad-hoc code-signs the .app bundle on macOS after wrapping
 └── src/
     ├── electrobun/
@@ -133,7 +135,7 @@ qoqa-compta/
     │   │   └── messages/         # en.json, fr.json, de.json, it.json, rm.json
     │   └── lib/
     │       ├── api-client.ts     # All fetch calls — single place to swap transport
-    │       ├── desktop.ts        # Flags injected by the ElectroBun preload (inset title bar)
+    │       ├── desktop.ts        # Flags injected by the Electrobun preload (inset title bar)
     │       ├── formatter-context.tsx  # React context for fr-CH number/date formatters
     │       ├── formatters.ts     # formatCHF, formatDate, formatMonth
     │       ├── use-filter-state.ts    # Persisted universe/date filter state (localStorage)

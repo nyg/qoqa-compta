@@ -3,7 +3,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# ElectroBun
+# Electrobun
+.hutch/
+.cottontail-tmp/
 views/main/
 artifacts/
 build

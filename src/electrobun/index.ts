@@ -1,5 +1,5 @@
 /// <reference types="bun-types" />
-import { ApplicationMenu, BrowserWindow, Utils, app } from "electrobun/bun";
+import { ApplicationMenu, BrowserWindow, BuildConfig, Utils } from "electrobun/main";
 import { createApp } from "../server/app";
 import { initDb } from "../server/db";
 import { bootstrapSchema } from "../server/schema-bootstrap";
@@ -12,7 +12,7 @@ const DEV_SERVER_URL = "http://localhost:3000";
 const VIEWS_URL = "views://main/index.html";
 
 async function resolveUrl(): Promise<string> {
-  if (app.channel !== "dev") {
+  if (BuildConfig.getSync().channel !== "dev") {
     return VIEWS_URL;
   }
   try {
