@@ -113,7 +113,7 @@
     "updateAvailable": "La versione {{version}} è disponibile.",
     "releaseNotes": "Note di rilascio",
     "checkFailed": "Impossibile verificare gli aggiornamenti.",
-    "packageManagers": "L'app non si sostituisce mai da sola. Installata con Scoop o Homebrew? Aggiornala con il tuo gestore di pacchetti:",
+    "packageManagers": "L'app non si aggiorna automaticamente. Installata con Scoop o Homebrew? Aggiornala con il tuo gestore di pacchetti:",
     "project": "Progetto",
     "sourceCode": "Codice sorgente",
     "license": "Con licenza MIT.",

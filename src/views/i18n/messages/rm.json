@@ -113,7 +113,7 @@
     "updateAvailable": "La versiun {{version}} è disponibla.",
     "releaseNotes": "Notizias da la versiun",
     "checkFailed": "Impussibel da verifitgar las actualisaziuns.",
-    "packageManagers": "L'applicaziun na sa remplazza mai sezza. Installada cun Scoop u Homebrew? Actualisescha ella cun tes administratur da pachets:",
+    "packageManagers": "L'applicaziun na s'actualisescha betg automaticamain. Installada cun Scoop u Homebrew? Actualisescha ella cun tes administratur da pachets:",
     "project": "Project",
     "sourceCode": "Code da funtauna",
     "license": "Sut licenza MIT.",

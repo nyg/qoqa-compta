@@ -127,7 +127,7 @@ function VersionBadge({ onClick }: { onClick: () => void }) {
   return (
     <Button
       variant="ghost"
-      size="xs"
+      size="default"
       className="text-muted-foreground tabular-nums"
       aria-label={updateAvailable ? t("updateBadge") : t("openAbout")}
       title={updateAvailable ? t("updateBadge") : t("openAbout")}
@@ -269,7 +269,6 @@ export function DashboardPage() {
                 />
               </>
             )}
-            <VersionBadge onClick={() => setAboutOpen(true)} />
             <ThemeToggle />
             <Button
               variant="outline"
@@ -288,6 +287,7 @@ export function DashboardPage() {
               sync={sync}
             />
             <AboutModal open={aboutOpen} onOpenChange={setAboutOpen} />
+            <VersionBadge onClick={() => setAboutOpen(true)} />
           </div>
         </div>
       </header>
