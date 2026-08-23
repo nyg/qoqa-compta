@@ -14,7 +14,7 @@ QoQa Compta ships in two modes that share the same Hono API and React SPA:
 | **[Bun](https://bun.sh)** | JavaScript runtime (replaces Node.js) and package manager. All server-side code runs on Bun; `bun --watch` provides hot-reload in development. |
 | **[Vite](https://vitejs.dev)** | Dev server (`:3000`) and production bundler for the React SPA. In development it proxies `/api/*` to Hono on `:3001`. |
 | **[Hono](https://hono.dev/)** | Lightweight web framework for the REST API. Handles routing, CORS, request logging, and SSE. Shared between web and desktop modes via `src/server/app.ts`. |
-| **[Electrobun](https://github.com/blackboardsh/electrobun)** | Desktop container built on Bun + WebKit. Provides a native `BrowserWindow`, a `views://` custom protocol to serve the SPA, a native application menu, and OS utilities (file dialogs, etc.). The Hono server starts inside the same process, bound to `127.0.0.1:3001`. Electrobun 2 builds through **Hutch**, its own native CLI: the `electrobun` npm package is only a bootstrap that downloads Hutch, which in turn generates the `.hutch/devkit/` SDK projection that `electrobun/main` imports resolve against. |
+| **[Electrobun](https://github.com/blackboardsh/electrobun)** | Desktop container built on Bun + WebKit. Provides a native `BrowserWindow`, a `views://` custom protocol to serve the SPA, a native application menu, and OS utilities (file dialogs, etc.). The Hono server starts inside the same process, bound to `127.0.0.1` on an ephemeral port the OS assigns at startup, which the preload injects into the SPA as `window.__API_PORT__` so several Electrobun apps can run side by side. Electrobun 2 builds through **Hutch**, its own native CLI: the `electrobun` npm package is only a bootstrap that downloads Hutch, which in turn generates the `.hutch/devkit/` SDK projection that `electrobun/main` imports resolve against. |
 | **[Drizzle ORM](https://orm.drizzle.team)** | Type-safe ORM for all database access. Supports SQLite (default, no setup) and PostgreSQL (remote). |
 | **[React 19](https://react.dev)** | SPA UI library with React Router v7 for client-side routing and Recharts for charts. |
 
@@ -29,7 +29,7 @@ flowchart TD
 
     subgraph DESKTOP["Desktop mode (Electrobun)"]
         WebView["WebKit WebView\nviews://main/index.html"]
-        HonoDesk["Hono API · Bun 127.0.0.1:3001"]
+        HonoDesk["Hono API · Bun 127.0.0.1:ephemeral"]
         WebView -->|"HTTP /api/*"| HonoDesk
     end
 
