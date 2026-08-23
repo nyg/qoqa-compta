@@ -36,10 +36,7 @@ async function fetchLatestRelease(): Promise<LatestRelease> {
   return { version, url: release.html_url || RELEASES_URL };
 }
 
-export default function appRouter(opts?: {
-  desktop?: boolean;
-  onMenuBarVisibility?: (visible: boolean) => void;
-}) {
+export default function appRouter() {
   const router = new Hono();
 
   router.get("/app/latest-release", async (c) => {
@@ -62,23 +59,6 @@ export default function appRouter(opts?: {
       return c.json({ error: cached.error }, 502);
     }
   });
-
-  const onMenuBarVisibility = opts?.onMenuBarVisibility;
-
-  if (opts?.desktop && onMenuBarVisibility) {
-    router.post("/app/menu-bar", async (c) => {
-      const body = (await c.req.json().catch(() => null)) as {
-        visible?: unknown;
-      } | null;
-
-      if (typeof body?.visible !== "boolean") {
-        return c.json({ error: "visible must be a boolean" }, 400);
-      }
-
-      onMenuBarVisibility(body.visible);
-      return c.body(null, 204);
-    });
-  }
 
   return router;
 }

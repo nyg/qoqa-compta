@@ -4,7 +4,7 @@ import { createApp } from "../server/app";
 import { initDb } from "../server/db";
 import { bootstrapSchema } from "../server/schema-bootstrap";
 import { backfillOrderSubuniverses } from "../server/queries";
-import { installApplicationMenu, type ApplicationMenuController } from "./menu";
+import { installApplicationMenu } from "./menu";
 import { systemLocales } from "./locale";
 import { resolveInitialWindowState, trackWindowState } from "./window-state";
 
@@ -27,12 +27,9 @@ async function resolveUrl(): Promise<string> {
 async function main() {
   const url = await resolveUrl();
 
-  let menu: ApplicationMenuController | null = null;
-
   const honoApp = createApp({
     corsOrigins: ["views://", "http://localhost:3000"],
     desktop: true,
-    onMenuBarVisibility: (visible) => menu?.setMenuBarVisible(visible),
   });
 
   try {
@@ -56,13 +53,11 @@ async function main() {
 
   const locales = systemLocales();
   const insetTitleBar = process.platform === "darwin";
-  const toggleableMenuBar = process.platform !== "darwin";
   const preload =
     [
       `window.__API_PORT__ = ${server.port};`,
       locales.length ? `window.__LOCALES__ = ${JSON.stringify(locales)};` : null,
       insetTitleBar ? "window.__INSET_TITLEBAR__ = true;" : null,
-      toggleableMenuBar ? "window.__TOGGLEABLE_MENU_BAR__ = true;" : null,
     ]
       .filter(Boolean)
       .join(" ") || null;
@@ -108,7 +103,7 @@ async function main() {
     win.show();
   }
 
-  menu = installApplicationMenu(win);
+  installApplicationMenu(win);
 }
 
 main();

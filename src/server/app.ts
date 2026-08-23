@@ -16,7 +16,6 @@ import settingsRoutes from "./routes/settings";
 export function createApp(opts?: {
   corsOrigins?: string[];
   desktop?: boolean;
-  onMenuBarVisibility?: (visible: boolean) => void;
 }) {
   const app = new Hono();
 
@@ -48,13 +47,7 @@ export function createApp(opts?: {
 
   // ── API routes ───────────────────────────────────────────────────────────────
 
-  app.route(
-    "/api",
-    appRoutes({
-      desktop: opts?.desktop,
-      onMenuBarVisibility: opts?.onMenuBarVisibility,
-    }),
-  );
+  app.route("/api", appRoutes());
   app.route("/api", dashboardRoutes);
   app.route("/api", ordersRoutes({ desktop: opts?.desktop }));
   app.route("/api", syncRoutes);

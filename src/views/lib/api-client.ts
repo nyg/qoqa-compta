@@ -166,12 +166,4 @@ export const apiClient = {
   getLatestRelease(): Promise<LatestRelease> {
     return request<LatestRelease>(`${API_BASE}/api/app/latest-release`);
   },
-
-  setMenuBarVisible(visible: boolean): Promise<void> {
-    return request<void>(`${API_BASE}/api/app/menu-bar`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ visible }),
-    });
-  },
 };
