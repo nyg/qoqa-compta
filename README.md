@@ -50,9 +50,11 @@ irm get.scoop.sh | iex
 
 1. Download the installer from the [releases page](https://github.com/nyg/qoqa-compta/releases):
    - macOS: `…-macos-arm64.dmg`
-   - Windows: `…-windows-x64-setup.zip`
+   - Windows: `…-windows-x64-setup.exe`
 2. **macOS**: open the DMG, drag **QoQa Compta.app** to your **Applications** folder, then see [macOS Gatekeeper](#macos-gatekeeper) below before first launch
-3. **Windows**: extract the ZIP and run **QoQa Compta-Setup.exe** inside (installs per-user to `%LOCALAPPDATA%` — no admin rights). See [Windows SmartScreen](#windows-smartscreen) below before first launch.
+3. **Windows**: run the downloaded `.exe` (installs per-user to `%LOCALAPPDATA%` — no admin rights). It installs without showing a window and finishes by adding a **QoQa Compta** shortcut to your Desktop and Start menu, which is how you know it is done. See [Windows SmartScreen](#windows-smartscreen) below before first launch.
+
+   The `…-windows-x64-setup.zip` asset is the same installer in Electrobun's original layout, kept for one release as a fallback.
 
 #### Updates
 
@@ -91,7 +93,7 @@ You only need to do this once per installation. Installing via Homebrew avoids i
 
 #### Windows SmartScreen
 
-Because the app is not code-signed, Windows SmartScreen shows *"Windows protected your PC"* when you run `QoQa Compta-Setup.exe`. Click **More info → Run anyway** (this option is only offered to administrators).
+Because the app is not code-signed, Windows SmartScreen shows *"Windows protected your PC"* when you run the downloaded installer. Click **More info → Run anyway** (this option is only offered to administrators).
 
 Installing via Scoop avoids this prompt entirely.
 
