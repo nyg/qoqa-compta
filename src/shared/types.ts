@@ -120,3 +120,8 @@ export interface AppSettings {
   qoqaPassword: string | null;
   syncLocale: "fr" | "de";
 }
+
+export interface LatestRelease {
+  version: string;
+  url: string;
+}

@@ -1,6 +1,7 @@
 /// <reference types="bun-types" />
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import appRoutes from "./routes/app";
 import dashboardRoutes from "./routes/dashboard";
 import ordersRoutes from "./routes/orders";
 import syncRoutes from "./routes/sync";
@@ -12,7 +13,11 @@ import settingsRoutes from "./routes/settings";
 // needed. `desktop` also enables the routes that save files to the local
 // Downloads folder, which only make sense when server and user share a machine.
 
-export function createApp(opts?: { corsOrigins?: string[]; desktop?: boolean }) {
+export function createApp(opts?: {
+  corsOrigins?: string[];
+  desktop?: boolean;
+  onMenuBarVisibility?: (visible: boolean) => void;
+}) {
   const app = new Hono();
 
   if (opts?.corsOrigins?.length) {
@@ -43,6 +48,13 @@ export function createApp(opts?: { corsOrigins?: string[]; desktop?: boolean }) 
 
   // ── API routes ───────────────────────────────────────────────────────────────
 
+  app.route(
+    "/api",
+    appRoutes({
+      desktop: opts?.desktop,
+      onMenuBarVisibility: opts?.onMenuBarVisibility,
+    }),
+  );
   app.route("/api", dashboardRoutes);
   app.route("/api", ordersRoutes({ desktop: opts?.desktop }));
   app.route("/api", syncRoutes);

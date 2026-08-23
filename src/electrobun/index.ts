@@ -1,9 +1,10 @@
 /// <reference types="bun-types" />
-import { ApplicationMenu, BrowserWindow, BuildConfig, Utils } from "electrobun/main";
+import { BrowserWindow, BuildConfig, Utils } from "electrobun/main";
 import { createApp } from "../server/app";
 import { initDb } from "../server/db";
 import { bootstrapSchema } from "../server/schema-bootstrap";
 import { backfillOrderSubuniverses } from "../server/queries";
+import { installApplicationMenu, type ApplicationMenuController } from "./menu";
 import { systemLocales } from "./locale";
 import { resolveInitialWindowState, trackWindowState } from "./window-state";
 
@@ -26,9 +27,12 @@ async function resolveUrl(): Promise<string> {
 async function main() {
   const url = await resolveUrl();
 
+  let menu: ApplicationMenuController | null = null;
+
   const honoApp = createApp({
     corsOrigins: ["views://", "http://localhost:3000"],
     desktop: true,
+    onMenuBarVisibility: (visible) => menu?.setMenuBarVisible(visible),
   });
 
   try {
@@ -52,15 +56,18 @@ async function main() {
 
   const locales = systemLocales();
   const insetTitleBar = process.platform === "darwin";
+  const toggleableMenuBar = process.platform !== "darwin";
   const preload =
     [
       locales.length ? `window.__LOCALES__ = ${JSON.stringify(locales)};` : null,
       insetTitleBar ? "window.__INSET_TITLEBAR__ = true;" : null,
+      toggleableMenuBar ? "window.__TOGGLEABLE_MENU_BAR__ = true;" : null,
     ]
       .filter(Boolean)
       .join(" ") || null;
 
   const initialWindowState = resolveInitialWindowState();
+  const maximizeBeforeShow = process.platform !== "win32";
 
   const win = new BrowserWindow({
     title: "QoQa Compta",
@@ -82,52 +89,25 @@ async function main() {
 
   trackWindowState(win, initialWindowState);
 
-  try {
-    if (initialWindowState.maximized && !win.isMaximized()) {
-      win.maximize();
+  const restoreMaximized = () => {
+    try {
+      if (initialWindowState.maximized && !win.isMaximized()) {
+        win.maximize();
+      }
+    } catch (err) {
+      console.error("✗ Could not restore the maximized window state:", err);
     }
-  } catch (err) {
-    console.error("✗ Could not restore the maximized window state:", err);
+  };
+
+  if (!maximizeBeforeShow) {
+    win.show();
+    restoreMaximized();
+  } else {
+    restoreMaximized();
+    win.show();
   }
 
-  win.show();
-
-  ApplicationMenu.setApplicationMenu([
-    {
-      label: "QoQa Compta",
-      submenu: [
-        { role: "about" },
-        { type: "separator" },
-        { role: "hide" },
-        { role: "hideOthers" },
-        { role: "showAll" },
-        { type: "separator" },
-        { role: "quit", accelerator: "CommandOrControl+Q" },
-      ],
-    },
-    {
-      label: "Edit",
-      submenu: [
-        { role: "undo" },
-        { role: "redo" },
-        { type: "separator" },
-        { role: "cut" },
-        { role: "copy" },
-        { role: "paste" },
-        { role: "selectAll" },
-      ],
-    },
-    {
-      label: "Window",
-      submenu: [
-        { role: "close", accelerator: "CommandOrControl+W" },
-        { role: "minimize" },
-        { role: "zoom" },
-        { type: "separator" },
-        { role: "bringAllToFront" },
-      ],
-    },
-  ]);
+  menu = installApplicationMenu(win);
 }
 
 main();

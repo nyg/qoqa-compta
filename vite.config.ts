@@ -45,7 +45,14 @@ function esToolkitEsmPlugin() {
   }
 }
 
+const { version } = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, "package.json"), "utf-8")
+) as { version: string }
+
 export default defineConfig({
+  define: {
+    "import.meta.env.VITE_APP_VERSION": JSON.stringify(version),
+  },
   plugins: [esToolkitEsmPlugin(), react(), tailwindcss()],
   resolve: {
     alias: {

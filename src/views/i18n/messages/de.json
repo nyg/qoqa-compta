@@ -101,5 +101,24 @@
     "close": "Schliessen",
     "dbLocation": "Datenbankpfad",
     "showInFinder": "Im Finder zeigen"
+  },
+  "About": {
+    "title": "Über",
+    "close": "Schliessen",
+    "version": "Version {{version}}",
+    "devBuild": "Entwicklungsversion",
+    "updates": "Aktualisierungen",
+    "checking": "Suche nach Aktualisierungen…",
+    "upToDate": "Aktuell.",
+    "updateAvailable": "Version {{version}} ist verfügbar.",
+    "releaseNotes": "Versionshinweise",
+    "checkFailed": "Aktualisierungen konnten nicht geprüft werden.",
+    "packageManagers": "Die App aktualisiert sich nicht automatisch. Mit Scoop oder Homebrew installiert? Aktualisieren Sie sie mit Ihrem Paketmanager:",
+    "project": "Projekt",
+    "sourceCode": "Quellcode",
+    "license": "MIT-lizenziert.",
+    "reportIssue": "Problem melden",
+    "openAbout": "Über QoQa Compta",
+    "updateBadge": "Aktualisierung verfügbar"
   }
 }

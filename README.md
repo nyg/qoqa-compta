@@ -54,6 +54,22 @@ irm get.scoop.sh | iex
 2. **macOS**: open the DMG, drag **QoQa Compta.app** to your **Applications** folder, then see [macOS Gatekeeper](#macos-gatekeeper) below before first launch
 3. **Windows**: extract the ZIP and run **QoQa Compta-Setup.exe** inside (installs per-user to `%LOCALAPPDATA%` — no admin rights). See [Windows SmartScreen](#windows-smartscreen) below before first launch.
 
+#### Updates
+
+The app checks the releases page once per launch and says so when a newer version exists — the version number in the header carries a dot, and **About** (behind that version number) shows the details. It never replaces itself, so Homebrew and Scoop installs stay under their package manager's control:
+
+```sh
+brew upgrade --cask nyg/tap/qoqa-compta
+```
+
+```powershell
+scoop update qoqa-compta
+```
+
+#### The menu bar on Windows
+
+Windows starts without a menu bar; press **Alt** to show it and **Alt** or **Escape** to hide it again. Everything it offers is reachable elsewhere: the editing shortcuts work natively in the WebView, and **About** is behind the version number in the header. macOS keeps its usual application menu.
+
 #### macOS Gatekeeper
 
 Because the app is not signed with an Apple Developer certificate, macOS quarantines it after download and blocks it on first launch.

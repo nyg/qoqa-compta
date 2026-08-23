@@ -101,5 +101,24 @@
     "close": "Close",
     "dbLocation": "Database location",
     "showInFinder": "Show in Finder"
+  },
+  "About": {
+    "title": "About",
+    "close": "Close",
+    "version": "Version {{version}}",
+    "devBuild": "Development build",
+    "updates": "Updates",
+    "checking": "Checking for updates…",
+    "upToDate": "Up to date.",
+    "updateAvailable": "Version {{version}} is available.",
+    "releaseNotes": "Release notes",
+    "checkFailed": "Could not check for updates.",
+    "packageManagers": "The app does not update itself automatically. Installed with Scoop or Homebrew? Update it with your package manager:",
+    "project": "Project",
+    "sourceCode": "Source code",
+    "license": "MIT licensed.",
+    "reportIssue": "Report an issue",
+    "openAbout": "About QoQa Compta",
+    "updateBadge": "Update available"
   }
 }
