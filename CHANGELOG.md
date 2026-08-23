@@ -1,6 +1,21 @@
 # Changelog
 
 
+## [0.2.1](https://github.com/nyg/qoqa-compta/compare/v0.2.0..v0.2.1) - 2026-08-23
+
+### 🐛 Bug Fixes
+
+- [`68e9c74`](https://github.com/nyg/qoqa-compta/commit/68e9c74741ccc3a268daa687f62465326239dea4) *(desktop)* Let the API server take an OS-assigned port ([#113](https://github.com/nyg/qoqa-compta/issues/113))
+- [`7ed9438`](https://github.com/nyg/qoqa-compta/commit/7ed9438b9bfd97364aa6967296c58bb6f0ebf237) *(desktop)* Quieter Windows shell, an About dialog and an update check ([#109](https://github.com/nyg/qoqa-compta/issues/109))
+- [`0c0f6c6`](https://github.com/nyg/qoqa-compta/commit/0c0f6c65a46bb4ec6ca009c565e88895b1f9eab1) *(dashboard)* Stop the orders table flickering and clarify the filter labels ([#107](https://github.com/nyg/qoqa-compta/issues/107))
+- [`cca5ab5`](https://github.com/nyg/qoqa-compta/commit/cca5ab5091a4407e9485a6c6810528460b4ebc5c) *(dashboard)* Make universe selection explicit and fix assorted UI issues ([#105](https://github.com/nyg/qoqa-compta/issues/105))
+- [`f4cda07`](https://github.com/nyg/qoqa-compta/commit/f4cda07214cce556eae18c952d30537dc698e3a6) *(settings)* Give the interface language a single source of truth ([#104](https://github.com/nyg/qoqa-compta/issues/104))
+
+### ⚙️ Miscellaneous
+
+- [`3a4c837`](https://github.com/nyg/qoqa-compta/commit/3a4c837f5654bd9330312d0ceef8b8bd445eb717) *(release)* Ship Windows as a single-file installer ([#110](https://github.com/nyg/qoqa-compta/issues/110))
+- [`09b91bd`](https://github.com/nyg/qoqa-compta/commit/09b91bde77b790a7383a72d63251436e270f3cc4) *(desktop)* Migrate to Electrobun 2 ([#108](https://github.com/nyg/qoqa-compta/issues/108))
+
 ## [0.2.0](https://github.com/nyg/qoqa-compta/compare/v0.1.2..v0.2.0) - 2026-08-07
 
 ### ⛰️  Features
