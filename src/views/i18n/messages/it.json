@@ -101,5 +101,24 @@
     "close": "Chiudi",
     "dbLocation": "Posizione del database",
     "showInFinder": "Mostra nel Finder"
+  },
+  "About": {
+    "title": "Informazioni",
+    "close": "Chiudi",
+    "version": "Versione {{version}}",
+    "devBuild": "Versione di sviluppo",
+    "updates": "Aggiornamenti",
+    "checking": "Ricerca di aggiornamenti…",
+    "upToDate": "Aggiornato.",
+    "updateAvailable": "La versione {{version}} è disponibile.",
+    "releaseNotes": "Note di rilascio",
+    "checkFailed": "Impossibile verificare gli aggiornamenti.",
+    "packageManagers": "L'app non si sostituisce mai da sola. Installata con Scoop o Homebrew? Aggiornala con il tuo gestore di pacchetti:",
+    "project": "Progetto",
+    "sourceCode": "Codice sorgente",
+    "license": "Con licenza MIT.",
+    "reportIssue": "Segnala un problema",
+    "openAbout": "Informazioni su QoQa Compta",
+    "updateBadge": "Aggiornamento disponibile"
   }
 }

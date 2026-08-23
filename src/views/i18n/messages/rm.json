@@ -101,5 +101,24 @@
     "close": "Serrar",
     "dbLocation": "Posiziun da la banca da datas",
     "showInFinder": "Mussar en il Finder"
+  },
+  "About": {
+    "title": "Davart",
+    "close": "Serrar",
+    "version": "Versiun {{version}}",
+    "devBuild": "Versiun da svilup",
+    "updates": "Actualisaziuns",
+    "checking": "Tschertgar actualisaziuns…",
+    "upToDate": "Actual.",
+    "updateAvailable": "La versiun {{version}} è disponibla.",
+    "releaseNotes": "Notizias da la versiun",
+    "checkFailed": "Impussibel da verifitgar las actualisaziuns.",
+    "packageManagers": "L'applicaziun na sa remplazza mai sezza. Installada cun Scoop u Homebrew? Actualisescha ella cun tes administratur da pachets:",
+    "project": "Project",
+    "sourceCode": "Code da funtauna",
+    "license": "Sut licenza MIT.",
+    "reportIssue": "Annunziar in problem",
+    "openAbout": "Davart QoQa Compta",
+    "updateBadge": "Actualisaziun disponibla"
   }
 }

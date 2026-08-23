@@ -17,6 +17,7 @@ const NAMESPACES = [
   "SpendingChart",
   "DateRangePicker",
   "Settings",
+  "About",
 ] as const;
 
 type MessageFile = typeof en;

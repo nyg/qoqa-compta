@@ -7,6 +7,7 @@ import { backfillOrderSubuniverses } from "./queries";
 import { createApp } from "./app";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
+const HOST = process.env.HOST ?? "127.0.0.1";
 const IS_PROD = process.env.NODE_ENV === "production";
 
 const app = createApp();
@@ -47,11 +48,12 @@ async function main() {
 
   Bun.serve({
     port: PORT,
+    hostname: HOST,
     fetch: app.fetch,
     idleTimeout: 0, // SSE streams must not be closed by idle timeout
   });
 
-  console.log(`✓ Server listening on http://localhost:${PORT}`);
+  console.log(`✓ Server listening on http://${HOST}:${PORT}`);
 }
 
 main();

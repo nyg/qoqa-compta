@@ -8,10 +8,14 @@ import { UniversePicker } from "@/components/universe-picker";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SettingsModal } from "@/components/settings-modal";
+import { AboutModal } from "@/components/about-modal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
 import { HAS_INSET_TITLEBAR } from "@/lib/desktop";
+import { SHOW_ABOUT_EVENT } from "@/lib/about-event";
+import { APP_VERSION, useLatestRelease } from "@/lib/use-latest-release";
+import { useToggleableMenuBar } from "@/lib/use-menu-bar";
 import { useFilterState, type FilterState } from "@/lib/use-filter-state";
 import { useSyncRunner } from "@/lib/use-sync-runner";
 import {
@@ -115,6 +119,28 @@ function NoUniverseState() {
   );
 }
 
+function VersionBadge({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation("About");
+  const { updateAvailable } = useLatestRelease();
+  const label = APP_VERSION ? `v${APP_VERSION}` : t("title");
+
+  return (
+    <Button
+      variant="ghost"
+      size="xs"
+      className="text-muted-foreground tabular-nums"
+      aria-label={updateAvailable ? t("updateBadge") : t("openAbout")}
+      title={updateAvailable ? t("updateBadge") : t("openAbout")}
+      onClick={onClick}
+    >
+      {label}
+      {updateAvailable && (
+        <span aria-hidden className="size-1.5 rounded-full bg-primary" />
+      )}
+    </Button>
+  );
+}
+
 export function DashboardPage() {
   const { t, i18n } = useTranslation("Dashboard");
   const { filters, setFilters } = useFilterState();
@@ -123,6 +149,15 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+
+  useToggleableMenuBar();
+
+  useEffect(() => {
+    const open = () => setAboutOpen(true);
+    window.addEventListener(SHOW_ABOUT_EVENT, open);
+    return () => window.removeEventListener(SHOW_ABOUT_EVENT, open);
+  }, []);
 
   const qoqaLang = i18n.language === "de" ? "de" : "fr";
   const qoqaUrl = `https://www.qoqa.ch/${qoqaLang}/my_account/orders`;
@@ -234,6 +269,7 @@ export function DashboardPage() {
                 />
               </>
             )}
+            <VersionBadge onClick={() => setAboutOpen(true)} />
             <ThemeToggle />
             <Button
               variant="outline"
@@ -251,6 +287,7 @@ export function DashboardPage() {
               onDataChanged={() => loadDashboard(filters)}
               sync={sync}
             />
+            <AboutModal open={aboutOpen} onOpenChange={setAboutOpen} />
           </div>
         </div>
       </header>

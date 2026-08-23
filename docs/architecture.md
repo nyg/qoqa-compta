@@ -95,7 +95,8 @@ qoqa-compta/
 │   └── postwrap.ts               # Ad-hoc code-signs the .app bundle on macOS after wrapping
 └── src/
     ├── electrobun/
-    │   └── index.ts              # Desktop entry — starts Hono, opens BrowserWindow, sets app menu
+    │   ├── index.ts              # Desktop entry — starts Hono, opens BrowserWindow, installs the menu
+    │   └── menu.ts               # Application menu — full on macOS, Alt-toggled on Windows
     ├── server/                   # Hono API + sync engine (Bun)
     │   ├── index.ts              # Web entry point — mounts routes, bootstraps DB, serves dist/
     │   ├── app.ts                # Hono app factory (shared by web and desktop entry points)
@@ -109,6 +110,7 @@ qoqa-compta/
     │   ├── queries.ts            # All DB operations (upsert, select, aggregate)
     │   ├── settings.ts           # settings.json read/write (platform-aware path)
     │   └── routes/
+    │       ├── app.ts            # GET /api/app/latest-release, POST /api/app/menu-bar
     │       ├── dashboard.ts      # GET /api/dashboard
     │       ├── orders.ts         # GET /api/orders, GET /api/orders/:n/pdf, GET /api/orders/csv
     │       ├── sync.ts           # POST /api/sync, DELETE /api/sync, GET /api/sync/stream (SSE)
@@ -128,6 +130,7 @@ qoqa-compta/
     │   │   ├── stats-cards.tsx        # Aggregate stat cards
     │   │   ├── date-range-picker.tsx  # Date range filter
     │   │   ├── settings-modal.tsx     # Settings + sync control modal
+    │   │   ├── about-modal.tsx        # Version, update status and project links
     │   │   ├── theme-provider.tsx
     │   │   └── theme-toggle.tsx
     │   ├── i18n/
@@ -135,15 +138,42 @@ qoqa-compta/
     │   │   └── messages/         # en.json, fr.json, de.json, it.json, rm.json
     │   └── lib/
     │       ├── api-client.ts     # All fetch calls — single place to swap transport
-    │       ├── desktop.ts        # Flags injected by the Electrobun preload (inset title bar)
+    │       ├── about-event.ts    # Name of the window event the menu dispatches to open About
+    │       ├── desktop.ts        # Flags injected by the Electrobun preload (title bar, menu bar)
     │       ├── formatter-context.tsx  # React context for fr-CH number/date formatters
     │       ├── formatters.ts     # formatCHF, formatDate, formatMonth
     │       ├── use-filter-state.ts    # Persisted universe/date filter state (localStorage)
+    │       ├── use-latest-release.ts  # One release check per app load, compared to the built version
+    │       ├── use-menu-bar.ts        # Alt shows and hides the Windows menu bar
     │       └── utils.ts          # cn() and other utilities
     └── shared/
         ├── filters.ts            # Universe selection model — see universe-filters.md
         └── types.ts              # Shared TypeScript types (QoqaOrder, AppSettings, …)
 ```
+
+---
+
+## Desktop shell
+
+### Application menu
+
+Electrobun's Windows menu builder implements `quit`, the edit roles and `close`/`minimize`/`zoom`, and implements none of `about`, `hide`, `hideOthers`, `showAll` or `bringAllToFront` — a menu built from those is a row of items that do nothing when clicked. Windows therefore starts with no menu bar at all and gets a menu built only from roles it implements, shown while the user asks for it: `src/views/lib/use-menu-bar.ts` watches for an Alt press released on its own and posts to `POST /api/app/menu-bar`, which the desktop entry point turns into `ApplicationMenu.setApplicationMenu(menu)` or `setApplicationMenu([])`. The Hono server runs inside the Electrobun main process, so the API the SPA already speaks is also the channel back to the native shell — no second transport is needed.
+
+macOS keeps the full menu, permanently visible. On both platforms the About item carries an `action` rather than the `about` role, and the main process answers it by dispatching a `qoqa:show-about` event into the WebView, which opens the same dialog the header version number opens.
+
+### Update check
+
+`GET /api/app/latest-release` reads the GitHub releases API server-side, because the opaque `views://` origin cannot satisfy CORS. Results are cached in memory for 6h on success and 15m on failure. The SPA checks once per load and marks the header version number when the published version is newer.
+
+Nothing self-updates: Electrobun's `Updater` writes to `%LOCALAPPDATA%\<identifier>\<channel>\app` on Windows regardless of where the running copy lives, which would fork a Scoop install into a second copy, and on macOS it would overwrite an app Homebrew believes it manages. The About dialog names the package manager command instead.
+
+### Network binding
+
+Both entry points bind the API to loopback — the desktop one to `127.0.0.1` always, the web one to `$HOST` defaulting to `127.0.0.1`. A wildcard bind makes Windows raise a Defender Firewall prompt on first run. Electrobun's own transport is loopback too: its core parses `127.0.0.1` for the webview RPC websocket.
+
+### Window state
+
+The window is created hidden at its saved frame and maximized on restore. On Windows the maximize happens after `show()`, so it reaches a window whose WebView2 controller already exists; on macOS it happens before, which is what keeps the maximize animation off screen.
 
 ---
 

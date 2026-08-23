@@ -1,5 +1,6 @@
 import type {
   DashboardData,
+  LatestRelease,
   OrdersResponse,
   SyncStatus,
   AppSettings,
@@ -150,5 +151,17 @@ export const apiClient = {
 
   revealDbInFinder(): Promise<{ ok: boolean }> {
     return request<{ ok: boolean }>(`${API_BASE}/api/settings/reveal-db`, { method: "POST" });
+  },
+
+  getLatestRelease(): Promise<LatestRelease> {
+    return request<LatestRelease>(`${API_BASE}/api/app/latest-release`);
+  },
+
+  setMenuBarVisible(visible: boolean): Promise<void> {
+    return request<void>(`${API_BASE}/api/app/menu-bar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visible }),
+    });
   },
 };
