@@ -8,7 +8,7 @@ import { installApplicationMenu, type ApplicationMenuController } from "./menu";
 import { systemLocales } from "./locale";
 import { resolveInitialWindowState, trackWindowState } from "./window-state";
 
-const PORT = 3001;
+const DEV_API_PORT = 3001;
 const DEV_SERVER_URL = "http://localhost:3000";
 const VIEWS_URL = "views://main/index.html";
 
@@ -45,20 +45,21 @@ async function main() {
     process.exit(1);
   }
 
-  Bun.serve({
-    port: PORT,
+  const server = Bun.serve({
+    port: url === DEV_SERVER_URL ? DEV_API_PORT : 0,
     hostname: "127.0.0.1",
     fetch: honoApp.fetch,
     idleTimeout: 0,
   });
 
-  console.log(`✓ API server listening on http://127.0.0.1:${PORT}`);
+  console.log(`✓ API server listening on http://127.0.0.1:${server.port}`);
 
   const locales = systemLocales();
   const insetTitleBar = process.platform === "darwin";
   const toggleableMenuBar = process.platform !== "darwin";
   const preload =
     [
+      `window.__API_PORT__ = ${server.port};`,
       locales.length ? `window.__LOCALES__ = ${JSON.stringify(locales)};` : null,
       insetTitleBar ? "window.__INSET_TITLEBAR__ = true;" : null,
       toggleableMenuBar ? "window.__TOGGLEABLE_MENU_BAR__ = true;" : null,

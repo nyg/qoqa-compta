@@ -6,10 +6,20 @@ import type {
   AppSettings,
 } from "../../shared/types";
 
+declare global {
+  interface Window {
+    __API_PORT__?: number;
+  }
+}
+
 // In desktop production the SPA is loaded from views://main/index.html and
-// needs an absolute URL to reach the local Hono server. In web mode (dev or
-// production) the SPA and API share the same origin so a relative path works.
-const API_BASE = window.location.protocol === "views:" ? "http://localhost:3001" : "";
+// needs an absolute URL to reach the local Hono server, whose port is picked at
+// startup and injected by the preload. In web mode (dev or production) the SPA
+// and API share the same origin so a relative path works.
+const API_BASE =
+  window.location.protocol === "views:"
+    ? `http://127.0.0.1:${window.__API_PORT__ ?? 3001}`
+    : "";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, options);
