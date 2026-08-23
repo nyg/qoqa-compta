@@ -25,7 +25,7 @@ bun run db:push          # drizzle-kit push (schema sync)
 
 ### Data flow
 
-- The SPA makes all API calls through `src/views/lib/api-client.ts` — isolated so the HTTP transport can be swapped for ElectroBun RPC in the future.
+- The SPA makes all API calls through `src/views/lib/api-client.ts` — isolated so the HTTP transport can be swapped for Electrobun RPC in the future.
 - `GET /api/dashboard` returns all stats, charts, and initial orders in one round-trip.
 - `GET /api/orders` is used for client-side search and pagination.
 - `POST /api/sync` starts a sync job; progress is streamed via SSE (`GET /api/sync/stream`).

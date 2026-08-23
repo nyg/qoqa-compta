@@ -14,8 +14,11 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "paths": {
-      "@/*": ["./src/views/*"]
+      "@/*": ["./src/views/*"],
+      "electrobun": ["./.hutch/devkit/api/sdks/main/index.ts"],
+      "electrobun/main": ["./.hutch/devkit/api/sdks/main/index.ts"],
+      "electrobun/view": ["./.hutch/devkit/api/browser/index.ts"]
     }
   },
-  "include": ["src", "vite.config.ts", "electrobun.config.ts", "scripts", "index.html"]
+  "include": ["src", "vite.config.ts", "electrobun.config.ts", "hutch.config.ts", "scripts", "index.html"]
 }
