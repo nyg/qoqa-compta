@@ -16,12 +16,14 @@ interface UniversePickerProps {
   available: UniverseOption[];
   selection: UniverseSelection;
   onSelectionChange: (selection: UniverseSelection) => void;
+  disabled?: boolean;
 }
 
 export function UniversePicker({
   available,
   selection,
   onSelectionChange,
+  disabled,
 }: UniversePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -124,6 +126,7 @@ export function UniversePicker({
         variant="outline"
         size="default"
         onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={t("label")}
@@ -137,7 +140,7 @@ export function UniversePicker({
         />
       </Button>
 
-      {open && (
+      {open && !disabled && (
         <div
           role="listbox"
           aria-multiselectable="true"

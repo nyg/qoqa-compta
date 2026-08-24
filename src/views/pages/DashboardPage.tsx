@@ -206,6 +206,9 @@ export function DashboardPage() {
     if (failed) setSettingsOpen(true);
   }, [sync.done, sync.log]);
 
+  const hasNoData =
+    data !== null && data.universes.length === 0 && data.stats.order_count === 0;
+
   // Build a subuniverse name lookup for the orders table
   const subuniverseNames: Record<string, string> = {};
   if (data?.universes) {
@@ -260,12 +263,14 @@ export function DashboardPage() {
                   available={data.universes}
                   selection={filters.selection}
                   onSelectionChange={(selection) => setFilters({ selection })}
+                  disabled={hasNoData}
                 />
                 <DateRangePicker
                   from={filters.from}
                   to={filters.to}
                   onFromChange={(val) => setFilters({ from: val })}
                   onToChange={(val) => setFilters({ to: val })}
+                  disabled={hasNoData}
                 />
               </>
             )}
@@ -299,7 +304,7 @@ export function DashboardPage() {
           <ErrorState message={error} onRetry={() => loadDashboard(filters)} />
         )}
         {data &&
-          (data.universes.length === 0 && data.stats.order_count === 0 ? (
+          (hasNoData ? (
             <NoDataState onOpenSettings={() => setSettingsOpen(true)} />
           ) : isNothingSelected(filters.selection) ? (
             <NoUniverseState />
