@@ -66,7 +66,7 @@ All scripts are run with `bun run <name>`.
 | `desktop:prepare` | `bunx electrobun prepare` | Download Hutch and the pinned Electrobun core, and generate `.hutch/devkit/`. Needed once after cloning before `typecheck` or editor type resolution work; `desktop:dev` and `build:stable` do it implicitly. |
 | `desktop:dev` | `bunx electrobun dev --watch` | Launch the app in Electrobun desktop dev mode with live-reload. Probes the Vite dev server (`:3000`) and uses it if running, otherwise serves the bundled SPA. |
 | `build` | `vite build` | Compile the React SPA to `dist/`. Used both for web production and as the `preBuild` step for desktop releases. |
-| `build:stable` | `bunx electrobun build --env=stable` | Build a production desktop bundle (`.app` on macOS, `.exe` on Windows). Runs `scripts/prebuild.ts` (`vite build`) first, then packages everything with Hutch, and finally runs `scripts/postwrap.ts` (ad-hoc code-signing on macOS). Hutch runs both hooks with Cottontail rather than Bun, so they shell out instead of importing from `bun`. |
+| `build:stable` | `bunx electrobun build --env=stable` | Build a production desktop bundle (`.app` on macOS, `.exe` on Windows). Runs `scripts/prebuild.ts` (`vite build`) first, then packages everything with Hutch, and finally runs `scripts/postwrap.ts` (installer-panel `LSEnvironment` stamp and ad-hoc code-signing on macOS). Hutch runs both hooks with Cottontail rather than Bun, so they shell out instead of importing from `bun`. |
 | `start` | `NODE_ENV=production bun src/server/index.ts` | Start the Hono server in web production mode. Serves the pre-built SPA from `dist/` in addition to the API. Run `build` first. |
 | `lint` | `eslint src --ext .ts,.tsx` | Lint all TypeScript source files. |
 | `typecheck` | `bunx electrobun prepare && tsc --noEmit` | Type-check the whole project without emitting output. Prepares the devkit first, because `tsconfig.json` maps the `electrobun` and `electrobun/main` specifiers into `.hutch/devkit/`. |
@@ -94,7 +94,7 @@ qoqa-compta/
 │   └── universe-filters.md       # how the universe/sub-universe filter behaves
 ├── scripts/
 │   ├── prebuild.ts               # Runs `vite build` before Electrobun packages the app
-│   └── postwrap.ts               # Ad-hoc code-signs the .app bundle on macOS after wrapping
+│   └── postwrap.ts               # Stamps LSEnvironment and ad-hoc code-signs the macOS .app after wrapping
 └── src/
     ├── electrobun/
     │   ├── index.ts              # Desktop entry — starts Hono, opens BrowserWindow, installs the menu
@@ -172,6 +172,12 @@ The macOS menu is permanently visible. Its About item carries an `action` rather
 `GET /api/app/latest-release` reads the GitHub releases API server-side, because the opaque `views://` origin cannot satisfy CORS. Results are cached in memory for 6h on success and 15m on failure; `?refresh=1` bypasses the cache, which is what the **Check now** button in the About dialog calls. The response carries the timestamp of the check, shown as *last checked*. The SPA checks once per load — one shared store feeds both the header badge and the dialog — and marks the header version number when the published version is newer.
 
 Nothing self-updates: Electrobun's `Updater` writes to `%LOCALAPPDATA%\<identifier>\<channel>\app` on Windows regardless of where the running copy lives, which would fork a Scoop install into a second copy, and on macOS it would overwrite an app Homebrew believes it manages. The About dialog names the right update command instead, picked from `GET /api/app/install`: a path under `scoop\apps` means Scoop, a `Caskroom/qoqa-compta` entry under the Homebrew prefix means Homebrew, a browser means neither, and anything else is treated as a manual install and offered a download link. Both signals are heuristics that fall back to *manual*, never to a wrong command.
+
+### macOS installer panel
+
+The macOS DMG does not contain the app: it contains a self-extracting wrapper `.app` whose executable is Electrobun's `extractor` and whose payload is the real app, zstd-compressed, in the same bundle at `Contents/Resources/<hash>.tar.zst`. Nothing is downloaded on first launch — the extractor unpacks that local payload over its own bundle, so the copy in `/Applications` turns into the real app, and leaves the retained tar, an `uninstall` binary and `.electrobun-uninstall.json` under `~/Library/Application Support/io.github.nyg.qoqa-compta/stable/`. It happens once per install. Electrobun 2 draws a native progress panel while it unpacks, then parks it in a terminal *Installation complete* state waiting for a **Close** click the user never sees, because the app window has already opened on top of it.
+
+`scripts/postwrap.ts` stamps `LSEnvironment` into the wrapper's `Info.plist` with `ELECTROBUN_INSTALLER_UI_AUTOCLOSE=1`, the only lever the extractor honours, so the panel dismisses itself. LaunchServices passes the variable on every normal launch; it does not reach the extractor when the inner binary is run straight from a shell. Windows keeps its installer UI — there the progress dialog is the whole install experience — and neither platform has a build-config switch to turn the panel off.
 
 ### Network binding
 
