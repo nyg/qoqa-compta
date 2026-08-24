@@ -25,7 +25,55 @@ export type Formatters = {
   formatPercentPrecise: (fraction: number) => string;
   formatDate: (value: string | Date) => string;
   formatMonth: (yearMonth: string) => string;
+  calendar: CalendarFormatters;
 };
+
+export type CalendarFormatters = {
+  weekStartsOn: WeekStart;
+  formatters: {
+    formatCaption: (date: Date) => string;
+    formatMonthDropdown: (date: Date) => string;
+    formatYearDropdown: (date: Date) => string;
+    formatWeekdayName: (date: Date) => string;
+    formatDay: (date: Date) => string;
+  };
+};
+
+type WeekStart = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+function firstDayOfWeek(intlLocale: string): WeekStart {
+  try {
+    const locale = new Intl.Locale(intlLocale) as Intl.Locale & {
+      getWeekInfo?: () => { firstDay: number };
+      weekInfo?: { firstDay: number };
+    };
+    const info = locale.getWeekInfo?.() ?? locale.weekInfo;
+    return ((info?.firstDay ?? 1) % 7) as WeekStart;
+  } catch {
+    return 1;
+  }
+}
+
+function calendarFormatters(intlLocale: string): CalendarFormatters {
+  const captionFmt = new Intl.DateTimeFormat(intlLocale, {
+    year: "numeric",
+    month: "long",
+  });
+  const monthDropdownFmt = new Intl.DateTimeFormat(intlLocale, { month: "short" });
+  const yearDropdownFmt = new Intl.DateTimeFormat(intlLocale, { year: "numeric" });
+  const weekdayFmt = new Intl.DateTimeFormat(intlLocale, { weekday: "short" });
+  const dayFmt = new Intl.DateTimeFormat(intlLocale, { day: "numeric" });
+  return {
+    weekStartsOn: firstDayOfWeek(intlLocale),
+    formatters: {
+      formatCaption: (d) => captionFmt.format(d),
+      formatMonthDropdown: (d) => monthDropdownFmt.format(d),
+      formatYearDropdown: (d) => yearDropdownFmt.format(d),
+      formatWeekdayName: (d) => weekdayFmt.format(d),
+      formatDay: (d) => dayFmt.format(d),
+    },
+  };
+}
 
 export function createFormatters(locale: string): Formatters {
   const region = resolveRegion(locale);
@@ -77,5 +125,6 @@ export function createFormatters(locale: string): Formatters {
       const [y, m] = ym.split("-");
       return monthFmt.format(new Date(Number(y), Number(m) - 1, 1));
     },
+    calendar: calendarFormatters(intlLocale),
   };
 }
