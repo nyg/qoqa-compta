@@ -1,6 +1,17 @@
 # Changelog
 
 
+## [0.3.0](https://github.com/nyg/qoqa-compta/compare/v0.2.1..v0.3.0) - 2026-08-24
+
+### ⛰️  Features
+
+- [`eb01d40`](https://github.com/nyg/qoqa-compta/commit/eb01d40f4d3455d6a116d553e9ceb51db28abc1e) *(ui)* Pick the date range with a shadcn calendar ([#118](https://github.com/nyg/qoqa-compta/issues/118))
+
+### 🐛 Bug Fixes
+
+- [`3c72251`](https://github.com/nyg/qoqa-compta/commit/3c72251f0cfd792b81f9411b11c06debe339af74) *(desktop)* Drop the Windows menu bar ([#117](https://github.com/nyg/qoqa-compta/issues/117))
+- [`6f195b8`](https://github.com/nyg/qoqa-compta/commit/6f195b8535108a6d2b88948367ffa3541771b5d0) *(release)* Stop publishing the Windows setup ZIP ([#116](https://github.com/nyg/qoqa-compta/issues/116))
+
 ## [0.2.1](https://github.com/nyg/qoqa-compta/compare/v0.2.0..v0.2.1) - 2026-08-23
 
 ### 🐛 Bug Fixes
