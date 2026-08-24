@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.4.0](https://github.com/nyg/qoqa-compta/compare/v0.3.0..v0.4.0) - 2026-08-24
+
+### ⛰️  Features
+
+- [`3ab8099`](https://github.com/nyg/qoqa-compta/commit/3ab80996d0170ca4fa29ec7ecebb7b46e4da7264) *(about)* Show the update path that matches the install ([#122](https://github.com/nyg/qoqa-compta/issues/122))
+
 ## [0.3.0](https://github.com/nyg/qoqa-compta/compare/v0.2.1..v0.3.0) - 2026-08-24
 
 ### ⛰️  Features
