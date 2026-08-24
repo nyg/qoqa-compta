@@ -4,7 +4,7 @@
   <img src="assets/icon.svg" width="80" alt="QoQa Compta icon" />
 </p>
 
-> Desktop-ready spending dashboard for [QoQa.ch](https://www.qoqa.ch) — automatically syncs your orders and PDF invoices to a local SQLite (or PostgreSQL) database and displays spending charts, stats, and a searchable orders table.
+> Spending dashboard for [QoQa.ch](https://www.qoqa.ch) — automatically syncs your orders and PDF invoices to a local SQLite (or PostgreSQL) database and displays spending charts, stats, and a searchable orders table.
 
 ## Features
 
@@ -22,31 +22,27 @@
 
 ## Getting started
 
-### Download the app
+Desktop apps are available for both macOS (Apple Silicon) and Windows, get them on the [releases page](https://github.com/nyg/qoqa-compta/releases). For Linux, only the web app is available.
 
-Standalone desktop apps are available for macOS (Apple Silicon) and Windows — no Bun or Git required. Both live on the [releases page](https://github.com/nyg/qoqa-compta/releases).
+### macOS
 
-#### macOS
-
-**Manual** — download `…-macos-arm64.dmg`, open it and drag **QoQa Compta.app** into your **Applications** folder. The app is ad-hoc signed but **not notarized**, so macOS quarantines it after download and blocks the first launch (you may see *"Apple could not verify…"* or *"QoQa Compta.app is damaged"* — both mean the same thing; the app is not corrupted). To let it through, open **System Settings → Privacy & Security**, scroll to the bottom and click **Open Anyway** next to *"QoQa Compta.app" was blocked to protect your Mac*. Alternatively, remove the quarantine flag yourself:
+**Manual** — download [`qoqa-compta-…-macos-arm64.dmg`](https://github.com/nyg/qoqa-compta/releases/latest), open it and drag **QoQa Compta.app** into your **Applications** folder. The app is **not notarized**, so macOS quarantines it after download and blocks the first launch (you may see *"Apple could not verify…"* or *"QoQa Compta.app is damaged"*). To let it through, open **System Settings → Privacy & Security**, scroll to the bottom and click **Open Anyway** next to *"QoQa Compta.app" was blocked to protect your Mac*. Alternatively, remove the quarantine flag yourself using the terminal:
 
 ```sh
 xattr -dr com.apple.quarantine "/Applications/QoQa Compta.app"
 ```
 
-Either way, it is once per installation.
-
-**[Homebrew](https://brew.sh)** — handles the above automatically, so the app launches normally:
+**[Homebrew](https://brew.sh)** — handles the above automatically:
 
 ```sh
 brew install --cask nyg/tap/qoqa-compta
 ```
 
-#### Windows
+### Windows
 
-**Manual** — download `…-windows-x64-setup.exe` and run it. It installs per-user to `%LOCALAPPDATA%` (`C:\Users\<you>\AppData\Local`), so no admin rights are needed, and finishes by putting a **QoQa Compta** shortcut on your Desktop and in the Start menu; there is no completion dialog, so that shortcut is how you know it worked. Because the app is not code-signed, SmartScreen shows *"Windows protected your PC"* on first run — click **More info → Run anyway** (offered to administrators only).
+**Manual** — download [`qoqa-compta-…-windows-x64-setup.exe`](https://github.com/nyg/qoqa-compta/releases/latest) and run it. It installs to `%LOCALAPPDATA%` (`C:\Users\<you>\AppData\Local` — no admin rights needed). The app is not code-signed, so the SmartScreen will show *"Windows protected your PC"* on first run — click **More info → Run anyway** (offered only to administrators).
 
-**[Scoop](https://scoop.sh)** — for those who already run it; installs per-user too and skips the SmartScreen prompt:
+**[Scoop](https://scoop.sh)** — for power users:
 
 ```powershell
 scoop install git
@@ -54,42 +50,27 @@ scoop bucket add nyg https://github.com/nyg/scoop-bucket
 scoop install qoqa-compta
 ```
 
-`scoop install git` comes first because `scoop bucket add` needs it. If you don't have Scoop at all, install it first (no admin required):
+If you don't have Scoop at all, you can install it with:
 
 ```powershell
 irm get.scoop.sh | iex
 ```
 
-#### Updates
+### Web app
 
-The app checks the releases page once per launch and says so when a newer version exists — the version number in the header carries a dot, and **About** (behind that version number) shows the details and the update command for the way you installed it. It never replaces itself, so Homebrew and Scoop installs stay under their package manager's control:
-
-```sh
-brew upgrade --cask nyg/tap/qoqa-compta
-```
-
-```powershell
-scoop update qoqa-compta
-```
-
-### Run it yourself
-
-QoQa Compta uses [Bun](https://bun.sh).
+If you prefer not to install the app, you can run the server and access the app in your browser. QoQa Compta uses [Bun](https://bun.sh).
 
 ```bash
 bun install
 
-# Starts the Hono API on :3001 and the Vite dev server on `:3000` concurrently. Open http://localhost:3000.
+# Starts the Hono API on :3001 and the Vite dev server on :3000 concurrently.
+# Open http://localhost:3000.
 bun run dev
 
-# Downloads the Electrobun toolchain (Hutch) and generates .hutch/devkit.
-# Only needed for `bun run typecheck` and editor types — the desktop scripts do it themselves.
-bun run desktop:prepare
-
-# Starts the Electrobun desktop app
+# Starts the Electrobun desktop app.
 bun run desktop:dev
 
-# Runs `vite build` first (via the Electrobun `preBuild` hook) then packages the app. Output artifacts are in `artifacts/`: `.dmg` for macOS, `.zip` for Windows.
+# Builds the app, see `build/` and `artifacts/`.
 bun run build:stable
 ```
 

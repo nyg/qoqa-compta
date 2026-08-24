@@ -273,7 +273,7 @@ jobs:
 
           ## Installing on macOS
 
-          **Manual** — download `qoqa-compta-__VERSION__-macos-arm64.dmg`, open it and drag **QoQa Compta.app** into your Applications folder. The app is ad-hoc signed but **not notarized**, so macOS quarantines it after download and blocks the first launch (you may see *"Apple could not verify…"* or *"QoQa Compta.app is damaged"* — both mean the same thing; the app is not corrupted). To let it through, open **System Settings → Privacy & Security**, scroll to the bottom and click **Open Anyway** next to *"QoQa Compta.app" was blocked to protect your Mac*. Alternatively, remove the quarantine flag yourself:
+          **Manual** — download `qoqa-compta-__VERSION__-macos-arm64.dmg`, open it and drag **QoQa Compta.app** into your Applications folder. The app is **not notarized**, so macOS quarantines it after download and blocks the first launch (you may see *"Apple could not verify…"* or *"QoQa Compta.app is damaged"*). To let it through, open **System Settings → Privacy & Security**, scroll to the bottom and click **Open Anyway** next to *"QoQa Compta.app" was blocked to protect your Mac*. Alternatively, remove the quarantine flag yourself using the terminal:
 
           ```sh
           xattr -dr com.apple.quarantine "/Applications/QoQa Compta.app"
@@ -287,14 +287,20 @@ jobs:
 
           ## Installing on Windows
 
-          **Manual** — download `qoqa-compta-__VERSION__-windows-x64-setup.exe` and run it. It installs per-user to `%LOCALAPPDATA%` (`C:\Users\<you>\AppData\Local`), so no admin rights are needed, and finishes by putting a **QoQa Compta** shortcut on your Desktop and in the Start menu; there is no completion dialog, so that shortcut is how you know it worked. Because the app is not code-signed, SmartScreen shows *"Windows protected your PC"* on first run — click **More info → Run anyway** (offered to administrators only).
+          **Manual** — download `qoqa-compta-__VERSION__-windows-x64-setup.exe` and run it. It installs to `%LOCALAPPDATA%` (`C:\Users\<you>\AppData\Local` — no admin rights needed). The app is not code-signed, so the SmartScreen will show *"Windows protected your PC"* on first run — click **More info → Run anyway** (offered to administrators only).
 
-          **[Scoop](https://scoop.sh)** — for those who already run it; installs per-user too and skips the SmartScreen prompt:
+          **[Scoop](https://scoop.sh)** — for power users:
 
           ```powershell
           scoop install git
           scoop bucket add nyg https://github.com/nyg/scoop-bucket
           scoop install qoqa-compta
+          ```
+
+          If you don't have Scoop at all, you can install it with:
+
+          ```powershell
+          irm get.scoop.sh | iex
           ```
           EOF
 
