@@ -33,28 +33,27 @@ brew install --cask nyg/tap/qoqa-compta
 
 This handles the Gatekeeper step for you (see below), so the app launches normally.
 
-**Windows (recommended — Scoop):**
+**Windows (recommended — the installer):**
+
+Download `…-windows-x64-setup.exe` from the [releases page](https://github.com/nyg/qoqa-compta/releases) and run it. It installs per-user to `%LOCALAPPDATA%` (no admin rights), shows no window while it works, and finishes by adding a **QoQa Compta** shortcut to your Desktop and Start menu, which is how you know it is done. See [Windows SmartScreen](#windows-smartscreen) below before first launch.
+
+**Windows (Scoop):**
 
 ```powershell
 scoop bucket add nyg https://github.com/nyg/scoop-bucket
 scoop install qoqa-compta
 ```
 
-Scoop installs per-user (no admin rights) and avoids the SmartScreen prompt (see [Windows SmartScreen](#windows-smartscreen) below). If you don't have Scoop, install it first (no admin required):
+Scoop installs per-user too and skips the SmartScreen prompt, but it means working in PowerShell, so it suits those who already run it. If you don't have Scoop, install it first (no admin required):
 
 ```powershell
 irm get.scoop.sh | iex
 ```
 
-**Manual download:**
+**Manual download (macOS):**
 
-1. Download the installer from the [releases page](https://github.com/nyg/qoqa-compta/releases):
-   - macOS: `…-macos-arm64.dmg`
-   - Windows: `…-windows-x64-setup.exe`
-2. **macOS**: open the DMG, drag **QoQa Compta.app** to your **Applications** folder, then see [macOS Gatekeeper](#macos-gatekeeper) below before first launch
-3. **Windows**: run the downloaded `.exe` (installs per-user to `%LOCALAPPDATA%` — no admin rights). It installs without showing a window and finishes by adding a **QoQa Compta** shortcut to your Desktop and Start menu, which is how you know it is done. See [Windows SmartScreen](#windows-smartscreen) below before first launch.
-
-   The `…-windows-x64-setup.zip` asset is the same installer in Electrobun's original layout, kept for one release as a fallback.
+1. Download `…-macos-arm64.dmg` from the [releases page](https://github.com/nyg/qoqa-compta/releases)
+2. Open the DMG, drag **QoQa Compta.app** to your **Applications** folder, then see [macOS Gatekeeper](#macos-gatekeeper) below before first launch
 
 #### Updates
 
