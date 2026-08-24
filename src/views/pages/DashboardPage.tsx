@@ -15,7 +15,6 @@ import { apiClient } from "@/lib/api-client";
 import { HAS_INSET_TITLEBAR } from "@/lib/desktop";
 import { SHOW_ABOUT_EVENT } from "@/lib/about-event";
 import { APP_VERSION, useLatestRelease } from "@/lib/use-latest-release";
-import { useToggleableMenuBar } from "@/lib/use-menu-bar";
 import { useFilterState, type FilterState } from "@/lib/use-filter-state";
 import { useSyncRunner } from "@/lib/use-sync-runner";
 import {
@@ -150,8 +149,6 @@ export function DashboardPage() {
   const [dataVersion, setDataVersion] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-
-  useToggleableMenuBar();
 
   useEffect(() => {
     const open = () => setAboutOpen(true);

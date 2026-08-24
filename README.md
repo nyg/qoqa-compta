@@ -67,10 +67,6 @@ brew upgrade --cask nyg/tap/qoqa-compta
 scoop update qoqa-compta
 ```
 
-#### The menu bar on Windows
-
-Windows starts without a menu bar; press **Alt** to show it and **Alt** or **Escape** to hide it again. Everything it offers is reachable elsewhere: the editing shortcuts work natively in the WebView, and **About** is behind the version number in the header. macOS keeps its usual application menu.
-
 #### macOS Gatekeeper
 
 Because the app is not signed with an Apple Developer certificate, macOS quarantines it after download and blocks it on first launch.

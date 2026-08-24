@@ -96,7 +96,7 @@ qoqa-compta/
 └── src/
     ├── electrobun/
     │   ├── index.ts              # Desktop entry — starts Hono, opens BrowserWindow, installs the menu
-    │   └── menu.ts               # Application menu — full on macOS, Alt-toggled on Windows
+    │   └── menu.ts               # Application menu — macOS only
     ├── server/                   # Hono API + sync engine (Bun)
     │   ├── index.ts              # Web entry point — mounts routes, bootstraps DB, serves dist/
     │   ├── app.ts                # Hono app factory (shared by web and desktop entry points)
@@ -110,7 +110,7 @@ qoqa-compta/
     │   ├── queries.ts            # All DB operations (upsert, select, aggregate)
     │   ├── settings.ts           # settings.json read/write (platform-aware path)
     │   └── routes/
-    │       ├── app.ts            # GET /api/app/latest-release, POST /api/app/menu-bar
+    │       ├── app.ts            # GET /api/app/latest-release
     │       ├── dashboard.ts      # GET /api/dashboard
     │       ├── orders.ts         # GET /api/orders, GET /api/orders/:n/pdf, GET /api/orders/csv
     │       ├── sync.ts           # POST /api/sync, DELETE /api/sync, GET /api/sync/stream (SSE)
@@ -139,12 +139,11 @@ qoqa-compta/
     │   └── lib/
     │       ├── api-client.ts     # All fetch calls — single place to swap transport
     │       ├── about-event.ts    # Name of the window event the menu dispatches to open About
-    │       ├── desktop.ts        # Flags injected by the Electrobun preload (title bar, menu bar)
+    │       ├── desktop.ts        # Flags injected by the Electrobun preload (title bar)
     │       ├── formatter-context.tsx  # React context for fr-CH number/date formatters
     │       ├── formatters.ts     # formatCHF, formatDate, formatMonth
     │       ├── use-filter-state.ts    # Persisted universe/date filter state (localStorage)
     │       ├── use-latest-release.ts  # One release check per app load, compared to the built version
-    │       ├── use-menu-bar.ts        # Alt shows and hides the Windows menu bar
     │       └── utils.ts          # cn() and other utilities
     └── shared/
         ├── filters.ts            # Universe selection model — see universe-filters.md
@@ -157,9 +156,11 @@ qoqa-compta/
 
 ### Application menu
 
-Electrobun's Windows menu builder implements `quit`, the edit roles and `close`/`minimize`/`zoom`, and implements none of `about`, `hide`, `hideOthers`, `showAll` or `bringAllToFront` — a menu built from those is a row of items that do nothing when clicked. Windows therefore starts with no menu bar at all and gets a menu built only from roles it implements, shown while the user asks for it: `src/views/lib/use-menu-bar.ts` watches for an Alt press released on its own and posts to `POST /api/app/menu-bar`, which the desktop entry point turns into `ApplicationMenu.setApplicationMenu(menu)` or `setApplicationMenu([])`. The Hono server runs inside the Electrobun main process, so the API the SPA already speaks is also the channel back to the native shell — no second transport is needed.
+Only macOS gets one. `installApplicationMenu` returns without calling `ApplicationMenu.setApplicationMenu` on any other platform, so the Windows window has no menu bar and nothing to toggle. Electrobun's Windows menu builder implements `quit`, the edit roles and `close`/`minimize`/`zoom`, and implements none of `about`, `hide`, `hideOthers`, `showAll` or `bringAllToFront` — what it can build there is a short row of duplicates of things the WebView and the window frame already do, and the one item worth having, About, is not among them.
 
-macOS keeps the full menu, permanently visible. On both platforms the About item carries an `action` rather than the `about` role, and the main process answers it by dispatching a `qoqa:show-about` event into the WebView, which opens the same dialog the header version number opens.
+Nothing is lost: the editing shortcuts work natively in the WebView, Alt+F4 and the window controls close the window, and About sits behind the version number in the header.
+
+The macOS menu is permanently visible. Its About item carries an `action` rather than the `about` role, and the main process answers it by dispatching a `qoqa:show-about` event into the WebView, which opens the same dialog the header version number opens.
 
 ### Update check
 
