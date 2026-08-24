@@ -93,6 +93,7 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 - The app never updates itself: Electrobun's `Updater` would fork a Scoop install and overwrite an app Homebrew manages. The About dialog names the right update command instead.
 - Only macOS gets an application menu; on Windows there is none, and About sits behind the version number in the header.
 - Both entry points bind the API to loopback — a wildcard bind raises a Windows Defender Firewall prompt on first run.
+- The macOS DMG ships a self-extracting wrapper, not the app; `scripts/postwrap.ts` stamps `ELECTROBUN_INSTALLER_UI_AUTOCLOSE=1` into its `Info.plist` so the first-run installer panel closes itself instead of sitting behind the app window. Windows keeps its installer UI.
 
 ### Git
 
