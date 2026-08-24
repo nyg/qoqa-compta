@@ -1,17 +1,72 @@
+import { useEffect, useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { AlertCircle, ArrowUpCircle, CheckCircle2, RefreshCw, X } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowUpCircle,
+  Check,
+  CheckCircle2,
+  Copy,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { APP_VERSION, useLatestRelease } from "@/lib/use-latest-release";
+import { copyText } from "@/lib/clipboard";
+import { useFormatter } from "@/lib/formatter-context";
+import { useInstallInfo } from "@/lib/use-install-info";
+import {
+  APP_VERSION,
+  useLatestRelease,
+  type LatestReleaseState,
+} from "@/lib/use-latest-release";
+import type { InstallMethod } from "../../shared/types";
 
 const REPOSITORY_URL = "https://github.com/nyg/qoqa-compta";
-const SCOOP_COMMAND = "scoop update qoqa-compta";
-const HOMEBREW_COMMAND = "brew upgrade --cask nyg/tap/qoqa-compta";
+const COPIED_FEEDBACK_MS = 1500;
 
-function UpdateStatus() {
+const UPDATE_COMMANDS: Partial<
+  Record<InstallMethod, { command: string; hint: string }>
+> = {
+  homebrew: {
+    command: "brew upgrade --cask nyg/tap/qoqa-compta",
+    hint: "updateWithHomebrew",
+  },
+  scoop: { command: "scoop update qoqa-compta", hint: "updateWithScoop" },
+};
+
+function CopyButton({ value }: { value: string }) {
   const { t } = useTranslation("About");
-  const { release, loading, failed, updateAvailable } = useLatestRelease();
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon-xs"
+      title={copied ? t("copied") : t("copy")}
+      aria-label={copied ? t("copied") : t("copy")}
+      onClick={() => {
+        void copyText(value).then(setCopied);
+      }}
+    >
+      {copied ? <Check /> : <Copy />}
+    </Button>
+  );
+}
+
+function UpdateStatus({
+  release,
+  loading,
+  failed,
+  updateAvailable,
+}: LatestReleaseState) {
+  const { t } = useTranslation("About");
 
   if (loading) {
     return (
@@ -58,6 +113,70 @@ function UpdateStatus() {
   );
 }
 
+function UpdateSection() {
+  const { t } = useTranslation("About");
+  const { formatDateTime } = useFormatter();
+  const { check, ...status } = useLatestRelease();
+  const install = useInstallInfo();
+
+  const update = install ? UPDATE_COMMANDS[install.method] : undefined;
+  const showDownloadLink =
+    !update && status.updateAvailable && status.release !== null;
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {t("updates")}
+        </h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={check}
+          disabled={status.loading}
+        >
+          <RefreshCw className={cn(status.loading && "animate-spin")} />
+          {t("checkNow")}
+        </Button>
+      </div>
+
+      <div className="space-y-1">
+        <UpdateStatus {...status} />
+        {status.checkedAt && (
+          <p className="text-xs text-muted-foreground">
+            {t("lastChecked", { when: formatDateTime(status.checkedAt) })}
+          </p>
+        )}
+      </div>
+
+      {update && (
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">{t(update.hint)}</p>
+          <div className="flex items-center gap-1 rounded bg-muted py-1 pl-2 pr-1">
+            <code className="flex-1 truncate font-mono text-[0.7rem]">
+              {update.command}
+            </code>
+            <CopyButton value={update.command} />
+          </div>
+        </div>
+      )}
+
+      {showDownloadLink && (
+        <p className="text-xs">
+          <a
+            href={status.release!.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium underline underline-offset-4"
+          >
+            {t("downloadUpdate")}
+          </a>
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function AboutModal({
   open,
   onOpenChange,
@@ -100,21 +219,7 @@ export function AboutModal({
               </p>
             </section>
 
-            <section className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t("updates")}
-              </h3>
-              <UpdateStatus />
-              <p className="text-xs text-muted-foreground">{t("packageManagers")}</p>
-              <div className="space-y-1">
-                <code className="block rounded bg-muted px-2 py-1 font-mono text-[0.7rem]">
-                  {SCOOP_COMMAND}
-                </code>
-                <code className="block rounded bg-muted px-2 py-1 font-mono text-[0.7rem]">
-                  {HOMEBREW_COMMAND}
-                </code>
-              </div>
-            </section>
+            <UpdateSection />
 
             <section className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -143,12 +248,6 @@ export function AboutModal({
               </p>
             </section>
           </div>
-
-          <footer className="flex items-center justify-end gap-2 border-t px-4 py-3 shrink-0">
-            <DialogPrimitive.Close render={<Button variant="ghost" size="sm" />}>
-              {t("close")}
-            </DialogPrimitive.Close>
-          </footer>
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

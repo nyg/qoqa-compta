@@ -124,4 +124,14 @@ export interface AppSettings {
 export interface LatestRelease {
   version: string;
   url: string;
+  checkedAt: string;
+}
+
+export type InstallMethod = "homebrew" | "scoop" | "manual" | "web";
+
+export type InstallPlatform = "macos" | "windows" | "linux" | "other";
+
+export interface InstallInfo {
+  platform: InstallPlatform;
+  method: InstallMethod;
 }

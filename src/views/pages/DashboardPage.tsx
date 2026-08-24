@@ -127,14 +127,17 @@ function VersionBadge({ onClick }: { onClick: () => void }) {
     <Button
       variant="ghost"
       size="default"
-      className="text-muted-foreground tabular-nums"
+      className="relative text-muted-foreground tabular-nums"
       aria-label={updateAvailable ? t("updateBadge") : t("openAbout")}
       title={updateAvailable ? t("updateBadge") : t("openAbout")}
       onClick={onClick}
     >
       {label}
       {updateAvailable && (
-        <span aria-hidden className="size-1.5 rounded-full bg-primary" />
+        <span
+          aria-hidden
+          className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-update shadow-[0_0_5px_1px_var(--update)]"
+        />
       )}
     </Button>
   );

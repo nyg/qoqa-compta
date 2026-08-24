@@ -1,5 +1,6 @@
 import type {
   DashboardData,
+  InstallInfo,
   LatestRelease,
   OrdersResponse,
   SyncStatus,
@@ -163,7 +164,13 @@ export const apiClient = {
     return request<{ ok: boolean }>(`${API_BASE}/api/settings/reveal-db`, { method: "POST" });
   },
 
-  getLatestRelease(): Promise<LatestRelease> {
-    return request<LatestRelease>(`${API_BASE}/api/app/latest-release`);
+  getLatestRelease(refresh = false): Promise<LatestRelease> {
+    return request<LatestRelease>(
+      `${API_BASE}/api/app/latest-release${refresh ? "?refresh=1" : ""}`
+    );
+  },
+
+  getInstallInfo(): Promise<InstallInfo> {
+    return request<InstallInfo>(`${API_BASE}/api/app/install`);
   },
 };
