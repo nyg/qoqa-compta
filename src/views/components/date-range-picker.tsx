@@ -12,6 +12,7 @@ interface DateRangePickerProps {
   to?: string;   // YYYY-MM-DD
   onFromChange: (val: string | undefined) => void;
   onToChange: (val: string | undefined) => void;
+  disabled?: boolean;
 }
 
 const FIRST_MONTH = new Date(2008, 0);
@@ -31,7 +32,13 @@ function toValue(date: Date | undefined): string | undefined {
   ].join("-");
 }
 
-export function DateRangePicker({ from, to, onFromChange, onToChange }: DateRangePickerProps) {
+export function DateRangePicker({
+  from,
+  to,
+  onFromChange,
+  onToChange,
+  disabled,
+}: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation("DateRangePicker");
@@ -76,6 +83,7 @@ export function DateRangePicker({ from, to, onFromChange, onToChange }: DateRang
         variant="outline"
         size="default"
         onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={t("label")}
@@ -85,7 +93,7 @@ export function DateRangePicker({ from, to, onFromChange, onToChange }: DateRang
         <span className="truncate max-w-[12rem]">{label}</span>
       </Button>
 
-      {open && (
+      {open && !disabled && (
         <div
           role="dialog"
           aria-label={t("label")}

@@ -47,7 +47,7 @@ export function createApp(opts?: {
 
   // ── API routes ───────────────────────────────────────────────────────────────
 
-  app.route("/api", appRoutes());
+  app.route("/api", appRoutes({ desktop: opts?.desktop }));
   app.route("/api", dashboardRoutes);
   app.route("/api", ordersRoutes({ desktop: opts?.desktop }));
   app.route("/api", syncRoutes);

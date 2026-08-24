@@ -24,6 +24,7 @@ export type Formatters = {
   formatPercent: (fraction: number) => string;
   formatPercentPrecise: (fraction: number) => string;
   formatDate: (value: string | Date) => string;
+  formatDateTime: (value: string | Date) => string;
   formatMonth: (yearMonth: string) => string;
   calendar: CalendarFormatters;
 };
@@ -109,6 +110,10 @@ export function createFormatters(locale: string): Formatters {
     month: "short",
     day: "numeric",
   });
+  const dateTimeFmt = new Intl.DateTimeFormat(intlLocale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
   const monthFmt = new Intl.DateTimeFormat(intlLocale, {
     year: "numeric",
     month: "short",
@@ -121,6 +126,8 @@ export function createFormatters(locale: string): Formatters {
     formatPercentPrecise: (v) => percentPreciseFmt.format(v),
     formatDate: (v) =>
       dateFmt.format(typeof v === "string" ? new Date(v + "T00:00:00") : v),
+    formatDateTime: (v) =>
+      dateTimeFmt.format(typeof v === "string" ? new Date(v) : v),
     formatMonth: (ym) => {
       const [y, m] = ym.split("-");
       return monthFmt.format(new Date(Number(y), Number(m) - 1, 1));

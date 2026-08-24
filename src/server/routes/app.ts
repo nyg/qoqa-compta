@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { installInfo } from "../install";
 import type { LatestRelease } from "../../shared/types";
 
 const LATEST_RELEASE_URL =
@@ -33,14 +34,22 @@ async function fetchLatestRelease(): Promise<LatestRelease> {
     throw new Error("the latest release has no tag name");
   }
 
-  return { version, url: release.html_url || RELEASES_URL };
+  return {
+    version,
+    url: release.html_url || RELEASES_URL,
+    checkedAt: new Date().toISOString(),
+  };
 }
 
-export default function appRouter() {
+export default function appRouter(opts?: { desktop?: boolean }) {
   const router = new Hono();
 
+  router.get("/app/install", (c) => c.json(installInfo(Boolean(opts?.desktop))));
+
   router.get("/app/latest-release", async (c) => {
-    if (cached && Date.now() < cached.expiresAt) {
+    const refresh = c.req.query("refresh") === "1";
+
+    if (!refresh && cached && Date.now() < cached.expiresAt) {
       return cached.release
         ? c.json(cached.release)
         : c.json({ error: cached.error }, 502);

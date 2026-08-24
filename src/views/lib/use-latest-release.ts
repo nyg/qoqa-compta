@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { apiClient } from "@/lib/api-client";
 import type { LatestRelease } from "../../shared/types";
 
@@ -25,46 +25,87 @@ export function isNewer(candidate: string, current: string): boolean {
   return !candidate.includes("-") && current.includes("-");
 }
 
-let pending: Promise<LatestRelease> | null = null;
-
 export interface LatestReleaseState {
   release: LatestRelease | null;
   loading: boolean;
   failed: boolean;
   updateAvailable: boolean;
+  checkedAt: string | null;
 }
 
-export function useLatestRelease(): LatestReleaseState {
-  const [state, setState] = useState<Omit<LatestReleaseState, "updateAvailable">>({
-    release: null,
-    loading: true,
-    failed: false,
-  });
+const INITIAL: LatestReleaseState = {
+  release: null,
+  loading: false,
+  failed: false,
+  updateAvailable: false,
+  checkedAt: null,
+};
+
+let state = INITIAL;
+let inFlight: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+function publish(next: Partial<LatestReleaseState>): void {
+  state = { ...state, ...next };
+  for (const listener of listeners) listener();
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function snapshot(): LatestReleaseState {
+  return state;
+}
+
+function check(refresh: boolean): Promise<void> {
+  if (inFlight) return inFlight;
+
+  publish({ loading: true });
+  inFlight = apiClient
+    .getLatestRelease(refresh)
+    .then((release) => {
+      publish({
+        release,
+        loading: false,
+        failed: false,
+        updateAvailable: isNewer(release.version, APP_VERSION),
+        checkedAt: release.checkedAt,
+      });
+    })
+    .catch(() => {
+      publish({
+        release: null,
+        loading: false,
+        failed: true,
+        updateAvailable: false,
+        checkedAt: new Date().toISOString(),
+      });
+    })
+    .finally(() => {
+      inFlight = null;
+    });
+
+  return inFlight;
+}
+
+export interface LatestReleaseHandle extends LatestReleaseState {
+  check: () => void;
+}
+
+export function useLatestRelease(): LatestReleaseHandle {
+  const current = useSyncExternalStore(subscribe, snapshot);
 
   useEffect(() => {
-    let cancelled = false;
-
-    if (!pending) {
-      pending = apiClient.getLatestRelease();
-    }
-
-    pending
-      .then((release) => {
-        if (!cancelled) setState({ release, loading: false, failed: false });
-      })
-      .catch(() => {
-        if (!cancelled) setState({ release: null, loading: false, failed: true });
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    if (!state.checkedAt && !state.loading) void check(false);
   }, []);
 
-  return {
-    ...state,
-    updateAvailable: state.release
-      ? isNewer(state.release.version, APP_VERSION)
-      : false,
-  };
+  const recheck = useCallback(() => {
+    void check(true);
+  }, []);
+
+  return { ...current, check: recheck };
 }
