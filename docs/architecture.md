@@ -81,6 +81,8 @@ qoqa-compta/
 ├── .gitignore
 ├── renovate.json
 ├── README.md
+├── AGENTS.md                     # Instructions for coding agents
+├── CLAUDE.md                     # Points Claude Code at AGENTS.md
 ├── index.html                    # Vite SPA entry
 ├── vite.config.ts
 ├── tsconfig.json
@@ -109,8 +111,9 @@ qoqa-compta/
     │   ├── schema-bootstrap.ts   # CREATE TABLE IF NOT EXISTS bootstrap
     │   ├── queries.ts            # All DB operations (upsert, select, aggregate)
     │   ├── settings.ts           # settings.json read/write (platform-aware path)
+    │   ├── install.ts            # How the running copy was installed (brew, scoop, manual, web)
     │   └── routes/
-    │       ├── app.ts            # GET /api/app/latest-release
+    │       ├── app.ts            # GET /api/app/latest-release, GET /api/app/install
     │       ├── dashboard.ts      # GET /api/dashboard
     │       ├── orders.ts         # GET /api/orders, GET /api/orders/:n/pdf, GET /api/orders/csv
     │       ├── sync.ts           # POST /api/sync, DELETE /api/sync, GET /api/sync/stream (SSE)
@@ -139,11 +142,13 @@ qoqa-compta/
     │   └── lib/
     │       ├── api-client.ts     # All fetch calls — single place to swap transport
     │       ├── about-event.ts    # Name of the window event the menu dispatches to open About
+    │       ├── clipboard.ts      # Copy helper with an execCommand fallback for the WebView
     │       ├── desktop.ts        # Flags injected by the Electrobun preload (title bar)
     │       ├── formatter-context.tsx  # React context for fr-CH number/date formatters
     │       ├── formatters.ts     # formatCHF, formatDate, formatMonth
     │       ├── use-filter-state.ts    # Persisted universe/date filter state (localStorage)
-    │       ├── use-latest-release.ts  # One release check per app load, compared to the built version
+    │       ├── use-install-info.ts    # Install method, fetched once per app load
+    │       ├── use-latest-release.ts  # Shared release-check store, compared to the built version
     │       └── utils.ts          # cn() and other utilities
     └── shared/
         ├── filters.ts            # Universe selection model — see universe-filters.md
@@ -164,9 +169,9 @@ The macOS menu is permanently visible. Its About item carries an `action` rather
 
 ### Update check
 
-`GET /api/app/latest-release` reads the GitHub releases API server-side, because the opaque `views://` origin cannot satisfy CORS. Results are cached in memory for 6h on success and 15m on failure. The SPA checks once per load and marks the header version number when the published version is newer.
+`GET /api/app/latest-release` reads the GitHub releases API server-side, because the opaque `views://` origin cannot satisfy CORS. Results are cached in memory for 6h on success and 15m on failure; `?refresh=1` bypasses the cache, which is what the **Check now** button in the About dialog calls. The response carries the timestamp of the check, shown as *last checked*. The SPA checks once per load — one shared store feeds both the header badge and the dialog — and marks the header version number when the published version is newer.
 
-Nothing self-updates: Electrobun's `Updater` writes to `%LOCALAPPDATA%\<identifier>\<channel>\app` on Windows regardless of where the running copy lives, which would fork a Scoop install into a second copy, and on macOS it would overwrite an app Homebrew believes it manages. The About dialog names the package manager command instead.
+Nothing self-updates: Electrobun's `Updater` writes to `%LOCALAPPDATA%\<identifier>\<channel>\app` on Windows regardless of where the running copy lives, which would fork a Scoop install into a second copy, and on macOS it would overwrite an app Homebrew believes it manages. The About dialog names the right update command instead, picked from `GET /api/app/install`: a path under `scoop\apps` means Scoop, a `Caskroom/qoqa-compta` entry under the Homebrew prefix means Homebrew, a browser means neither, and anything else is treated as a manual install and offered a download link. Both signals are heuristics that fall back to *manual*, never to a wrong command.
 
 ### Network binding
 
