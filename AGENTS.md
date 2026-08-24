@@ -27,7 +27,7 @@ bun run build:stable     # production: package the desktop app into artifacts/
 bun run start            # production: serve dist/ + API from :3001
 bun run typecheck        # electrobun prepare && tsc --noEmit
 bun run lint             # ESLint over src
-bun run db:push          # drizzle-kit push (schema sync)
+bun run db:push          # drizzle-kit push (schema sync) — requires DATABASE_URL
 ```
 
 ## Architecture
