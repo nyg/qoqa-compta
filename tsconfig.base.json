@@ -10,6 +10,7 @@
     "noUnusedParameters": true,
     "verbatimModuleSyntax": true,
     "noImplicitOverride": true,
+    "erasableSyntaxOnly": true,
     "noEmit": true,
     "isolatedModules": true,
     "esModuleInterop": true,
