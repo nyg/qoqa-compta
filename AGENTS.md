@@ -27,7 +27,8 @@ bun run build:stable     # production: package the desktop app into artifacts/
 bun run start            # production: serve dist/ + API from :3001
 bun run typecheck        # electrobun prepare && tsc --build (one project per runtime)
 bun run lint             # ESLint over src
-bun run db:push          # drizzle-kit push (schema sync) — requires DATABASE_URL
+bun run db:generate      # regenerate SQLite + PG migrations from schema.ts, then re-embed them
+bun run db:verify        # fail if src/server/migrations.generated.ts is stale
 ```
 
 ## Architecture
@@ -83,7 +84,11 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 - Both `name_fr` and `name_de` columns on universes/subuniverses
 - Amounts stored as `NUMERIC(10, 2)` (CHF); represented as `string` in TypeScript
 - `pdf_data` column holds raw invoice PDF bytes (`BLOB` on SQLite, `BYTEA` on PostgreSQL); list queries use `has_pdf` boolean instead of selecting the bytes
-- Schema defined in `src/server/schema.ts` (dual SQLite + PG via Drizzle); bootstrapped at startup via `src/server/schema-bootstrap.ts`
+- Schema defined in `src/server/schema.ts` (dual SQLite + PG via Drizzle) — the single source of truth. Adding or changing a column means editing `schema.ts` and running `bun run db:generate`; nothing else restates the DDL
+- `bun run db:generate` writes migrations to `drizzle/sqlite/` and `drizzle/pg/`, then regenerates `src/server/migrations.generated.ts`, which inlines every migration's SQL so it is compiled into the desktop bundle instead of being read from disk at runtime
+- `src/server/migrate.ts` applies them at startup and records each one in Drizzle's `__drizzle_migrations` journal. It also runs the SQLite `journal_mode=WAL` and `busy_timeout=5000` PRAGMAs, which are not schema
+- Databases created before migrations existed already have every table and no journal. On those, `runMigrations()` records migration `0000` as applied instead of executing it, then applies anything newer normally — detected as "no journal rows and `qoqa_orders` already present"
+- `dropAllTables()` (the Settings reset) drops the journal too, so the next `runMigrations()` rebuilds from `0000`
 - SQLite (`bun:sqlite`) is the default and needs no setup; PostgreSQL goes through `@neondatabase/serverless`
 
 ### Settings

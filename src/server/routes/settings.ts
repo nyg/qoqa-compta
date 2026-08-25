@@ -1,8 +1,7 @@
 import { Hono } from "hono";
 import { readSettings, writeSettings } from "../settings";
 import { reinitDb, getDbFilePath } from "../db";
-import { bootstrapSchema } from "../schema-bootstrap";
-import { dropAllTables } from "../schema-bootstrap";
+import { runMigrations, dropAllTables } from "../migrate";
 import type { AppSettings } from "../../shared/types";
 
 const router = new Hono();
@@ -37,7 +36,7 @@ router.put("/settings", async (c) => {
 
     if (dbUrlChanged) {
       await reinitDb(body.databaseUrl ?? undefined);
-      await bootstrapSchema();
+      await runMigrations();
     }
 
     return c.json(maskSettings(readSettings()));
@@ -51,7 +50,7 @@ router.put("/settings", async (c) => {
 router.delete("/settings/database", async (c) => {
   try {
     await dropAllTables();
-    await bootstrapSchema();
+    await runMigrations();
     return c.json({ ok: true });
   } catch (err) {
     console.error("[settings/database DELETE]", err);

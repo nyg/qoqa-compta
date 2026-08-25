@@ -70,7 +70,11 @@ All scripts are run with `bun run <name>`.
 | `start` | `NODE_ENV=production bun src/server/index.ts` | Start the Hono server in web production mode. Serves the pre-built SPA from `dist/` in addition to the API. Run `build` first. |
 | `lint` | `eslint src --ext .ts,.tsx` | Lint all TypeScript source files. |
 | `typecheck` | `bunx electrobun prepare && tsc --build` | Type-check every runtime without emitting output. `tsconfig.json` is a solution file that only references the per-runtime projects, so `--build` checks each of them against its own globals. Prepares the devkit first, because `tsconfig.electrobun.json` and `tsconfig.tools.json` map the `electrobun` specifiers into `.hutch/devkit/`. Each project drops a gitignored `tsconfig.*.tsbuildinfo` at the repo root for incremental reruns. |
-| `db:push` | `drizzle-kit push` | Push the Drizzle schema to the database (creates or alters tables). Requires `DATABASE_URL`, which names the database and selects the dialect; `drizzle.config.ts` never reads the app's `settings.json`, so the command targets the same database on every machine and fails with a clear error when the variable is missing. |
+| `db:generate` | `db:generate:sqlite && db:generate:pg && db:embed` | Regenerate the migrations for both dialects from `src/server/schema.ts`, then re-embed them. The only command needed after changing the schema. Needs no database and no `DATABASE_URL` — `drizzle-kit generate` diffs `schema.ts` against the snapshots in `drizzle/*/meta/` entirely offline. |
+| `db:generate:sqlite` | `drizzle-kit generate --config=drizzle.config.sqlite.ts` | Write the SQLite migration into `drizzle/sqlite/`. Drizzle Kit picks the `sqliteTable` definitions out of the shared `schema.ts` and ignores the `pgTable` ones. |
+| `db:generate:pg` | `drizzle-kit generate --config=drizzle.config.pg.ts` | The same for PostgreSQL, into `drizzle/pg/`. |
+| `db:embed` | `bun scripts/embed-migrations.ts` | Regenerate `src/server/migrations.generated.ts` from the two journals, inlining each migration's SQL as a string constant so it is compiled into the bundle. |
+| `db:verify` | `bun scripts/embed-migrations.ts --check` | Fail if that generated file is stale. `bun test` asserts the same invariant, so CI catches a forgotten `db:embed` without a separate step. |
 
 ---
 
@@ -92,7 +96,11 @@ qoqa-compta/
 ├── tsconfig.views.json           # src/views/ — DOM, no Bun, @/* alias
 ├── tsconfig.electrobun.json      # src/electrobun/ — Bun types + the electrobun specifier mappings
 ├── tsconfig.tools.json           # vite/electrobun/hutch configs and scripts/ — Bun types
-├── drizzle.config.ts
+├── drizzle.config.sqlite.ts      # Drizzle Kit — SQLite migrations into drizzle/sqlite/
+├── drizzle.config.pg.ts          # Drizzle Kit — PostgreSQL migrations into drizzle/pg/
+├── drizzle/                      # Generated migrations, committed and shipped
+│   ├── sqlite/                   # 0000_initial_schema.sql + meta/_journal.json
+│   └── pg/                       # same, for PostgreSQL
 ├── electrobun.config.ts          # Electrobun build config (app name, icons, entry, hooks)
 ├── hutch.config.ts               # Hutch workspace config — keeps Bun as the package manager
 ├── docs/
@@ -100,13 +108,14 @@ qoqa-compta/
 │   └── universe-filters.md       # how the universe/sub-universe filter behaves
 ├── scripts/
 │   ├── prebuild.ts               # Runs `vite build` before Electrobun packages the app
+│   ├── embed-migrations.ts       # Regenerates src/server/migrations.generated.ts from drizzle/
 │   └── postwrap.ts               # Stamps LSEnvironment and ad-hoc code-signs the macOS .app after wrapping
 └── src/
     ├── electrobun/
     │   ├── index.ts              # Desktop entry — starts Hono, opens BrowserWindow, installs the menu
     │   └── menu.ts               # Application menu — macOS only
     ├── server/                   # Hono API + sync engine (Bun)
-    │   ├── index.ts              # Web entry point — mounts routes, bootstraps DB, serves dist/
+    │   ├── index.ts              # Web entry point — mounts routes, migrates DB, serves dist/
     │   ├── app.ts                # Hono app factory (shared by web and desktop entry points)
     │   ├── auth.ts               # POST /v2/login → Bearer token
     │   ├── api.ts                # QoQa REST API client (universes, purchases, PDFs)
@@ -114,7 +123,8 @@ qoqa-compta/
     │   ├── sync-job.ts           # Running-job state (abort controller, status)
     │   ├── db.ts                 # Drizzle ORM client — SQLite or PostgreSQL
     │   ├── schema.ts             # Drizzle table definitions (dual SQLite + PG)
-    │   ├── schema-bootstrap.ts   # CREATE TABLE IF NOT EXISTS bootstrap
+    │   ├── migrate.ts            # Applies the Drizzle migrations at startup; baselines pre-migrations databases
+    │   ├── migrations.generated.ts # Generated — migration SQL inlined so it ships in the bundle
     │   ├── queries.ts            # All DB operations (upsert, select, aggregate)
     │   ├── settings.ts           # settings.json read/write (platform-aware path)
     │   ├── install.ts            # How the running copy was installed (brew, scoop, manual, web)
@@ -260,6 +270,42 @@ The same first-launch migration described under [Settings](#settings) applies he
 ### PostgreSQL
 
 Set `DATABASE_URL` to a `postgresql://…` connection string in the Settings modal (or `.env` in dev).
+
+### Schema migrations
+
+`src/server/schema.ts` is the single source of truth. It declares each table twice — once with `sqliteTable`, once with `pgTable` — because the two dialects differ in real ways (`BLOB` vs `BYTEA`, `AUTOINCREMENT` vs `GENERATED ALWAYS AS IDENTITY`). Nothing else restates the DDL.
+
+Changing the schema is one edit plus one command:
+
+```bash
+# 1. edit src/server/schema.ts
+bun run db:generate
+# 2. commit drizzle/ and src/server/migrations.generated.ts alongside the schema change
+```
+
+`drizzle-kit generate` runs entirely offline — it diffs `schema.ts` against the snapshot in `drizzle/<dialect>/meta/` and writes the SQL. It never opens a database, so no `DATABASE_URL` is needed and no driver has to be installed. Each config selects its dialect, and Drizzle Kit picks only the matching table definitions out of the shared schema file.
+
+`scripts/embed-migrations.ts` then regenerates `src/server/migrations.generated.ts`, which holds every migration's SQL as a string constant. The SQL is inlined rather than read from `drizzle/` at runtime, because the desktop app is a single compiled Bun bundle — a migrations directory that only exists in the repo would be missing at first run on a user's machine. `bun test` asserts the generated file still matches `drizzle/`, so a forgotten `db:generate` fails CI instead of shipping.
+
+`src/server/migrate.ts` applies the migrations at startup, in place of the old `bootstrapSchema()`. It reuses Drizzle's own journal format — a `__drizzle_migrations` table holding the SHA-256 of each applied migration and its timestamp, in the `drizzle` schema on PostgreSQL — and the same "apply everything newer than the newest recorded timestamp" rule, so the journal stays readable by Drizzle's stock migrator. On SQLite it also runs `PRAGMA journal_mode=WAL` and `PRAGMA busy_timeout=5000`, which are connection settings rather than schema and so sit outside the migration transaction.
+
+#### Baselining databases that predate migrations
+
+Before migrations existed, the schema was created by `CREATE TABLE IF NOT EXISTS` statements at every startup. There were no `ALTER TABLE`s and no journal, so every database already in the wild has all four tables and no record of how it got them. Running migration `0000` against one of those would fail on the first bare `CREATE TABLE`, breaking startup for every existing install.
+
+`runMigrations()` detects that case and records `0000` as applied without executing it:
+
+> no rows in `__drizzle_migrations` **and** `qoqa_orders` already exists
+
+Both halves matter. A genuinely fresh database has no journal *and* no tables, so it runs `0000` normally. A database that has been migrated before has journal rows, so it skips the check entirely. Only the pre-migrations shape satisfies both. The table probe is `sqlite_master` on SQLite and `to_regclass()` on PostgreSQL, the latter resolving through `search_path` exactly as the unqualified DDL does.
+
+Because the baseline stamps `0000` with its real timestamp, everything after it applies by the ordinary rule. A database baselined this way and a database built from scratch by migrations converge on the identical journal, and every later migration lands on both.
+
+Migration `0000` is the schema as it stood when migrations were introduced, which is exactly what `bootstrapSchema()` produced — that equivalence is what makes the baseline sound, and it holds permanently, because `0000` never changes.
+
+#### Resetting
+
+`dropAllTables()`, behind the Settings modal's reset action, drops the journal along with the four tables. The next `runMigrations()` therefore sees neither a journal nor a `qoqa_orders` table, takes the fresh path, and rebuilds from `0000`.
 
 ### Table structure
 

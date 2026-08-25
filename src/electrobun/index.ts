@@ -7,7 +7,7 @@ import {
 } from "electrobun/main";
 import { createApp } from "../server/app";
 import { initDb } from "../server/db";
-import { bootstrapSchema } from "../server/schema-bootstrap";
+import { runMigrations } from "../server/migrate";
 import { backfillOrderSubuniverses } from "../server/queries";
 import { installApplicationMenu } from "./menu";
 import { systemLocales } from "./locale";
@@ -51,7 +51,7 @@ async function main() {
 
   try {
     await initDb();
-    await bootstrapSchema();
+    await runMigrations();
     await backfillOrderSubuniverses();
     console.log("✓ Database ready");
   } catch (err) {
