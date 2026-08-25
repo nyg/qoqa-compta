@@ -25,7 +25,7 @@ bun run desktop:dev      # Electrobun desktop app with live reload
 bun run build            # production: compile SPA to dist/
 bun run build:stable     # production: package the desktop app into artifacts/
 bun run start            # production: serve dist/ + API from :3001
-bun run typecheck        # electrobun prepare && tsc --noEmit
+bun run typecheck        # electrobun prepare && tsc --build (one project per runtime)
 bun run lint             # ESLint over src
 bun run db:push          # drizzle-kit push (schema sync) — requires DATABASE_URL
 ```
@@ -62,7 +62,8 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 ### TypeScript
 
 - Bun runtime; `bun-types` in devDependencies
-- `strict: true` in tsconfig; path alias `@/*` → `./src/views/*`, declared in both `tsconfig.json` and `vite.config.ts` — it resolves SPA modules only and is used only from within `src/views/`
+- One tsconfig per runtime, listed as project references by a solution `tsconfig.json` that holds nothing else: `tsconfig.server.json` (Bun types, no DOM), `tsconfig.views.json` (DOM, no Bun), `tsconfig.shared.json` for `src/shared/` (neither), and `tsconfig.electrobun.json` + `tsconfig.tools.json` (Bun types plus `WebWorker`, which the vendored Electrobun SDK sources under `.hutch/devkit/` need for their `self` usage). Options common to all of them live in `tsconfig.base.json`, which declares `lib: ["ES2022"]` and `types: []` — a runtime that wants globals asks for them in its own config. `bun run typecheck` builds the solution, so a `document` in `src/server/` and a `Bun` in `src/views/` are both type errors.
+- `strict: true` in `tsconfig.base.json`; path alias `@/*` → `./src/views/*`, declared in both `tsconfig.views.json` and `vite.config.ts` — it resolves SPA modules only and is used only from within `src/views/`
 - `src/shared/` has no alias of its own: both the SPA and the server import it by relative path (`import type { QoqaOrder } from "../../shared/types"`)
 - UI built with Base UI (`@base-ui/react`) primitives, CVA + `cn()` utility from `src/views/lib/utils.ts`
 - Tailwind v4 with CSS-variable theming in `src/views/globals.css` (`@theme inline` directive) — no `tailwind.config.ts`

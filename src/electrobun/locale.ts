@@ -1,4 +1,3 @@
-/// <reference types="bun-types" />
 
 function run(command: string[]): string {
   try {

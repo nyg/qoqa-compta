@@ -1,4 +1,3 @@
-/// <reference types="bun-types" />
 import {
   BrowserWindow,
   BuildConfig,

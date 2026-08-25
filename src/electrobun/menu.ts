@@ -1,4 +1,3 @@
-/// <reference types="bun-types" />
 import { ApplicationMenu } from "electrobun/main";
 import type { ApplicationMenuItemConfig, BrowserWindow } from "electrobun/main";
 

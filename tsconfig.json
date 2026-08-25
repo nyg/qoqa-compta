@@ -1,24 +1,10 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "jsx": "react-jsx",
-    "strict": true,
-    "noEmit": true,
-    "isolatedModules": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "allowImportingTsExtensions": true,
-    "paths": {
-      "@/*": ["./src/views/*"],
-      "electrobun": ["./.hutch/devkit/api/sdks/main/index.ts"],
-      "electrobun/main": ["./.hutch/devkit/api/sdks/main/index.ts"],
-      "electrobun/view": ["./.hutch/devkit/api/browser/index.ts"]
-    }
-  },
-  "include": ["src", "vite.config.ts", "electrobun.config.ts", "hutch.config.ts", "scripts", "index.html"]
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.shared.json" },
+    { "path": "./tsconfig.server.json" },
+    { "path": "./tsconfig.views.json" },
+    { "path": "./tsconfig.electrobun.json" },
+    { "path": "./tsconfig.tools.json" }
+  ]
 }

@@ -69,7 +69,7 @@ All scripts are run with `bun run <name>`.
 | `build:stable` | `bunx electrobun build --env=stable` | Build a production desktop bundle (`.app` on macOS, `.exe` on Windows). Runs `scripts/prebuild.ts` (`vite build`) first, then packages everything with Hutch, and finally runs `scripts/postwrap.ts` (installer-panel `LSEnvironment` stamp and ad-hoc code-signing on macOS). Hutch runs both hooks with Cottontail rather than Bun, so they shell out instead of importing from `bun`. |
 | `start` | `NODE_ENV=production bun src/server/index.ts` | Start the Hono server in web production mode. Serves the pre-built SPA from `dist/` in addition to the API. Run `build` first. |
 | `lint` | `eslint src --ext .ts,.tsx` | Lint all TypeScript source files. |
-| `typecheck` | `bunx electrobun prepare && tsc --noEmit` | Type-check the whole project without emitting output. Prepares the devkit first, because `tsconfig.json` maps the `electrobun` and `electrobun/main` specifiers into `.hutch/devkit/`. |
+| `typecheck` | `bunx electrobun prepare && tsc --build` | Type-check every runtime without emitting output. `tsconfig.json` is a solution file that only references the per-runtime projects, so `--build` checks each of them against its own globals. Prepares the devkit first, because `tsconfig.electrobun.json` and `tsconfig.tools.json` map the `electrobun` specifiers into `.hutch/devkit/`. Each project drops a gitignored `tsconfig.*.tsbuildinfo` at the repo root for incremental reruns. |
 | `db:push` | `drizzle-kit push` | Push the Drizzle schema to the database (creates or alters tables). Requires `DATABASE_URL`, which names the database and selects the dialect; `drizzle.config.ts` never reads the app's `settings.json`, so the command targets the same database on every machine and fails with a clear error when the variable is missing. |
 
 ---
@@ -85,7 +85,13 @@ qoqa-compta/
 ├── CLAUDE.md                     # Points Claude Code at AGENTS.md
 ├── index.html                    # Vite SPA entry
 ├── vite.config.ts
-├── tsconfig.json
+├── tsconfig.json                 # Solution file — references the five per-runtime projects below
+├── tsconfig.base.json            # Options shared by all of them: lib ES2022 only, types []
+├── tsconfig.shared.json          # src/shared/ — no DOM, no Bun
+├── tsconfig.server.json          # src/server/ — Bun types, no DOM
+├── tsconfig.views.json           # src/views/ — DOM, no Bun, @/* alias
+├── tsconfig.electrobun.json      # src/electrobun/ — Bun types + the electrobun specifier mappings
+├── tsconfig.tools.json           # vite/electrobun/hutch configs and scripts/ — Bun types
 ├── drizzle.config.ts
 ├── electrobun.config.ts          # Electrobun build config (app name, icons, entry, hooks)
 ├── hutch.config.ts               # Hutch workspace config — keeps Bun as the package manager
