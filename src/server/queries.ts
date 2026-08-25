@@ -106,22 +106,6 @@ function ctx(): QueryContext {
       };
 }
 
-function legacyDb(): SqliteDatabase {
-  return getDb().db as unknown as SqliteDatabase;
-}
-
-function t() {
-  const sqlite = isDbSqlite();
-  return {
-    orders: (sqlite ? qoqaOrdersSqlite : qoqaOrdersPg) as unknown as typeof qoqaOrdersSqlite,
-    universes: (sqlite ? qoqaUniversesSqlite : qoqaUniversesPg) as unknown as typeof qoqaUniversesSqlite,
-    subuniverses: (sqlite ? qoqaSubuniversesSqlite : qoqaSubuniversesPg) as unknown as typeof qoqaSubuniversesSqlite,
-    orderSubuniverses: (sqlite
-      ? qoqaOrderSubuniversesSqlite
-      : qoqaOrderSubuniversesPg) as unknown as typeof qoqaOrderSubuniversesSqlite,
-  };
-}
-
 // ── Dialect-safe expression helpers ───────────────────────────────────────────
 
 function asFloat(col: SQLWrapper): SQLWrapper {
@@ -905,22 +889,22 @@ export async function upsertOrder(data: NewOrderData): Promise<void> {
     updated_at: now,
   };
 
-  const db = legacyDb();
+  const c = ctx();
 
   // A failed PDF download must not wipe a PDF already stored for this order.
   const { pdf_data: _pdf, pdf_filename: _name, ...rest } = values;
   const set = pdfBuf ? values : rest;
 
-  if (isDbSqlite()) {
-    await (db as any)
-      .insert(qoqaOrdersSqlite)
+  if (c.dialect === "sqlite") {
+    await c.db
+      .insert(c.orders)
       .values(values)
-      .onConflictDoUpdate({ target: qoqaOrdersSqlite.order_number, set });
+      .onConflictDoUpdate({ target: c.orders.order_number, set });
   } else {
-    await (db as any)
-      .insert(qoqaOrdersPg)
+    await c.db
+      .insert(c.orders)
       .values(values)
-      .onConflictDoUpdate({ target: qoqaOrdersPg.order_number, set });
+      .onConflictDoUpdate({ target: c.orders.order_number, set });
   }
 
   if (data.subuniverses) {
@@ -932,19 +916,31 @@ async function replaceOrderSubuniverses(
   orderNumber: string,
   subuniverses: string[]
 ): Promise<void> {
-  const { orderSubuniverses } = t();
+  const c = ctx();
 
-  await legacyDb().delete(orderSubuniverses).where(eq(orderSubuniverses.order_number, orderNumber));
+  if (c.dialect === "sqlite") {
+    await c.db
+      .delete(c.orderSubuniverses)
+      .where(eq(c.orderSubuniverses.order_number, orderNumber));
+  } else {
+    await c.db
+      .delete(c.orderSubuniverses)
+      .where(eq(c.orderSubuniverses.order_number, orderNumber));
+  }
 
   if (subuniverses.length === 0) return;
 
-  await (legacyDb() as any).insert(orderSubuniverses).values(
-    subuniverses.map((subuniverse, position) => ({
-      order_number: orderNumber,
-      subuniverse,
-      position,
-    }))
-  );
+  const values = subuniverses.map((subuniverse, position) => ({
+    order_number: orderNumber,
+    subuniverse,
+    position,
+  }));
+
+  if (c.dialect === "sqlite") {
+    await c.db.insert(c.orderSubuniverses).values(values);
+  } else {
+    await c.db.insert(c.orderSubuniverses).values(values);
+  }
 }
 
 export async function backfillOrderSubuniverses(): Promise<number> {
@@ -988,7 +984,12 @@ export async function backfillOrderSubuniverses(): Promise<number> {
   if (values.length === 0) return 0;
 
   for (let i = 0; i < values.length; i += 200) {
-    await (legacyDb() as any).insert(t().orderSubuniverses).values(values.slice(i, i + 200));
+    const chunk = values.slice(i, i + 200);
+    if (c.dialect === "sqlite") {
+      await c.db.insert(c.orderSubuniverses).values(chunk);
+    } else {
+      await c.db.insert(c.orderSubuniverses).values(chunk);
+    }
   }
 
   return values.length;
@@ -1028,16 +1029,18 @@ export async function upsertUniverse(data: {
   };
   const set = { name_fr: values.name_fr, name_de: values.name_de, updated_at: now };
 
-  if (isDbSqlite()) {
-    await (legacyDb() as any)
-      .insert(qoqaUniversesSqlite)
+  const c = ctx();
+
+  if (c.dialect === "sqlite") {
+    await c.db
+      .insert(c.universes)
       .values(values)
-      .onConflictDoUpdate({ target: qoqaUniversesSqlite.universe_tracking_identifier, set });
+      .onConflictDoUpdate({ target: c.universes.universe_tracking_identifier, set });
   } else {
-    await (legacyDb() as any)
-      .insert(qoqaUniversesPg)
+    await c.db
+      .insert(c.universes)
       .values(values)
-      .onConflictDoUpdate({ target: qoqaUniversesPg.universe_tracking_identifier, set });
+      .onConflictDoUpdate({ target: c.universes.universe_tracking_identifier, set });
   }
 }
 
@@ -1062,15 +1065,17 @@ export async function upsertSubuniverse(data: {
     updated_at: now,
   };
 
-  if (isDbSqlite()) {
-    await (legacyDb() as any)
-      .insert(qoqaSubuniversesSqlite)
+  const c = ctx();
+
+  if (c.dialect === "sqlite") {
+    await c.db
+      .insert(c.subuniverses)
       .values(values)
-      .onConflictDoUpdate({ target: qoqaSubuniversesSqlite.identifier, set });
+      .onConflictDoUpdate({ target: c.subuniverses.identifier, set });
   } else {
-    await (legacyDb() as any)
-      .insert(qoqaSubuniversesPg)
+    await c.db
+      .insert(c.subuniverses)
       .values(values)
-      .onConflictDoUpdate({ target: qoqaSubuniversesPg.identifier, set });
+      .onConflictDoUpdate({ target: c.subuniverses.identifier, set });
   }
 }
