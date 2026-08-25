@@ -14,6 +14,7 @@
     "build": "vite build",
     "build:stable": "bunx electrobun build --env=stable",
     "start": "NODE_ENV=production bun src/server/index.ts",
+    "test": "bun test",
     "lint": "eslint src",
     "typecheck": "bunx electrobun prepare && tsc --build",
     "db:push": "drizzle-kit push"
