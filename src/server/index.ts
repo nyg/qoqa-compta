@@ -1,7 +1,7 @@
 import { existsSync, statSync } from "fs";
 import path from "path";
 import { initDb } from "./db";
-import { bootstrapSchema } from "./schema-bootstrap";
+import { runMigrations } from "./migrate";
 import { backfillOrderSubuniverses } from "./queries";
 import { createApp } from "./app";
 
@@ -37,7 +37,7 @@ if (IS_PROD) {
 async function main() {
   try {
     await initDb();
-    await bootstrapSchema();
+    await runMigrations();
     await backfillOrderSubuniverses();
     console.log("✓ Database ready");
   } catch (err) {

@@ -17,7 +17,11 @@
     "test": "bun test",
     "lint": "eslint src",
     "typecheck": "bunx electrobun prepare && tsc --build",
-    "db:push": "drizzle-kit push"
+    "db:generate": "bun run db:generate:sqlite && bun run db:generate:pg && bun run db:embed",
+    "db:generate:sqlite": "drizzle-kit generate --config=drizzle.config.sqlite.ts",
+    "db:generate:pg": "drizzle-kit generate --config=drizzle.config.pg.ts",
+    "db:embed": "bun scripts/embed-migrations.ts",
+    "db:verify": "bun scripts/embed-migrations.ts --check"
   },
   "dependencies": {
     "@base-ui/react": "1.6.0",
