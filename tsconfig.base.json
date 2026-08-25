@@ -8,6 +8,7 @@
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "verbatimModuleSyntax": true,
     "noEmit": true,
     "isolatedModules": true,
     "esModuleInterop": true,
