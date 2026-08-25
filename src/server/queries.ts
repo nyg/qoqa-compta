@@ -561,7 +561,7 @@ export async function fetchOrders(
       : (filter ?? searchCondition);
 
   const countSelection = { count: sql<number>`COUNT(*)` };
-  const [{ count }] =
+  const countRows =
     c.dialect === "sqlite"
       ? await c.db.select(countSelection).from(c.orders).where(where)
       : await c.db.select(countSelection).from(c.orders).where(where);
@@ -570,7 +570,7 @@ export async function fetchOrders(
 
   return {
     orders: await withSubuniverseTags(rows.map(normalizeOrder)),
-    total: Number(count ?? 0),
+    total: Number(countRows[0]?.count ?? 0),
   };
 }
 
@@ -809,7 +809,8 @@ export async function getOrderByNumber(orderNumber: string): Promise<QoqaOrder |
           .where(sql`${c.orders.order_number} = ${orderNumber}`)
           .limit(1);
 
-  return rows.length > 0 ? normalizeOrder(rows[0]) : null;
+  const [row] = rows;
+  return row ? normalizeOrder(row) : null;
 }
 
 type OrderNumberRow = Pick<typeof qoqaOrdersSqlite.$inferSelect, "order_number">;

@@ -57,17 +57,14 @@ function extractOrderFields(detail: OrderDetailData): NewOrderData {
   const orderDate = createdAt.length >= 10 ? createdAt.slice(0, 10) : createdAt;
 
   const items = detail.order_items ?? [];
-  const itemDescription = items.length > 0 ? (items[0].full_name ?? null) : null;
+  const itemDescription = items[0]?.full_name ?? null;
   const vatCentimes = items.reduce((sum, item) => sum + (item.vat_amount_to_centimes ?? 0), 0);
   const vatChf = vatCentimes > 0 ? String(vatCentimes / 100) : null;
 
   // Invoice number from accounting_documents[0].title (e.g. "Facture 12345")
   const docs = detail.accounting_documents ?? [];
-  let invoiceNumber: string | null = null;
-  if (docs.length > 0) {
-    const docTitle = docs[0].title ?? "";
-    invoiceNumber = docTitle.replace(/^Facture\s*/i, "").trim() || null;
-  }
+  const docTitle = docs[0]?.title ?? "";
+  const invoiceNumber = docTitle.replace(/^Facture\s*/i, "").trim() || null;
 
   return {
     order_number: orderNumber,
