@@ -20,7 +20,9 @@ const FIRST_MONTH = new Date(2008, 0);
 function toDate(value: string | undefined): Date | undefined {
   if (!value) return undefined;
   const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
+  if (year === undefined || month === undefined || day === undefined) return undefined;
+  const date = new Date(year, month - 1, day);
+  return isNaN(date.getTime()) ? undefined : date;
 }
 
 function toValue(date: Date | undefined): string | undefined {

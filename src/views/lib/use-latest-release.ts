@@ -5,10 +5,8 @@ import type { LatestRelease } from "../../shared/types";
 export const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "";
 
 function segments(version: string): number[] {
-  return version
-    .split("-")[0]
-    .split(".")
-    .map((part) => parseInt(part, 10) || 0);
+  const [core = ""] = version.split("-");
+  return core.split(".").map((part) => parseInt(part, 10) || 0);
 }
 
 export function isNewer(candidate: string, current: string): boolean {

@@ -50,7 +50,7 @@ router.get("/sync/status", (c) => {
 });
 
 // GET /api/sync/stream — SSE stream of sync progress events
-router.get("/sync/stream", (c) => {
+router.get("/sync/stream", () => {
   const encoder = new TextEncoder();
   let cleanup: (() => void) | null = null;
 
