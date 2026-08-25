@@ -86,7 +86,7 @@ qoqa-compta/
 ├── index.html                    # Vite SPA entry
 ├── vite.config.ts
 ├── tsconfig.json                 # Solution file — references the five per-runtime projects below
-├── tsconfig.base.json            # Options shared by all of them: lib ES2022 only, types []
+├── tsconfig.base.json            # Options shared by all of them: strictness flags, lib ES2022 only, types []
 ├── tsconfig.shared.json          # src/shared/ — no DOM, no Bun
 ├── tsconfig.server.json          # src/server/ — Bun types, no DOM
 ├── tsconfig.views.json           # src/views/ — DOM, no Bun, @/* alias
@@ -160,6 +160,16 @@ qoqa-compta/
         ├── filters.ts            # Universe selection model — see universe-filters.md
         └── types.ts              # Shared TypeScript types (QoqaOrder, AppSettings, …)
 ```
+
+### Compiler strictness
+
+`tsconfig.base.json` turns on `strict` plus `noUncheckedIndexedAccess`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`, `noImplicitOverride` and `erasableSyntaxOnly`, so every project inherits them.
+
+`noUnusedLocals` and `noUnusedParameters` carry weight that their zero error count hides. typescript-eslint cannot load against `typescript@7` — TS 7 ships only `./lib/version.cjs` and exposes no compiler API — so `no-unused-vars` is unavailable and the compiler is the only thing in the repo that catches a dead import, local or parameter. `erasableSyntaxOnly` matches how the code actually runs: Bun strips types and Vite does the same through esbuild, and neither performs the code generation an `enum` or a constructor parameter property needs.
+
+`exactOptionalPropertyTypes` is deliberately **off**. Enabled across the solution it reports 32 sites, 15 of them inside `.hutch/devkit` — vendored Electrobun SDK sources, which are `.ts` rather than `.d.ts`, so `skipLibCheck` does not cover them, and which are gitignored and re-materialized from a lockfile on every clean checkout, so they cannot be patched in-repo. Scoping the flag to the four projects that never import the devkit still leaves 18 sites in `src/`, and all 18 are the same shape: an object literal built with `from: string | undefined` handed to a `from?: string` parameter. None is a latent bug — those values flow into `URLSearchParams` builders, JSON responses and JSX prop spreads, where an absent key and an explicit `undefined` are indistinguishable. Clearing them means either widening every declaration to `from?: string | undefined`, which neuters the flag, or rewriting each construction site as a conditional spread. Both cost readability and neither buys a caught defect.
+
+`skipLibCheck` stays on for the same devkit reason.
 
 ---
 
