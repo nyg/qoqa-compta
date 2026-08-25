@@ -1,4 +1,3 @@
-/// <reference types="bun-types" />
 import { existsSync, statSync } from "fs";
 import path from "path";
 import { initDb } from "./db";

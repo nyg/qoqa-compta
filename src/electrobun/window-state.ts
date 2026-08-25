@@ -1,4 +1,3 @@
-/// <reference types="bun-types" />
 import fs from "fs";
 import path from "path";
 import { Screen, app } from "electrobun/main";
