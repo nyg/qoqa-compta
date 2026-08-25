@@ -5,6 +5,7 @@
     { "path": "./tsconfig.server.json" },
     { "path": "./tsconfig.views.json" },
     { "path": "./tsconfig.electrobun.json" },
-    { "path": "./tsconfig.tools.json" }
+    { "path": "./tsconfig.tools.json" },
+    { "path": "./tsconfig.tests.json" }
   ]
 }
