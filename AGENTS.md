@@ -62,7 +62,8 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 ### TypeScript
 
 - Bun runtime; `bun-types` in devDependencies
-- `strict: true` in tsconfig; path alias `@/*` → `./src/*`
+- `strict: true` in tsconfig; path alias `@/*` → `./src/views/*`, declared in both `tsconfig.json` and `vite.config.ts` — it resolves SPA modules only and is used only from within `src/views/`
+- `src/shared/` has no alias of its own: both the SPA and the server import it by relative path (`import type { QoqaOrder } from "../../shared/types"`)
 - UI built with Base UI (`@base-ui/react`) primitives, CVA + `cn()` utility from `src/views/lib/utils.ts`
 - Tailwind v4 with CSS-variable theming in `src/views/globals.css` (`@theme inline` directive) — no `tailwind.config.ts`
 - Charts use Recharts (`ComposedChart` with bar + line dual-axis; pie chart for spending breakdown); the date range picker uses react-day-picker through `src/views/components/ui/calendar.tsx`
