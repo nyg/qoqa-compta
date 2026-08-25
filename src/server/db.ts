@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
 import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzleBunSqlite, type BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
-import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
+import { drizzle as drizzleNeon, type NeonHttpDatabase } from "drizzle-orm/neon-http";
 import { mkdirSync } from "fs";
 import path from "path";
 import * as schema from "./schema";
@@ -11,9 +11,14 @@ import { readSettings } from "./settings";
 // A simple callable type for the neon query function used in schema-bootstrap
 export type NeonExecutor = (sql: string, params?: unknown[]) => Promise<unknown>;
 
-type AnyDb = BunSQLiteDatabase<typeof schema>;
+export type SqliteDatabase = BunSQLiteDatabase<typeof schema>;
+export type PgDatabase = NeonHttpDatabase<typeof schema>;
 
-let _db: AnyDb | null = null;
+export type DatabaseHandle =
+  | { dialect: "sqlite"; db: SqliteDatabase }
+  | { dialect: "pg"; db: PgDatabase };
+
+let _handle: DatabaseHandle | null = null;
 let _isSqlite = true;
 let _bunDb: Database | null = null;
 let _neonExecutor: NeonExecutor | null = null;
@@ -35,12 +40,12 @@ export async function initDb(databaseUrl?: string): Promise<void> {
     _dbFilePath = filePath;
     _bunDb = new Database(filePath, { create: true });
     _neonExecutor = null;
-    _db = drizzleBunSqlite(_bunDb, { schema }) as unknown as AnyDb;
+    _handle = { dialect: "sqlite", db: drizzleBunSqlite(_bunDb, { schema }) };
   } else {
     const neonFn = neon(rawUrl!);
     _neonExecutor = neonFn as unknown as NeonExecutor;
     _bunDb = null;
-    _db = drizzleNeon(neonFn, { schema }) as unknown as AnyDb;
+    _handle = { dialect: "pg", db: drizzleNeon(neonFn, { schema }) };
   }
 }
 
@@ -49,14 +54,14 @@ export async function reinitDb(databaseUrl?: string): Promise<void> {
     _bunDb.close();
     _bunDb = null;
   }
-  _db = null;
+  _handle = null;
   _neonExecutor = null;
   await initDb(databaseUrl);
 }
 
-export function getDb(): AnyDb {
-  if (!_db) throw new Error("Database not initialised — call initDb() first.");
-  return _db;
+export function getDb(): DatabaseHandle {
+  if (!_handle) throw new Error("Database not initialised — call initDb() first.");
+  return _handle;
 }
 
 export function isDbSqlite(): boolean {

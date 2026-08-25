@@ -1,5 +1,16 @@
-import { sql, eq, inArray, ilike, and, or, gte, lte, isNotNull, type SQL } from "drizzle-orm";
-import { getDb, isDbSqlite } from "./db";
+import {
+  sql,
+  eq,
+  inArray,
+  and,
+  or,
+  gte,
+  lte,
+  isNotNull,
+  type SQL,
+  type SQLWrapper,
+} from "drizzle-orm";
+import { getDb, isDbSqlite, type PgDatabase, type SqliteDatabase } from "./db";
 import {
   qoqaOrdersSqlite,
   qoqaOrdersPg,
@@ -50,42 +61,75 @@ export interface NewOrderData {
 // ── Table accessor ─────────────────────────────────────────────────────────────
 // Evaluated lazily (called at query time) so it works after initDb().
 
-function t() {
-  const sqlite = isDbSqlite();
-  return {
-    orders: (sqlite ? qoqaOrdersSqlite : qoqaOrdersPg) as unknown as typeof qoqaOrdersSqlite,
-    universes: (sqlite ? qoqaUniversesSqlite : qoqaUniversesPg) as unknown as typeof qoqaUniversesSqlite,
-    subuniverses: (sqlite ? qoqaSubuniversesSqlite : qoqaSubuniversesPg) as unknown as typeof qoqaSubuniversesSqlite,
-    orderSubuniverses: (sqlite
-      ? qoqaOrderSubuniversesSqlite
-      : qoqaOrderSubuniversesPg) as unknown as typeof qoqaOrderSubuniversesSqlite,
-  };
+type OrdersTable = typeof qoqaOrdersSqlite | typeof qoqaOrdersPg;
+type UniversesTable = typeof qoqaUniversesSqlite | typeof qoqaUniversesPg;
+type SubuniversesTable = typeof qoqaSubuniversesSqlite | typeof qoqaSubuniversesPg;
+
+interface SqliteContext {
+  dialect: "sqlite";
+  db: SqliteDatabase;
+  orders: typeof qoqaOrdersSqlite;
+  universes: typeof qoqaUniversesSqlite;
+  subuniverses: typeof qoqaSubuniversesSqlite;
+  orderSubuniverses: typeof qoqaOrderSubuniversesSqlite;
+}
+
+interface PgContext {
+  dialect: "pg";
+  db: PgDatabase;
+  orders: typeof qoqaOrdersPg;
+  universes: typeof qoqaUniversesPg;
+  subuniverses: typeof qoqaSubuniversesPg;
+  orderSubuniverses: typeof qoqaOrderSubuniversesPg;
+}
+
+type QueryContext = SqliteContext | PgContext;
+
+function ctx(): QueryContext {
+  const handle = getDb();
+  return handle.dialect === "sqlite"
+    ? {
+        dialect: "sqlite",
+        db: handle.db,
+        orders: qoqaOrdersSqlite,
+        universes: qoqaUniversesSqlite,
+        subuniverses: qoqaSubuniversesSqlite,
+        orderSubuniverses: qoqaOrderSubuniversesSqlite,
+      }
+    : {
+        dialect: "pg",
+        db: handle.db,
+        orders: qoqaOrdersPg,
+        universes: qoqaUniversesPg,
+        subuniverses: qoqaSubuniversesPg,
+        orderSubuniverses: qoqaOrderSubuniversesPg,
+      };
 }
 
 // ── Dialect-safe expression helpers ───────────────────────────────────────────
 
-function asFloat(col: unknown): SQL<unknown> {
-  return (isDbSqlite() ? sql`CAST(${col} AS REAL)` : col) as SQL<unknown>;
+function asFloat(col: SQLWrapper): SQLWrapper {
+  return isDbSqlite() ? sql`CAST(${col} AS REAL)` : col;
 }
 
-function yearMonth(col: unknown): SQL<unknown> {
-  return (isDbSqlite()
-    ? sql`substr(${col}, 1, 7)`
-    : sql`to_char(${col}::date, 'YYYY-MM')`) as SQL<unknown>;
+function yearMonth(col: SQLWrapper): SQL<string> {
+  return isDbSqlite()
+    ? sql<string>`substr(${col}, 1, 7)`
+    : sql<string>`to_char(${col}::date, 'YYYY-MM')`;
 }
 
-function yearOf(col: unknown): SQL<unknown> {
-  return (isDbSqlite()
-    ? sql`CAST(substr(${col}, 1, 4) AS INTEGER)`
-    : sql`EXTRACT(YEAR FROM ${col}::date)`) as SQL<unknown>;
+function yearOf(col: SQLWrapper): SQL<number> {
+  return isDbSqlite()
+    ? sql<number>`CAST(substr(${col}, 1, 4) AS INTEGER)`
+    : sql<number>`EXTRACT(YEAR FROM ${col}::date)`;
 }
 
 // SQLite uses LIKE (case-insensitive for ASCII by default); PostgreSQL uses ILIKE.
-function ilikeCompat(col: unknown, value: string): SQL<unknown> {
+function ilikeCompat(col: SQLWrapper, value: string): SQL<unknown> {
   if (isDbSqlite()) {
-    return sql`LOWER(${col}) LIKE LOWER(${value})` as SQL<unknown>;
+    return sql`LOWER(${col}) LIKE LOWER(${value})`;
   }
-  return sql`${col} ILIKE ${value}` as SQL<unknown>;
+  return sql`${col} ILIKE ${value}`;
 }
 
 // ── Effective universe ────────────────────────────────────────────────────────
@@ -104,13 +148,42 @@ function ilikeCompat(col: unknown, value: string): SQL<unknown> {
  * sub-universe under two parents and splits its totals; grouping on the current
  * parent keeps one entry per sub-universe.
  */
-function effectiveUniverse(orders: typeof qoqaOrdersSqlite): SQL<string> {
+function effectiveUniverse(orders: OrdersTable): SQL<string> {
   return sql<string>`COALESCE((SELECT su.universe_tracking_identifier FROM qoqa_subuniverses su WHERE su.identifier = ${orders.subuniverse}), ${orders.universe})`;
 }
 
 // ── Column subset for list queries ────────────────────────────────────────────
 
-function orderListColumns(orders: typeof qoqaOrdersSqlite) {
+type SharedOrderColumnKey =
+  | "id"
+  | "order_number"
+  | "order_date"
+  | "amount_chf"
+  | "status"
+  | "subtotal_chf"
+  | "discount_chf"
+  | "vat_chf"
+  | "offer_id"
+  | "offer_title"
+  | "offer_subtitle"
+  | "subuniverse"
+  | "item_description"
+  | "invoice_number"
+  | "pdf_filename";
+
+type OrderColumnSelection<T extends OrdersTable> = Pick<
+  T,
+  SharedOrderColumnKey | "universe"
+> & { has_pdf: SQL.Aliased<number> };
+
+type OrderListSelection<T extends OrdersTable> = Pick<T, SharedOrderColumnKey> & {
+  has_pdf: SQL.Aliased<number>;
+  universe: SQL.Aliased<string | null>;
+  universe_name: SQL.Aliased<string | null>;
+  subuniverse_name: SQL.Aliased<string | null>;
+};
+
+function orderListColumns<T extends OrdersTable>(orders: T): OrderColumnSelection<T> {
   return {
     id: orders.id,
     order_number: orders.order_number,
@@ -133,11 +206,11 @@ function orderListColumns(orders: typeof qoqaOrdersSqlite) {
 }
 
 /** List columns plus the universe/sub-universe display names. */
-function orderListSelection(
-  orders: typeof qoqaOrdersSqlite,
-  universesT: typeof qoqaUniversesSqlite,
-  subuniversesT: typeof qoqaSubuniversesSqlite
-) {
+function orderListSelection<T extends OrdersTable>(
+  orders: T,
+  universesT: UniversesTable,
+  subuniversesT: SubuniversesTable
+): OrderListSelection<T> {
   return {
     ...orderListColumns(orders),
     universe: sql<string | null>`${effectiveUniverse(orders)}`.as("universe"),
@@ -146,9 +219,53 @@ function orderListSelection(
   };
 }
 
+// ── Order list queries ────────────────────────────────────────────────────────
+
+function sqliteOrderListQuery(c: SqliteContext, where: SQL<unknown> | undefined) {
+  const { orders, universes, subuniverses } = c;
+  return c.db
+    .select(orderListSelection(orders, universes, subuniverses))
+    .from(orders)
+    .leftJoin(universes, eq(universes.universe_tracking_identifier, effectiveUniverse(orders)))
+    .leftJoin(subuniverses, eq(subuniverses.identifier, orders.subuniverse))
+    .where(where)
+    .orderBy(sql`${orders.order_date} DESC`);
+}
+
+function pgOrderListQuery(c: PgContext, where: SQL<unknown> | undefined) {
+  const { orders, universes, subuniverses } = c;
+  return c.db
+    .select(orderListSelection(orders, universes, subuniverses))
+    .from(orders)
+    .leftJoin(universes, eq(universes.universe_tracking_identifier, effectiveUniverse(orders)))
+    .leftJoin(subuniverses, eq(subuniverses.identifier, orders.subuniverse))
+    .where(where)
+    .orderBy(sql`${orders.order_date} DESC`);
+}
+
+type OrderListRow = Awaited<ReturnType<typeof sqliteOrderListQuery>>[number];
+
+async function selectOrderList(
+  c: QueryContext,
+  where: SQL<unknown> | undefined,
+  limit?: number,
+  offset?: number
+): Promise<OrderListRow[]> {
+  const base =
+    c.dialect === "sqlite" ? sqliteOrderListQuery(c, where) : pgOrderListQuery(c, where);
+  if (limit === undefined) return base;
+  if (offset === undefined) return base.limit(limit);
+  return base.limit(limit).offset(offset);
+}
+
 // ── Row normaliser ─────────────────────────────────────────────────────────────
 
-function normalizeOrder(row: Record<string, unknown>): QoqaOrder {
+type OrderNameKey = "universe_name" | "subuniverse_name";
+
+type NormalizableOrderRow = Omit<OrderListRow, OrderNameKey> &
+  Partial<Pick<OrderListRow, OrderNameKey>>;
+
+function normalizeOrder(row: NormalizableOrderRow): QoqaOrder {
   return {
     id: Number(row.id),
     order_number: String(row.order_number ?? ""),
@@ -176,23 +293,37 @@ function normalizeOrder(row: Record<string, unknown>): QoqaOrder {
 async function withSubuniverseTags(orderRows: QoqaOrder[]): Promise<QoqaOrder[]> {
   if (orderRows.length === 0) return orderRows;
 
-  const { subuniverses: subuniversesT, orderSubuniverses } = t();
+  const c = ctx();
   const orderNumbers = orderRows.map((o) => o.order_number);
 
-  const tags = (await getDb()
-    .select({
-      order_number: orderSubuniverses.order_number,
-      identifier: orderSubuniverses.subuniverse,
-      name: subuniversesT.name_fr,
-    })
-    .from(orderSubuniverses)
-    .leftJoin(subuniversesT, eq(subuniversesT.identifier, orderSubuniverses.subuniverse))
-    .where(inArray(orderSubuniverses.order_number, orderNumbers))
-    .orderBy(orderSubuniverses.position)) as unknown as {
-    order_number: string;
-    identifier: string;
-    name: string | null;
-  }[];
+  const tags =
+    c.dialect === "sqlite"
+      ? await c.db
+          .select({
+            order_number: c.orderSubuniverses.order_number,
+            identifier: c.orderSubuniverses.subuniverse,
+            name: c.subuniverses.name_fr,
+          })
+          .from(c.orderSubuniverses)
+          .leftJoin(
+            c.subuniverses,
+            eq(c.subuniverses.identifier, c.orderSubuniverses.subuniverse)
+          )
+          .where(inArray(c.orderSubuniverses.order_number, orderNumbers))
+          .orderBy(c.orderSubuniverses.position)
+      : await c.db
+          .select({
+            order_number: c.orderSubuniverses.order_number,
+            identifier: c.orderSubuniverses.subuniverse,
+            name: c.subuniverses.name_fr,
+          })
+          .from(c.orderSubuniverses)
+          .leftJoin(
+            c.subuniverses,
+            eq(c.subuniverses.identifier, c.orderSubuniverses.subuniverse)
+          )
+          .where(inArray(c.orderSubuniverses.order_number, orderNumbers))
+          .orderBy(c.orderSubuniverses.position);
 
   const byOrder = new Map<string, SubuniverseOption[]>();
   for (const tag of tags) {
@@ -210,14 +341,11 @@ async function withSubuniverseTags(orderRows: QoqaOrder[]): Promise<QoqaOrder[]>
 
 // ── Universe/date filter builder ──────────────────────────────────────────────
 
-function hasAnySubuniverse(
-  orders: typeof qoqaOrdersSqlite,
-  subs: string[]
-): SQL<unknown> {
+function hasAnySubuniverse(orders: OrdersTable, subs: string[]): SQL<unknown> {
   return sql`EXISTS (SELECT 1 FROM qoqa_order_subuniverses os WHERE os.order_number = ${orders.order_number} AND os.subuniverse IN (${sql.join(
     subs.map((s) => sql`${s}`),
     sql`, `
-  )}))` as SQL<unknown>;
+  )}))`;
 }
 
 /**
@@ -226,9 +354,9 @@ function hasAnySubuniverse(
  * identifiers (no universe prefix) match on the sub-universe alone.
  */
 function subuniverseConditions(
-  orders: typeof qoqaOrdersSqlite,
+  orders: OrdersTable,
   keys: string[]
-): SQL<unknown>[] {
+): (SQL<unknown> | undefined)[] {
   const byUniverse = new Map<string, string[]>();
   const bare: string[] = [];
 
@@ -244,13 +372,10 @@ function subuniverseConditions(
     else byUniverse.set(universe, [subuniverse]);
   }
 
-  const parts: SQL<unknown>[] = [];
+  const parts: (SQL<unknown> | undefined)[] = [];
   for (const [universe, subs] of byUniverse) {
     parts.push(
-      and(
-        eq(effectiveUniverse(orders), universe),
-        hasAnySubuniverse(orders, subs)
-      ) as SQL<unknown>
+      and(eq(effectiveUniverse(orders), universe), hasAnySubuniverse(orders, subs))
     );
   }
   if (bare.length > 0) parts.push(hasAnySubuniverse(orders, bare));
@@ -258,36 +383,32 @@ function subuniverseConditions(
 }
 
 function buildUniverseFilter(
-  orders: typeof qoqaOrdersSqlite,
+  orders: OrdersTable,
   universes: string[],
   subuniverses: string[],
   from?: string,
   to?: string
 ): SQL<unknown> | undefined {
   if (universes.includes(NO_UNIVERSE_FILTER)) {
-    return sql`1 = 0` as SQL<unknown>;
+    return sql`1 = 0`;
   }
 
-  const conditions: SQL<unknown>[] = [];
+  const conditions: (SQL<unknown> | undefined)[] = [];
 
-  const parts: SQL<unknown>[] = [];
-  if (universes.length > 0)
-    parts.push(inArray(effectiveUniverse(orders), universes) as SQL<unknown>);
+  const parts: (SQL<unknown> | undefined)[] = [];
+  if (universes.length > 0) parts.push(inArray(effectiveUniverse(orders), universes));
   parts.push(...subuniverseConditions(orders, subuniverses));
-  if (parts.length > 0) conditions.push(or(...parts) as SQL<unknown>);
+  if (parts.length > 0) conditions.push(or(...parts));
 
-  if (from) conditions.push(gte(orders.order_date, from) as SQL<unknown>);
-  if (to) conditions.push(lte(orders.order_date, to) as SQL<unknown>);
+  if (from) conditions.push(gte(orders.order_date, from));
+  if (to) conditions.push(lte(orders.order_date, to));
 
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
-function buildSearchFilter(
-  orders: typeof qoqaOrdersSqlite,
-  search: string
-): SQL<unknown> {
+function buildSearchFilter(orders: OrdersTable, search: string): SQL<unknown> | undefined {
   const pattern = `%${search}%`;
-  const like = (col: unknown) => ilikeCompat(col, pattern);
+  const like = (col: SQLWrapper) => ilikeCompat(col, pattern);
   const universe = effectiveUniverse(orders);
 
   return or(
@@ -309,7 +430,7 @@ function buildSearchFilter(
     sql`EXISTS (SELECT 1 FROM qoqa_order_subuniverses os LEFT JOIN qoqa_subuniverses su ON su.identifier = os.subuniverse WHERE os.order_number = ${orders.order_number} AND (${like(
       sql`os.subuniverse`
     )} OR ${like(sql`su.name_fr`)} OR ${like(sql`su.name_de`)}))`
-  ) as SQL<unknown>;
+  );
 }
 
 // ── Read queries ───────────────────────────────────────────────────────────────
@@ -320,17 +441,20 @@ export async function fetchStats(
   from?: string,
   to?: string
 ): Promise<OrderStats> {
-  const { orders } = t();
+  const c = ctx();
+  const { orders } = c;
   const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
 
-  const [row] = await getDb()
-    .select({
-      total_spent: sql<number>`SUM(${asFloat(orders.amount_chf)})`,
-      order_count: sql<number>`COUNT(*)`,
-      average_per_order: sql<number>`AVG(${asFloat(orders.amount_chf)})`,
-    })
-    .from(orders)
-    .where(where);
+  const selection = {
+    total_spent: sql<number>`SUM(${asFloat(orders.amount_chf)})`,
+    order_count: sql<number>`COUNT(*)`,
+    average_per_order: sql<number>`AVG(${asFloat(orders.amount_chf)})`,
+  };
+
+  const [row] =
+    c.dialect === "sqlite"
+      ? await c.db.select(selection).from(c.orders).where(where)
+      : await c.db.select(selection).from(c.orders).where(where);
 
   return {
     total_spent: Number(row?.total_spent ?? 0),
@@ -345,19 +469,20 @@ export async function fetchMonthlySpending(
   from?: string,
   to?: string
 ): Promise<MonthlySpending[]> {
-  const { orders } = t();
+  const c = ctx();
+  const { orders } = c;
   const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
+  const month = yearMonth(orders.order_date);
 
-  return getDb()
-    .select({
-      month: yearMonth(orders.order_date),
-      total: sql<number>`SUM(${asFloat(orders.amount_chf)})`,
-      count: sql<number>`COUNT(*)`,
-    })
-    .from(orders)
-    .where(where)
-    .groupBy(yearMonth(orders.order_date))
-    .orderBy(yearMonth(orders.order_date)) as unknown as MonthlySpending[];
+  const selection = {
+    month,
+    total: sql<number>`SUM(${asFloat(orders.amount_chf)})`,
+    count: sql<number>`COUNT(*)`,
+  };
+
+  return c.dialect === "sqlite"
+    ? c.db.select(selection).from(c.orders).where(where).groupBy(month).orderBy(month)
+    : c.db.select(selection).from(c.orders).where(where).groupBy(month).orderBy(month);
 }
 
 export async function fetchYearlySpending(
@@ -366,19 +491,20 @@ export async function fetchYearlySpending(
   from?: string,
   to?: string
 ): Promise<YearlySpending[]> {
-  const { orders } = t();
+  const c = ctx();
+  const { orders } = c;
   const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
+  const year = yearOf(orders.order_date);
 
-  return getDb()
-    .select({
-      year: yearOf(orders.order_date),
-      total: sql<number>`SUM(${asFloat(orders.amount_chf)})`,
-      count: sql<number>`COUNT(*)`,
-    })
-    .from(orders)
-    .where(where)
-    .groupBy(yearOf(orders.order_date))
-    .orderBy(yearOf(orders.order_date)) as unknown as YearlySpending[];
+  const selection = {
+    year,
+    total: sql<number>`SUM(${asFloat(orders.amount_chf)})`,
+    count: sql<number>`COUNT(*)`,
+  };
+
+  return c.dialect === "sqlite"
+    ? c.db.select(selection).from(c.orders).where(where).groupBy(year).orderBy(year)
+    : c.db.select(selection).from(c.orders).where(where).groupBy(year).orderBy(year);
 }
 
 export async function fetchTotalCount(
@@ -387,13 +513,15 @@ export async function fetchTotalCount(
   from?: string,
   to?: string
 ): Promise<number> {
-  const { orders } = t();
+  const c = ctx();
+  const { orders } = c;
   const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
+  const selection = { count: sql<number>`COUNT(*)` };
 
-  const [row] = await getDb()
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(orders)
-    .where(where);
+  const [row] =
+    c.dialect === "sqlite"
+      ? await c.db.select(selection).from(c.orders).where(where)
+      : await c.db.select(selection).from(c.orders).where(where);
   return Number(row?.count ?? 0);
 }
 
@@ -404,17 +532,10 @@ export async function fetchInitialOrders(
   to?: string,
   pageSize = DEFAULT_PAGE_SIZE
 ): Promise<QoqaOrder[]> {
-  const { orders, universes: universesT, subuniverses: subuniversesT } = t();
-  const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
+  const c = ctx();
+  const where = buildUniverseFilter(c.orders, universes, subuniverses, from, to);
 
-  const rows = await getDb()
-    .select(orderListSelection(orders, universesT, subuniversesT))
-    .from(orders)
-    .leftJoin(universesT, eq(universesT.universe_tracking_identifier, effectiveUniverse(orders)))
-    .leftJoin(subuniversesT, eq(subuniversesT.identifier, orders.subuniverse!))
-    .where(where)
-    .orderBy(sql`${orders.order_date} DESC`)
-    .limit(pageSize) as unknown as Record<string, unknown>[];
+  const rows = await selectOrderList(c, where, pageSize);
 
   return withSubuniverseTags(rows.map(normalizeOrder));
 }
@@ -428,7 +549,8 @@ export async function fetchOrders(
   from?: string,
   to?: string
 ): Promise<{ orders: QoqaOrder[]; total: number }> {
-  const { orders, universes: universesT, subuniverses: subuniversesT } = t();
+  const c = ctx();
+  const { orders } = c;
   const filter = buildUniverseFilter(orders, universes, subuniverses, from, to);
 
   const searchCondition = search ? buildSearchFilter(orders, search) : undefined;
@@ -438,20 +560,13 @@ export async function fetchOrders(
       ? and(filter, searchCondition)
       : (filter ?? searchCondition);
 
-  const [{ count }] = await getDb()
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(orders)
-    .where(where);
+  const countSelection = { count: sql<number>`COUNT(*)` };
+  const [{ count }] =
+    c.dialect === "sqlite"
+      ? await c.db.select(countSelection).from(c.orders).where(where)
+      : await c.db.select(countSelection).from(c.orders).where(where);
 
-  const rows = await getDb()
-    .select(orderListSelection(orders, universesT, subuniversesT))
-    .from(orders)
-    .leftJoin(universesT, eq(universesT.universe_tracking_identifier, effectiveUniverse(orders)))
-    .leftJoin(subuniversesT, eq(subuniversesT.identifier, orders.subuniverse!))
-    .where(where)
-    .orderBy(sql`${orders.order_date} DESC`)
-    .limit(pageSize)
-    .offset((page - 1) * pageSize) as unknown as Record<string, unknown>[];
+  const rows = await selectOrderList(c, where, pageSize, (page - 1) * pageSize);
 
   return {
     orders: await withSubuniverseTags(rows.map(normalizeOrder)),
@@ -465,43 +580,52 @@ export async function fetchAllOrders(params: {
   from?: string;
   to?: string;
 }): Promise<QoqaOrder[]> {
-  const { orders, universes: universesT, subuniverses: subuniversesT } = t();
+  const c = ctx();
 
   const where = buildUniverseFilter(
-    orders,
+    c.orders,
     params.universes ?? [],
     params.subuniverses ?? [],
     params.from,
     params.to
   );
 
-  const rows = await getDb()
-    .select(orderListSelection(orders, universesT, subuniversesT))
-    .from(orders)
-    .leftJoin(universesT, eq(universesT.universe_tracking_identifier, effectiveUniverse(orders)))
-    .leftJoin(subuniversesT, eq(subuniversesT.identifier, orders.subuniverse!))
-    .where(where)
-    .orderBy(sql`${orders.order_date} DESC`) as unknown as Record<string, unknown>[];
+  const rows = await selectOrderList(c, where);
 
   return withSubuniverseTags(rows.map(normalizeOrder));
 }
 
+type UniverseRow = typeof qoqaUniversesSqlite.$inferSelect;
+type SubuniverseRow = typeof qoqaSubuniversesSqlite.$inferSelect;
+
 export async function fetchUniverses(): Promise<UniverseOption[]> {
-  const { orders, universes, subuniverses, orderSubuniverses } = t();
+  const c = ctx();
+  const universeExpr = effectiveUniverse(c.orders);
 
   // The tree is derived from the universe/sub-universe pairs the orders actually
   // carry, each mapped to the universe its sub-universe belongs to today — see
   // effectiveUniverse(). Every tag of an order is listed, not only its primary,
   // so a secondary tag can still be picked in the filter.
-  const pairs = (await getDb()
-    .select({ universe: effectiveUniverse(orders), subuniverse: orderSubuniverses.subuniverse })
-    .from(orders)
-    .leftJoin(orderSubuniverses, eq(orderSubuniverses.order_number, orders.order_number))
-    .where(isNotNull(orders.universe))
-    .groupBy(effectiveUniverse(orders), orderSubuniverses.subuniverse)) as unknown as {
-    universe: string | null;
-    subuniverse: string | null;
-  }[];
+  const pairs =
+    c.dialect === "sqlite"
+      ? await c.db
+          .select({ universe: universeExpr, subuniverse: c.orderSubuniverses.subuniverse })
+          .from(c.orders)
+          .leftJoin(
+            c.orderSubuniverses,
+            eq(c.orderSubuniverses.order_number, c.orders.order_number)
+          )
+          .where(isNotNull(c.orders.universe))
+          .groupBy(universeExpr, c.orderSubuniverses.subuniverse)
+      : await c.db
+          .select({ universe: universeExpr, subuniverse: c.orderSubuniverses.subuniverse })
+          .from(c.orders)
+          .leftJoin(
+            c.orderSubuniverses,
+            eq(c.orderSubuniverses.order_number, c.orders.order_number)
+          )
+          .where(isNotNull(c.orders.universe))
+          .groupBy(universeExpr, c.orderSubuniverses.subuniverse);
 
   const tree = new Map<string, Set<string>>();
   for (const { universe, subuniverse } of pairs) {
@@ -516,22 +640,39 @@ export async function fetchUniverses(): Promise<UniverseOption[]> {
   const usedUniverseIds = [...tree.keys()];
   const usedSubuniverseIds = [...new Set([...tree.values()].flatMap((subs) => [...subs]))];
 
-  const [universesRows, subuniversesRows] = await Promise.all([
-    getDb()
-      .select()
-      .from(universes)
-      .where(inArray(universes.universe_tracking_identifier, usedUniverseIds)),
+  const universesQuery: PromiseLike<UniverseRow[]> =
+    c.dialect === "sqlite"
+      ? c.db
+          .select()
+          .from(c.universes)
+          .where(inArray(c.universes.universe_tracking_identifier, usedUniverseIds))
+      : c.db
+          .select()
+          .from(c.universes)
+          .where(inArray(c.universes.universe_tracking_identifier, usedUniverseIds));
+
+  const subuniversesQuery: PromiseLike<SubuniverseRow[]> =
     usedSubuniverseIds.length > 0
-      ? getDb().select().from(subuniverses).where(inArray(subuniverses.identifier, usedSubuniverseIds))
-      : Promise.resolve([]),
+      ? c.dialect === "sqlite"
+        ? c.db
+            .select()
+            .from(c.subuniverses)
+            .where(inArray(c.subuniverses.identifier, usedSubuniverseIds))
+        : c.db
+            .select()
+            .from(c.subuniverses)
+            .where(inArray(c.subuniverses.identifier, usedSubuniverseIds))
+      : Promise.resolve([]);
+
+  const [universesRows, subuniversesRows] = await Promise.all([
+    universesQuery,
+    subuniversesQuery,
   ]);
 
   const universeNames = new Map(
-    universesRows.map((u) => [u.universe_tracking_identifier, u.name_fr as string | null])
+    universesRows.map((u) => [u.universe_tracking_identifier, u.name_fr])
   );
-  const subuniverseNames = new Map(
-    subuniversesRows.map((s) => [s.identifier, s.name_fr as string | null])
-  );
+  const subuniverseNames = new Map(subuniversesRows.map((s) => [s.identifier, s.name_fr]));
   const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
 
   return [...tree.entries()]
@@ -545,49 +686,104 @@ export async function fetchUniverses(): Promise<UniverseOption[]> {
     .sort(byName);
 }
 
-export async function fetchSpendingByGroup(
-  mode: "universe" | "subuniverse",
-  universes: string[],
-  subuniverses: string[],
-  from?: string,
-  to?: string
-): Promise<SpendingByGroup[]> {
-  const { orders } = t();
-  const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
-  const groupCol =
-    mode === "universe" ? effectiveUniverse(orders) : orders.subuniverse;
+type SpendingGroupMode = "universe" | "subuniverse";
 
-  const nameSubquery =
-    mode === "universe"
-      ? sql<string>`(SELECT name_fr FROM qoqa_universes WHERE universe_tracking_identifier = ${groupCol})`
-      : sql<string>`(SELECT name_fr FROM qoqa_subuniverses WHERE identifier = ${groupCol})`;
+function spendingGroupColumn<T extends OrdersTable>(
+  mode: SpendingGroupMode,
+  orders: T
+): SQL<string> | T["subuniverse"] {
+  return mode === "universe" ? effectiveUniverse(orders) : orders.subuniverse;
+}
 
-  const rows = await getDb()
+function spendingGroupName(mode: SpendingGroupMode, groupCol: SQLWrapper): SQL<string | null> {
+  return mode === "universe"
+    ? sql<
+        string | null
+      >`(SELECT name_fr FROM qoqa_universes WHERE universe_tracking_identifier = ${groupCol})`
+    : sql<string | null>`(SELECT name_fr FROM qoqa_subuniverses WHERE identifier = ${groupCol})`;
+}
+
+function sqliteSpendingByGroup(
+  c: SqliteContext,
+  mode: SpendingGroupMode,
+  where: SQL<unknown> | undefined
+) {
+  const { orders } = c;
+  const groupCol = spendingGroupColumn(mode, orders);
+  return c.db
     .select({
       identifier: groupCol,
-      name: nameSubquery,
+      name: spendingGroupName(mode, groupCol),
       total: sql<number>`SUM(${asFloat(orders.amount_chf)})`,
       count: sql<number>`COUNT(*)`,
     })
     .from(orders)
     .where(and(where, isNotNull(groupCol)))
     .groupBy(groupCol)
-    .orderBy(sql`SUM(${asFloat(orders.amount_chf)}) DESC`) as unknown as SpendingByGroup[];
+    .orderBy(sql`SUM(${asFloat(orders.amount_chf)}) DESC`);
+}
 
-  return rows.map((r) => ({
-    ...r,
-    name: (r.name as string | null) ?? (r.identifier as string),
-    total: Number(r.total),
-    count: Number(r.count),
-  }));
+function pgSpendingByGroup(
+  c: PgContext,
+  mode: SpendingGroupMode,
+  where: SQL<unknown> | undefined
+) {
+  const { orders } = c;
+  const groupCol = spendingGroupColumn(mode, orders);
+  return c.db
+    .select({
+      identifier: groupCol,
+      name: spendingGroupName(mode, groupCol),
+      total: sql<number>`SUM(${asFloat(orders.amount_chf)})`,
+      count: sql<number>`COUNT(*)`,
+    })
+    .from(orders)
+    .where(and(where, isNotNull(groupCol)))
+    .groupBy(groupCol)
+    .orderBy(sql`SUM(${asFloat(orders.amount_chf)}) DESC`);
+}
+
+type SpendingGroupRow = Awaited<ReturnType<typeof sqliteSpendingByGroup>>[number];
+
+export async function fetchSpendingByGroup(
+  mode: SpendingGroupMode,
+  universes: string[],
+  subuniverses: string[],
+  from?: string,
+  to?: string
+): Promise<SpendingByGroup[]> {
+  const c = ctx();
+  const where = buildUniverseFilter(c.orders, universes, subuniverses, from, to);
+
+  const rows: SpendingGroupRow[] =
+    c.dialect === "sqlite"
+      ? await sqliteSpendingByGroup(c, mode, where)
+      : await pgSpendingByGroup(c, mode, where);
+
+  return rows.map((r) => {
+    const identifier = r.identifier as string;
+    return {
+      identifier,
+      name: r.name ?? identifier,
+      total: Number(r.total),
+      count: Number(r.count),
+    };
+  });
 }
 
 export async function fetchOrderPdf(orderNumber: string): Promise<Buffer | null> {
-  const { orders } = t();
-  const [row] = await getDb()
-    .select({ pdf_data: orders.pdf_data })
-    .from(orders)
-    .where(sql`${orders.order_number} = ${orderNumber}`);
+  const c = ctx();
+
+  const [row] =
+    c.dialect === "sqlite"
+      ? await c.db
+          .select({ pdf_data: c.orders.pdf_data })
+          .from(c.orders)
+          .where(sql`${c.orders.order_number} = ${orderNumber}`)
+      : await c.db
+          .select({ pdf_data: c.orders.pdf_data })
+          .from(c.orders)
+          .where(sql`${c.orders.order_number} = ${orderNumber}`);
 
   if (!row?.pdf_data) return null;
   const data = row.pdf_data as Buffer | Uint8Array | ArrayBuffer;
@@ -598,15 +794,25 @@ export async function fetchOrderPdf(orderNumber: string): Promise<Buffer | null>
 // ── Write queries ──────────────────────────────────────────────────────────────
 
 export async function getOrderByNumber(orderNumber: string): Promise<QoqaOrder | null> {
-  const { orders } = t();
-  const rows = await getDb()
-    .select(orderListColumns(orders))
-    .from(orders)
-    .where(sql`${orders.order_number} = ${orderNumber}`)
-    .limit(1) as unknown as Record<string, unknown>[];
+  const c = ctx();
+
+  const rows =
+    c.dialect === "sqlite"
+      ? await c.db
+          .select(orderListColumns(c.orders))
+          .from(c.orders)
+          .where(sql`${c.orders.order_number} = ${orderNumber}`)
+          .limit(1)
+      : await c.db
+          .select(orderListColumns(c.orders))
+          .from(c.orders)
+          .where(sql`${c.orders.order_number} = ${orderNumber}`)
+          .limit(1);
 
   return rows.length > 0 ? normalizeOrder(rows[0]) : null;
 }
+
+type OrderNumberRow = Pick<typeof qoqaOrdersSqlite.$inferSelect, "order_number">;
 
 /**
  * Order numbers last written before `cutoff`, oldest first. QoQa re-tags offers
@@ -615,24 +821,40 @@ export async function getOrderByNumber(orderNumber: string): Promise<QoqaOrder |
  * oldest few per sync converges without re-fetching every order every time.
  */
 export async function fetchStaleOrderNumbers(cutoff: string, limit: number): Promise<string[]> {
-  const { orders } = t();
-  const rows = await getDb()
-    .select({ order_number: orders.order_number })
-    .from(orders)
-    .where(sql`${orders.updated_at} < ${cutoff}`)
-    .orderBy(sql`${orders.updated_at} ASC`)
-    .limit(limit);
+  const c = ctx();
+
+  const rows: OrderNumberRow[] =
+    c.dialect === "sqlite"
+      ? await c.db
+          .select({ order_number: c.orders.order_number })
+          .from(c.orders)
+          .where(sql`${c.orders.updated_at} < ${cutoff}`)
+          .orderBy(sql`${c.orders.updated_at} ASC`)
+          .limit(limit)
+      : await c.db
+          .select({ order_number: c.orders.order_number })
+          .from(c.orders)
+          .where(sql`${c.orders.updated_at} < ${cutoff}`)
+          .orderBy(sql`${c.orders.updated_at} ASC`)
+          .limit(limit);
 
   return rows.map((r) => String(r.order_number));
 }
 
 /** Order numbers stored without an invoice PDF — candidates for a later retry. */
 export async function fetchOrderNumbersMissingPdf(): Promise<string[]> {
-  const { orders } = t();
-  const rows = await getDb()
-    .select({ order_number: orders.order_number })
-    .from(orders)
-    .where(sql`${orders.pdf_data} IS NULL`);
+  const c = ctx();
+
+  const rows: OrderNumberRow[] =
+    c.dialect === "sqlite"
+      ? await c.db
+          .select({ order_number: c.orders.order_number })
+          .from(c.orders)
+          .where(sql`${c.orders.pdf_data} IS NULL`)
+      : await c.db
+          .select({ order_number: c.orders.order_number })
+          .from(c.orders)
+          .where(sql`${c.orders.pdf_data} IS NULL`);
 
   return rows.map((r) => String(r.order_number));
 }
@@ -667,22 +889,22 @@ export async function upsertOrder(data: NewOrderData): Promise<void> {
     updated_at: now,
   };
 
-  const db = getDb() as unknown as ReturnType<typeof import("drizzle-orm/bun-sqlite").drizzle>;
+  const c = ctx();
 
   // A failed PDF download must not wipe a PDF already stored for this order.
   const { pdf_data: _pdf, pdf_filename: _name, ...rest } = values;
   const set = pdfBuf ? values : rest;
 
-  if (isDbSqlite()) {
-    await (db as any)
-      .insert(qoqaOrdersSqlite)
+  if (c.dialect === "sqlite") {
+    await c.db
+      .insert(c.orders)
       .values(values)
-      .onConflictDoUpdate({ target: qoqaOrdersSqlite.order_number, set });
+      .onConflictDoUpdate({ target: c.orders.order_number, set });
   } else {
-    await (db as any)
-      .insert(qoqaOrdersPg)
+    await c.db
+      .insert(c.orders)
       .values(values)
-      .onConflictDoUpdate({ target: qoqaOrdersPg.order_number, set });
+      .onConflictDoUpdate({ target: c.orders.order_number, set });
   }
 
   if (data.subuniverses) {
@@ -694,42 +916,65 @@ async function replaceOrderSubuniverses(
   orderNumber: string,
   subuniverses: string[]
 ): Promise<void> {
-  const { orderSubuniverses } = t();
+  const c = ctx();
 
-  await getDb().delete(orderSubuniverses).where(eq(orderSubuniverses.order_number, orderNumber));
+  if (c.dialect === "sqlite") {
+    await c.db
+      .delete(c.orderSubuniverses)
+      .where(eq(c.orderSubuniverses.order_number, orderNumber));
+  } else {
+    await c.db
+      .delete(c.orderSubuniverses)
+      .where(eq(c.orderSubuniverses.order_number, orderNumber));
+  }
 
   if (subuniverses.length === 0) return;
 
-  await (getDb() as any).insert(orderSubuniverses).values(
-    subuniverses.map((subuniverse, position) => ({
-      order_number: orderNumber,
-      subuniverse,
-      position,
-    }))
-  );
+  const values = subuniverses.map((subuniverse, position) => ({
+    order_number: orderNumber,
+    subuniverse,
+    position,
+  }));
+
+  if (c.dialect === "sqlite") {
+    await c.db.insert(c.orderSubuniverses).values(values);
+  } else {
+    await c.db.insert(c.orderSubuniverses).values(values);
+  }
 }
 
 export async function backfillOrderSubuniverses(): Promise<number> {
-  const { orders, orderSubuniverses } = t();
+  const c = ctx();
+  const countSelection = { count: sql<number>`COUNT(*)` };
 
-  const [existing] = await getDb()
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(orderSubuniverses);
+  const [existing] =
+    c.dialect === "sqlite"
+      ? await c.db.select(countSelection).from(c.orderSubuniverses)
+      : await c.db.select(countSelection).from(c.orderSubuniverses);
   if (Number(existing?.count ?? 0) > 0) return 0;
 
-  const rows = await getDb()
-    .select({
-      order_number: orders.order_number,
-      subuniverse: orders.subuniverse,
-      raw_json: orders.raw_json,
-    })
-    .from(orders);
+  const rows =
+    c.dialect === "sqlite"
+      ? await c.db
+          .select({
+            order_number: c.orders.order_number,
+            subuniverse: c.orders.subuniverse,
+            raw_json: c.orders.raw_json,
+          })
+          .from(c.orders)
+      : await c.db
+          .select({
+            order_number: c.orders.order_number,
+            subuniverse: c.orders.subuniverse,
+            raw_json: c.orders.raw_json,
+          })
+          .from(c.orders);
 
   const values: { order_number: string; subuniverse: string; position: number }[] = [];
 
   for (const row of rows) {
     const orderNumber = String(row.order_number);
-    const tags = subuniverseTagsFromRaw(row.raw_json as string | null);
+    const tags = subuniverseTagsFromRaw(row.raw_json);
     const list = tags.length > 0 ? tags : row.subuniverse ? [String(row.subuniverse)] : [];
     list.forEach((subuniverse, position) =>
       values.push({ order_number: orderNumber, subuniverse, position })
@@ -739,7 +984,12 @@ export async function backfillOrderSubuniverses(): Promise<number> {
   if (values.length === 0) return 0;
 
   for (let i = 0; i < values.length; i += 200) {
-    await (getDb() as any).insert(orderSubuniverses).values(values.slice(i, i + 200));
+    const chunk = values.slice(i, i + 200);
+    if (c.dialect === "sqlite") {
+      await c.db.insert(c.orderSubuniverses).values(chunk);
+    } else {
+      await c.db.insert(c.orderSubuniverses).values(chunk);
+    }
   }
 
   return values.length;
@@ -779,16 +1029,18 @@ export async function upsertUniverse(data: {
   };
   const set = { name_fr: values.name_fr, name_de: values.name_de, updated_at: now };
 
-  if (isDbSqlite()) {
-    await (getDb() as any)
-      .insert(qoqaUniversesSqlite)
+  const c = ctx();
+
+  if (c.dialect === "sqlite") {
+    await c.db
+      .insert(c.universes)
       .values(values)
-      .onConflictDoUpdate({ target: qoqaUniversesSqlite.universe_tracking_identifier, set });
+      .onConflictDoUpdate({ target: c.universes.universe_tracking_identifier, set });
   } else {
-    await (getDb() as any)
-      .insert(qoqaUniversesPg)
+    await c.db
+      .insert(c.universes)
       .values(values)
-      .onConflictDoUpdate({ target: qoqaUniversesPg.universe_tracking_identifier, set });
+      .onConflictDoUpdate({ target: c.universes.universe_tracking_identifier, set });
   }
 }
 
@@ -813,15 +1065,17 @@ export async function upsertSubuniverse(data: {
     updated_at: now,
   };
 
-  if (isDbSqlite()) {
-    await (getDb() as any)
-      .insert(qoqaSubuniversesSqlite)
+  const c = ctx();
+
+  if (c.dialect === "sqlite") {
+    await c.db
+      .insert(c.subuniverses)
       .values(values)
-      .onConflictDoUpdate({ target: qoqaSubuniversesSqlite.identifier, set });
+      .onConflictDoUpdate({ target: c.subuniverses.identifier, set });
   } else {
-    await (getDb() as any)
-      .insert(qoqaSubuniversesPg)
+    await c.db
+      .insert(c.subuniverses)
       .values(values)
-      .onConflictDoUpdate({ target: qoqaSubuniversesPg.identifier, set });
+      .onConflictDoUpdate({ target: c.subuniverses.identifier, set });
   }
 }
