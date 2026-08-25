@@ -70,7 +70,7 @@ All scripts are run with `bun run <name>`.
 | `start` | `NODE_ENV=production bun src/server/index.ts` | Start the Hono server in web production mode. Serves the pre-built SPA from `dist/` in addition to the API. Run `build` first. |
 | `lint` | `eslint src --ext .ts,.tsx` | Lint all TypeScript source files. |
 | `typecheck` | `bunx electrobun prepare && tsc --noEmit` | Type-check the whole project without emitting output. Prepares the devkit first, because `tsconfig.json` maps the `electrobun` and `electrobun/main` specifiers into `.hutch/devkit/`. |
-| `db:push` | `drizzle-kit push` | Push the Drizzle schema to the database (creates or alters tables). |
+| `db:push` | `drizzle-kit push` | Push the Drizzle schema to the database (creates or alters tables). Requires `DATABASE_URL`, which names the database and selects the dialect; `drizzle.config.ts` never reads the app's `settings.json`, so the command targets the same database on every machine and fails with a clear error when the variable is missing. |
 
 ---
 
