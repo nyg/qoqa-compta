@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import type { PieLabelRenderProps } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFormatter } from "@/lib/formatter-context";
 import type { SpendingByGroup } from "../../shared/types";
@@ -17,14 +18,10 @@ interface SpendingPieChartProps {
   title: string;
 }
 
-interface PctLabelProps {
-  cx: number;
-  cy: number;
-  midAngle: number;
-  innerRadius: number;
-  outerRadius: number;
-  percent: number;
-}
+type PctLabelProps = Pick<
+  PieLabelRenderProps,
+  "cx" | "cy" | "midAngle" | "innerRadius" | "outerRadius" | "percent"
+>;
 
 function pctLabelRenderer(formatPercent: (fraction: number) => string) {
   return function renderPctLabel({
@@ -35,7 +32,7 @@ function pctLabelRenderer(formatPercent: (fraction: number) => string) {
     outerRadius,
     percent,
   }: PctLabelProps) {
-    if (percent < 0.06) return null;
+    if (midAngle == null || percent == null || percent < 0.06) return null;
     const r = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + r * Math.cos(-(midAngle * Math.PI) / 180);
     const y = cy + r * Math.sin(-(midAngle * Math.PI) / 180);
@@ -81,7 +78,7 @@ export function SpendingPieChart({ data, title }: SpendingPieChartProps) {
               innerRadius={55}
               outerRadius={95}
               paddingAngle={2}
-              label={renderPctLabel as any}
+              label={renderPctLabel}
               labelLine={false}
             >
               {data.map((entry, index) => (

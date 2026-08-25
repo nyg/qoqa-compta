@@ -1,5 +1,11 @@
 /// <reference types="bun-types" />
-import { BrowserWindow, BuildConfig, Utils } from "electrobun/main";
+import {
+  BrowserWindow,
+  BuildConfig,
+  Utils,
+  type BrowserView,
+  type ElectrobunEvent,
+} from "electrobun/main";
 import { createApp } from "../server/app";
 import { initDb } from "../server/db";
 import { bootstrapSchema } from "../server/schema-bootstrap";
@@ -7,6 +13,18 @@ import { backfillOrderSubuniverses } from "../server/queries";
 import { installApplicationMenu } from "./menu";
 import { systemLocales } from "./locale";
 import { resolveInitialWindowState, trackWindowState } from "./window-state";
+
+type NewWindowOpenEvent = ElectrobunEvent<
+  { detail?: string | { url?: string } },
+  unknown
+>;
+
+type NewWindowOpenEmitter = BrowserView & {
+  on(
+    name: "new-window-open",
+    handler: (event: NewWindowOpenEvent) => void
+  ): void;
+};
 
 const DEV_API_PORT = 3001;
 const DEV_SERVER_URL = "http://localhost:3000";
@@ -75,7 +93,8 @@ async function main() {
   });
 
   // Open target="_blank" links in the default system browser instead of the WebView.
-  (win.webview as any).on("new-window-open", (event: any) => {
+  const webviewEvents = win.webview as NewWindowOpenEmitter;
+  webviewEvents.on("new-window-open", (event) => {
     const detail = event?.data?.detail;
     const href: string | undefined = typeof detail === "string" ? detail : detail?.url;
     if (href) {
