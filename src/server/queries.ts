@@ -1,5 +1,5 @@
 import { sql, eq, inArray, ilike, and, or, gte, lte, isNotNull, type SQL } from "drizzle-orm";
-import { getDb, isDbSqlite } from "./db";
+import { getDb, isDbSqlite, type SqliteDatabase } from "./db";
 import {
   qoqaOrdersSqlite,
   qoqaOrdersPg,
@@ -45,6 +45,10 @@ export interface NewOrderData {
   pdf_filename?: string | null;
   pdf_data?: Uint8Array | Buffer | null;
   raw_json?: string | null;
+}
+
+function legacyDb(): SqliteDatabase {
+  return getDb().db as unknown as SqliteDatabase;
 }
 
 // ── Table accessor ─────────────────────────────────────────────────────────────
@@ -179,7 +183,7 @@ async function withSubuniverseTags(orderRows: QoqaOrder[]): Promise<QoqaOrder[]>
   const { subuniverses: subuniversesT, orderSubuniverses } = t();
   const orderNumbers = orderRows.map((o) => o.order_number);
 
-  const tags = (await getDb()
+  const tags = (await legacyDb()
     .select({
       order_number: orderSubuniverses.order_number,
       identifier: orderSubuniverses.subuniverse,
@@ -323,7 +327,7 @@ export async function fetchStats(
   const { orders } = t();
   const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
 
-  const [row] = await getDb()
+  const [row] = await legacyDb()
     .select({
       total_spent: sql<number>`SUM(${asFloat(orders.amount_chf)})`,
       order_count: sql<number>`COUNT(*)`,
@@ -348,7 +352,7 @@ export async function fetchMonthlySpending(
   const { orders } = t();
   const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
 
-  return getDb()
+  return legacyDb()
     .select({
       month: yearMonth(orders.order_date),
       total: sql<number>`SUM(${asFloat(orders.amount_chf)})`,
@@ -369,7 +373,7 @@ export async function fetchYearlySpending(
   const { orders } = t();
   const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
 
-  return getDb()
+  return legacyDb()
     .select({
       year: yearOf(orders.order_date),
       total: sql<number>`SUM(${asFloat(orders.amount_chf)})`,
@@ -390,7 +394,7 @@ export async function fetchTotalCount(
   const { orders } = t();
   const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
 
-  const [row] = await getDb()
+  const [row] = await legacyDb()
     .select({ count: sql<number>`COUNT(*)` })
     .from(orders)
     .where(where);
@@ -407,7 +411,7 @@ export async function fetchInitialOrders(
   const { orders, universes: universesT, subuniverses: subuniversesT } = t();
   const where = buildUniverseFilter(orders, universes, subuniverses, from, to);
 
-  const rows = await getDb()
+  const rows = await legacyDb()
     .select(orderListSelection(orders, universesT, subuniversesT))
     .from(orders)
     .leftJoin(universesT, eq(universesT.universe_tracking_identifier, effectiveUniverse(orders)))
@@ -438,12 +442,12 @@ export async function fetchOrders(
       ? and(filter, searchCondition)
       : (filter ?? searchCondition);
 
-  const [{ count }] = await getDb()
+  const [{ count }] = await legacyDb()
     .select({ count: sql<number>`COUNT(*)` })
     .from(orders)
     .where(where);
 
-  const rows = await getDb()
+  const rows = await legacyDb()
     .select(orderListSelection(orders, universesT, subuniversesT))
     .from(orders)
     .leftJoin(universesT, eq(universesT.universe_tracking_identifier, effectiveUniverse(orders)))
@@ -475,7 +479,7 @@ export async function fetchAllOrders(params: {
     params.to
   );
 
-  const rows = await getDb()
+  const rows = await legacyDb()
     .select(orderListSelection(orders, universesT, subuniversesT))
     .from(orders)
     .leftJoin(universesT, eq(universesT.universe_tracking_identifier, effectiveUniverse(orders)))
@@ -493,7 +497,7 @@ export async function fetchUniverses(): Promise<UniverseOption[]> {
   // carry, each mapped to the universe its sub-universe belongs to today — see
   // effectiveUniverse(). Every tag of an order is listed, not only its primary,
   // so a secondary tag can still be picked in the filter.
-  const pairs = (await getDb()
+  const pairs = (await legacyDb()
     .select({ universe: effectiveUniverse(orders), subuniverse: orderSubuniverses.subuniverse })
     .from(orders)
     .leftJoin(orderSubuniverses, eq(orderSubuniverses.order_number, orders.order_number))
@@ -517,12 +521,12 @@ export async function fetchUniverses(): Promise<UniverseOption[]> {
   const usedSubuniverseIds = [...new Set([...tree.values()].flatMap((subs) => [...subs]))];
 
   const [universesRows, subuniversesRows] = await Promise.all([
-    getDb()
+    legacyDb()
       .select()
       .from(universes)
       .where(inArray(universes.universe_tracking_identifier, usedUniverseIds)),
     usedSubuniverseIds.length > 0
-      ? getDb().select().from(subuniverses).where(inArray(subuniverses.identifier, usedSubuniverseIds))
+      ? legacyDb().select().from(subuniverses).where(inArray(subuniverses.identifier, usedSubuniverseIds))
       : Promise.resolve([]),
   ]);
 
@@ -562,7 +566,7 @@ export async function fetchSpendingByGroup(
       ? sql<string>`(SELECT name_fr FROM qoqa_universes WHERE universe_tracking_identifier = ${groupCol})`
       : sql<string>`(SELECT name_fr FROM qoqa_subuniverses WHERE identifier = ${groupCol})`;
 
-  const rows = await getDb()
+  const rows = await legacyDb()
     .select({
       identifier: groupCol,
       name: nameSubquery,
@@ -584,7 +588,7 @@ export async function fetchSpendingByGroup(
 
 export async function fetchOrderPdf(orderNumber: string): Promise<Buffer | null> {
   const { orders } = t();
-  const [row] = await getDb()
+  const [row] = await legacyDb()
     .select({ pdf_data: orders.pdf_data })
     .from(orders)
     .where(sql`${orders.order_number} = ${orderNumber}`);
@@ -599,7 +603,7 @@ export async function fetchOrderPdf(orderNumber: string): Promise<Buffer | null>
 
 export async function getOrderByNumber(orderNumber: string): Promise<QoqaOrder | null> {
   const { orders } = t();
-  const rows = await getDb()
+  const rows = await legacyDb()
     .select(orderListColumns(orders))
     .from(orders)
     .where(sql`${orders.order_number} = ${orderNumber}`)
@@ -616,7 +620,7 @@ export async function getOrderByNumber(orderNumber: string): Promise<QoqaOrder |
  */
 export async function fetchStaleOrderNumbers(cutoff: string, limit: number): Promise<string[]> {
   const { orders } = t();
-  const rows = await getDb()
+  const rows = await legacyDb()
     .select({ order_number: orders.order_number })
     .from(orders)
     .where(sql`${orders.updated_at} < ${cutoff}`)
@@ -629,7 +633,7 @@ export async function fetchStaleOrderNumbers(cutoff: string, limit: number): Pro
 /** Order numbers stored without an invoice PDF — candidates for a later retry. */
 export async function fetchOrderNumbersMissingPdf(): Promise<string[]> {
   const { orders } = t();
-  const rows = await getDb()
+  const rows = await legacyDb()
     .select({ order_number: orders.order_number })
     .from(orders)
     .where(sql`${orders.pdf_data} IS NULL`);
@@ -667,7 +671,7 @@ export async function upsertOrder(data: NewOrderData): Promise<void> {
     updated_at: now,
   };
 
-  const db = getDb() as unknown as ReturnType<typeof import("drizzle-orm/bun-sqlite").drizzle>;
+  const db = legacyDb();
 
   // A failed PDF download must not wipe a PDF already stored for this order.
   const { pdf_data: _pdf, pdf_filename: _name, ...rest } = values;
@@ -696,11 +700,11 @@ async function replaceOrderSubuniverses(
 ): Promise<void> {
   const { orderSubuniverses } = t();
 
-  await getDb().delete(orderSubuniverses).where(eq(orderSubuniverses.order_number, orderNumber));
+  await legacyDb().delete(orderSubuniverses).where(eq(orderSubuniverses.order_number, orderNumber));
 
   if (subuniverses.length === 0) return;
 
-  await (getDb() as any).insert(orderSubuniverses).values(
+  await (legacyDb() as any).insert(orderSubuniverses).values(
     subuniverses.map((subuniverse, position) => ({
       order_number: orderNumber,
       subuniverse,
@@ -712,12 +716,12 @@ async function replaceOrderSubuniverses(
 export async function backfillOrderSubuniverses(): Promise<number> {
   const { orders, orderSubuniverses } = t();
 
-  const [existing] = await getDb()
+  const [existing] = await legacyDb()
     .select({ count: sql<number>`COUNT(*)` })
     .from(orderSubuniverses);
   if (Number(existing?.count ?? 0) > 0) return 0;
 
-  const rows = await getDb()
+  const rows = await legacyDb()
     .select({
       order_number: orders.order_number,
       subuniverse: orders.subuniverse,
@@ -739,7 +743,7 @@ export async function backfillOrderSubuniverses(): Promise<number> {
   if (values.length === 0) return 0;
 
   for (let i = 0; i < values.length; i += 200) {
-    await (getDb() as any).insert(orderSubuniverses).values(values.slice(i, i + 200));
+    await (legacyDb() as any).insert(orderSubuniverses).values(values.slice(i, i + 200));
   }
 
   return values.length;
@@ -780,12 +784,12 @@ export async function upsertUniverse(data: {
   const set = { name_fr: values.name_fr, name_de: values.name_de, updated_at: now };
 
   if (isDbSqlite()) {
-    await (getDb() as any)
+    await (legacyDb() as any)
       .insert(qoqaUniversesSqlite)
       .values(values)
       .onConflictDoUpdate({ target: qoqaUniversesSqlite.universe_tracking_identifier, set });
   } else {
-    await (getDb() as any)
+    await (legacyDb() as any)
       .insert(qoqaUniversesPg)
       .values(values)
       .onConflictDoUpdate({ target: qoqaUniversesPg.universe_tracking_identifier, set });
@@ -814,12 +818,12 @@ export async function upsertSubuniverse(data: {
   };
 
   if (isDbSqlite()) {
-    await (getDb() as any)
+    await (legacyDb() as any)
       .insert(qoqaSubuniversesSqlite)
       .values(values)
       .onConflictDoUpdate({ target: qoqaSubuniversesSqlite.identifier, set });
   } else {
-    await (getDb() as any)
+    await (legacyDb() as any)
       .insert(qoqaSubuniversesPg)
       .values(values)
       .onConflictDoUpdate({ target: qoqaSubuniversesPg.identifier, set });
