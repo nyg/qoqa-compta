@@ -74,10 +74,8 @@
   },
   "Settings": {
     "title": "Settings",
-    "credentialsSection": "QoQa Credentials",
     "email": "Email",
     "password": "Password",
-    "databaseSection": "Database",
     "dbModeLocal": "Local SQLite (default)",
     "dbModePostgres": "PostgreSQL (custom URL)",
     "dbUrl": "Database URL",
@@ -87,7 +85,6 @@
     "resetDbYes": "Yes, reset",
     "resetDbCancel": "Cancel",
     "resetDbSuccess": "Database reset successfully.",
-    "syncSection": "Sync",
     "uiLocale": "Interface language",
     "syncLocale": "QoQa synchronisation language",
     "syncModeFull": "Full sync (all orders)",
@@ -101,7 +98,6 @@
     "close": "Close",
     "dbLocation": "Database location",
     "showInFinder": "Show in Finder",
-    "tabSettings": "Settings",
     "tabSync": "Sync",
     "credentialStoreKeychain": "Password stored in the macOS Keychain",
     "credentialStoreCredentialManager": "Password stored in Windows Credential Manager",
@@ -109,7 +105,9 @@
     "credentialStoreFile": "Password stored in plain text in {{path}}",
     "credentialStoreEnv": "Password taken from the QOQA_PASSWORD environment variable",
     "showInFinderFailed": "Could not open the file manager.",
-    "languagesSection": "Languages"
+    "tabCredentials": "Credentials",
+    "tabLanguages": "Languages",
+    "tabDatabase": "Database"
   },
   "About": {
     "title": "About",

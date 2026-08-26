@@ -182,6 +182,27 @@ export function SettingsModal({
     return t(keys[store.kind], { path: store.path ?? "" });
   }
 
+  const saveRow = (
+    <>
+      <hr className="border-border" />
+      <div className="flex items-center gap-2">
+        <Button
+          variant="default"
+          size="sm"
+          disabled={saving || loading}
+          onClick={handleSave}
+        >
+          {saving ? (
+            <RefreshCw className="size-3 animate-spin" />
+          ) : saved ? (
+            <Check className="size-3" />
+          ) : null}
+          {saved ? t("saved") : t("save")}
+        </Button>
+      </div>
+    </>
+  );
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
       <DialogPrimitive.Trigger
@@ -222,9 +243,11 @@ export function SettingsModal({
           </header>
 
           {/* Body */}
-          <Tabs defaultValue="settings" className="min-h-0 flex-1">
+          <Tabs defaultValue="credentials" className="min-h-0 flex-1">
             <TabsList className="shrink-0 border-b px-4">
-              <TabsTab value="settings">{t("tabSettings")}</TabsTab>
+              <TabsTab value="credentials">{t("tabCredentials")}</TabsTab>
+              <TabsTab value="languages">{t("tabLanguages")}</TabsTab>
+              <TabsTab value="database">{t("tabDatabase")}</TabsTab>
               <TabsTab value="sync">{t("tabSync")}</TabsTab>
             </TabsList>
             {loading ? (
@@ -233,306 +256,277 @@ export function SettingsModal({
               </div>
             ) : (
               <>
-                <TabsPanel value="settings" className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-6">
-                {/* ── Credentials ── */}
-                <section className="space-y-3">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {t("credentialsSection")}
-                  </h3>
-                  <div className="space-y-2">
-                    <label className="flex flex-col gap-1">
-                      <span className="text-xs font-medium">{t("email")}</span>
-                      <Input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        autoComplete="off"
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="text-xs font-medium">{t("password")}</span>
-                      <Input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        autoComplete="new-password"
-                      />
-                      {credentialStore && (
-                        <span className="text-[0.65rem] leading-snug text-muted-foreground break-all">
-                          {credentialStoreLabel(credentialStore)}
-                        </span>
-                      )}
-                    </label>
-                  </div>
-                </section>
-
-                {/* ── Languages ── */}
-                <section className="space-y-3">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {t("languagesSection")}
-                  </h3>
-                  <div>
-                    <label className="flex flex-col gap-1">
-                      <span className="text-xs font-medium">{t("uiLocale")}</span>
-                      <select
-                        value={uiLocale}
-                        onChange={(e) => {
-                          const next = e.target.value as SupportedLocale;
-                          setUiLocale(next);
-                          // Applied here rather than on Save: the language is not part
-                          // of what Save sends any more, so leaving it behind the
-                          // request meant a failing server silently kept the old one.
-                          i18n.changeLanguage(next);
-                        }}
-                        className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
-                      >
-                        {SUPPORTED_LOCALES.map((loc) => (
-                          <option key={loc} value={loc}>
-                            {LOCALE_NAMES[loc] ?? loc.toUpperCase()}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-
-                  <div>
-                    <label className="flex flex-col gap-1">
-                      <span className="text-xs font-medium">{t("syncLocale")}</span>
-                      <select
-                        value={syncLocale}
-                        onChange={(e) => setSyncLocale(e.target.value as "fr" | "de")}
-                        className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
-                      >
-                        <option value="fr">Français</option>
-                        <option value="de">Deutsch</option>
-                      </select>
-                    </label>
-                  </div>
-                </section>
-
-                {/* ── Database ── */}
-                <section className="space-y-3">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {t("databaseSection")}
-                  </h3>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="dbMode"
-                        value="local"
-                        checked={dbMode === "local"}
-                        onChange={() => setDbMode("local")}
-                        className="accent-primary"
-                      />
-                      <span className="text-sm">{t("dbModeLocal")}</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="dbMode"
-                        value="postgres"
-                        checked={dbMode === "postgres"}
-                        onChange={() => setDbMode("postgres")}
-                        className="accent-primary"
-                      />
-                      <span className="text-sm">{t("dbModePostgres")}</span>
-                    </label>
-                    {dbMode === "postgres" && (
-                      <label className="flex flex-col gap-1 mt-1">
-                        <span className="text-xs font-medium">{t("dbUrl")}</span>
-                        <Input
-                          type="text"
-                          value={dbUrl}
-                          onChange={(e) => setDbUrl(e.target.value)}
-                          placeholder={t("dbUrlPlaceholder")}
-                          className="font-mono text-xs"
-                        />
-                      </label>
+                <TabsPanel value="credentials" className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-6">
+                <div className="space-y-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium">{t("email")}</span>
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium">{t("password")}</span>
+                    <Input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                    {credentialStore && (
+                      <span className="text-[0.65rem] leading-snug text-muted-foreground break-all">
+                        {credentialStoreLabel(credentialStore)}
+                      </span>
                     )}
-                  </div>
+                  </label>
+                </div>
 
-                  {/* Reset DB */}
-                  <div className="pt-1 space-y-2">
-                    {!confirmReset ? (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        disabled={resetting}
-                        onClick={() => setConfirmReset(true)}
-                      >
-                        <AlertTriangle className="size-3" />
-                        {t("resetDb")}
-                      </Button>
-                    ) : (
-                      <div className="space-y-2">
-                        <p className="text-xs text-destructive">{t("resetDbConfirm")}</p>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={resetting}
-                            onClick={handleResetDb}
-                          >
-                            {resetting && <RefreshCw className="size-3 animate-spin" />}
-                            {t("resetDbYes")}
+                  {saveRow}
+                </TabsPanel>
+
+                <TabsPanel value="languages" className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-6">
+                <div>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium">{t("uiLocale")}</span>
+                    <select
+                      value={uiLocale}
+                      onChange={(e) => {
+                        const next = e.target.value as SupportedLocale;
+                        setUiLocale(next);
+                        // Applied here rather than on Save: the language is not part
+                        // of what Save sends any more, so leaving it behind the
+                        // request meant a failing server silently kept the old one.
+                        i18n.changeLanguage(next);
+                      }}
+                      className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
+                    >
+                      {SUPPORTED_LOCALES.map((loc) => (
+                        <option key={loc} value={loc}>
+                          {LOCALE_NAMES[loc] ?? loc.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium">{t("syncLocale")}</span>
+                    <select
+                      value={syncLocale}
+                      onChange={(e) => setSyncLocale(e.target.value as "fr" | "de")}
+                      className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
+                    >
+                      <option value="fr">Français</option>
+                      <option value="de">Deutsch</option>
+                    </select>
+                  </label>
+                </div>
+
+                  {saveRow}
+                </TabsPanel>
+
+                <TabsPanel value="database" className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-6">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="dbMode"
+                      value="local"
+                      checked={dbMode === "local"}
+                      onChange={() => setDbMode("local")}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm">{t("dbModeLocal")}</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="dbMode"
+                      value="postgres"
+                      checked={dbMode === "postgres"}
+                      onChange={() => setDbMode("postgres")}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm">{t("dbModePostgres")}</span>
+                  </label>
+                  {dbMode === "postgres" && (
+                    <label className="flex flex-col gap-1 mt-1">
+                      <span className="text-xs font-medium">{t("dbUrl")}</span>
+                      <Input
+                        type="text"
+                        value={dbUrl}
+                        onChange={(e) => setDbUrl(e.target.value)}
+                        placeholder={t("dbUrlPlaceholder")}
+                        className="font-mono text-xs"
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {/* Reset DB */}
+                <div className="pt-1 space-y-2">
+                  {!confirmReset ? (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={resetting}
+                      onClick={() => setConfirmReset(true)}
+                    >
+                      <AlertTriangle className="size-3" />
+                      {t("resetDb")}
+                    </Button>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs text-destructive">{t("resetDbConfirm")}</p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={resetting}
+                          onClick={handleResetDb}
+                        >
+                          {resetting && <RefreshCw className="size-3 animate-spin" />}
+                          {t("resetDbYes")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={resetting}
+                          onClick={() => setConfirmReset(false)}
+                        >
+                          {t("resetDbCancel")}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {resetSuccess && (
+                    <span className="text-xs text-green-500 flex items-center gap-1">
+                      <Check className="size-3" />
+                      {t("resetDbSuccess")}
+                    </span>
+                  )}
+                  {dbPath && (
+                    <div className="pt-1">
+                      <span className="text-xs font-medium block mb-1">{t("dbLocation")}</span>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-xs font-mono bg-muted/40 rounded px-2 py-1 truncate">{dbPath}</code>
+                        {install && install.method !== "web" ? (
+                          <Button variant="outline" size="sm" onClick={handleRevealDb} className="shrink-0 h-7 px-2 text-xs gap-1">
+                            <FolderOpen className="size-3" />
+                            {t("showInFinder")}
                           </Button>
+                        ) : (
                           <Button
                             variant="outline"
                             size="sm"
-                            disabled={resetting}
-                            onClick={() => setConfirmReset(false)}
+                            className="shrink-0 h-7 px-2 text-xs gap-1"
+                            onClick={() => {
+                              navigator.clipboard.writeText(dbPath).then(() => {
+                                setPathCopied(true);
+                                setTimeout(() => setPathCopied(false), 2000);
+                              }).catch(console.error);
+                            }}
                           >
-                            {t("resetDbCancel")}
+                            {pathCopied ? <Check className="size-3" /> : <Copy className="size-3" />}
                           </Button>
-                        </div>
-                      </div>
-                    )}
-                    {resetSuccess && (
-                      <span className="text-xs text-green-500 flex items-center gap-1">
-                        <Check className="size-3" />
-                        {t("resetDbSuccess")}
-                      </span>
-                    )}
-                    {dbPath && (
-                      <div className="pt-1">
-                        <span className="text-xs font-medium block mb-1">{t("dbLocation")}</span>
-                        <div className="flex items-center gap-2">
-                          <code className="flex-1 text-xs font-mono bg-muted/40 rounded px-2 py-1 truncate">{dbPath}</code>
-                          {install && install.method !== "web" ? (
-                            <Button variant="outline" size="sm" onClick={handleRevealDb} className="shrink-0 h-7 px-2 text-xs gap-1">
-                              <FolderOpen className="size-3" />
-                              {t("showInFinder")}
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="shrink-0 h-7 px-2 text-xs gap-1"
-                              onClick={() => {
-                                navigator.clipboard.writeText(dbPath).then(() => {
-                                  setPathCopied(true);
-                                  setTimeout(() => setPathCopied(false), 2000);
-                                }).catch(console.error);
-                              }}
-                            >
-                              {pathCopied ? <Check className="size-3" /> : <Copy className="size-3" />}
-                            </Button>
-                          )}
-                        </div>
-                        {revealFailed && (
-                          <p className="mt-1 text-xs text-destructive">{t("showInFinderFailed")}</p>
                         )}
                       </div>
-                    )}
-                  </div>
-                </section>
+                      {revealFailed && (
+                        <p className="mt-1 text-xs text-destructive">{t("showInFinderFailed")}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-                <hr className="border-border" />
+                  {saveRow}
+                </TabsPanel>
 
-                {/* ── Save ── */}
+                <TabsPanel value="sync" className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-6">
+                {/* Sync mode radios */}
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="syncMode"
+                      value="update"
+                      checked={syncMode === "update"}
+                      onChange={() => setSyncMode("update")}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm">{t("syncModeUpdate")}</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="syncMode"
+                      value="full"
+                      checked={syncMode === "full"}
+                      onChange={() => setSyncMode("full")}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm">{t("syncModeFull")}</span>
+                  </label>
+                </div>
+
+                {/* Run / cancel */}
                 <div className="flex items-center gap-2">
                   <Button
                     variant="default"
                     size="sm"
-                    disabled={saving || loading}
-                    onClick={handleSave}
+                    disabled={syncRunning}
+                    onClick={() => sync.start(syncMode)}
                   >
-                    {saving ? (
-                      <RefreshCw className="size-3 animate-spin" />
-                    ) : saved ? (
-                      <Check className="size-3" />
-                    ) : null}
-                    {saved ? t("saved") : t("save")}
+                    <RefreshCw className={cn("size-3", syncRunning && "animate-spin")} />
+                    {t("runSync")}
                   </Button>
+                  {syncRunning && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={sync.cancel}
+                    >
+                      {t("cancelSync")}
+                    </Button>
+                  )}
                 </div>
 
-                </TabsPanel>
-
-                <TabsPanel value="sync" className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-                <section className="space-y-3">
-                  {/* Sync mode radios */}
-                  <div className="space-y-1.5">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="syncMode"
-                        value="update"
-                        checked={syncMode === "update"}
-                        onChange={() => setSyncMode("update")}
-                        className="accent-primary"
-                      />
-                      <span className="text-sm">{t("syncModeUpdate")}</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="syncMode"
-                        value="full"
-                        checked={syncMode === "full"}
-                        onChange={() => setSyncMode("full")}
-                        className="accent-primary"
-                      />
-                      <span className="text-sm">{t("syncModeFull")}</span>
-                    </label>
-                  </div>
-
-                  {/* Run / cancel */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      disabled={syncRunning}
-                      onClick={() => sync.start(syncMode)}
-                    >
-                      <RefreshCw className={cn("size-3", syncRunning && "animate-spin")} />
-                      {t("runSync")}
-                    </Button>
-                    {syncRunning && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={sync.cancel}
-                      >
-                        {t("cancelSync")}
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Sync stats + log */}
-                  {(syncRunning || syncDone) && (
-                    <div className="mt-2 space-y-1">
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 rounded-md border bg-muted/30 px-2.5 py-1.5 text-[0.65rem] font-mono">
-                        <span className="text-green-500">{syncStats.synced} synced</span>
-                        <span className="text-muted-foreground">{syncStats.withPdf} PDF</span>
-                        <span className="text-yellow-500">{syncStats.skipped} skipped</span>
-                        {syncStats.errors > 0 && (
-                          <span className="text-red-500">{syncStats.errors} errors</span>
-                        )}
-                        {syncRunning && (
-                          <span className="ml-auto animate-pulse text-muted-foreground">{t("syncRunning")}</span>
-                        )}
-                      </div>
-                      {syncLog.length > 0 && (
-                        <div className="max-h-40 overflow-y-auto rounded-md border bg-muted/30 p-2 font-mono text-[0.65rem] space-y-0.5">
-                          {syncLog.map((entry, i) => (
-                            <div
-                              key={i}
-                              className={cn("leading-relaxed", logEntryColor(entry.type))}
-                            >
-                              <span className="text-muted-foreground/60 select-none mr-1.5">
-                                {entry.timestamp.slice(11, 19)}
-                              </span>
-                              {entry.message}
-                            </div>
-                          ))}
-                          <div ref={logEndRef} />
-                        </div>
+                {/* Sync stats + log */}
+                {(syncRunning || syncDone) && (
+                  <div className="mt-2 space-y-1">
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 rounded-md border bg-muted/30 px-2.5 py-1.5 text-[0.65rem] font-mono">
+                      <span className="text-green-500">{syncStats.synced} synced</span>
+                      <span className="text-muted-foreground">{syncStats.withPdf} PDF</span>
+                      <span className="text-yellow-500">{syncStats.skipped} skipped</span>
+                      {syncStats.errors > 0 && (
+                        <span className="text-red-500">{syncStats.errors} errors</span>
+                      )}
+                      {syncRunning && (
+                        <span className="ml-auto animate-pulse text-muted-foreground">{t("syncRunning")}</span>
                       )}
                     </div>
-                  )}
-                </section>
+                    {syncLog.length > 0 && (
+                      <div className="max-h-40 overflow-y-auto rounded-md border bg-muted/30 p-2 font-mono text-[0.65rem] space-y-0.5">
+                        {syncLog.map((entry, i) => (
+                          <div
+                            key={i}
+                            className={cn("leading-relaxed", logEntryColor(entry.type))}
+                          >
+                            <span className="text-muted-foreground/60 select-none mr-1.5">
+                              {entry.timestamp.slice(11, 19)}
+                            </span>
+                            {entry.message}
+                          </div>
+                        ))}
+                        <div ref={logEndRef} />
+                      </div>
+                    )}
+                  </div>
+                )}
                 </TabsPanel>
+
               </>
             )}
           </Tabs>

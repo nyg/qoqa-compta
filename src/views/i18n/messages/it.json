@@ -74,10 +74,8 @@
   },
   "Settings": {
     "title": "Impostazioni",
-    "credentialsSection": "Credenziali QoQa",
     "email": "E-mail",
     "password": "Password",
-    "databaseSection": "Database",
     "dbModeLocal": "SQLite locale (predefinito)",
     "dbModePostgres": "PostgreSQL (URL personalizzato)",
     "dbUrl": "URL del database",
@@ -87,7 +85,6 @@
     "resetDbYes": "Sì, ripristina",
     "resetDbCancel": "Annulla",
     "resetDbSuccess": "Database ripristinato con successo.",
-    "syncSection": "Sincronizzazione",
     "uiLocale": "Lingua interfaccia",
     "syncLocale": "Lingua di sincronizzazione QoQa",
     "syncModeFull": "Sincronizzazione completa (tutti gli ordini)",
@@ -101,7 +98,6 @@
     "close": "Chiudi",
     "dbLocation": "Posizione del database",
     "showInFinder": "Mostra nel Finder",
-    "tabSettings": "Impostazioni",
     "tabSync": "Sincronizzazione",
     "credentialStoreKeychain": "Password salvata nel portachiavi di macOS",
     "credentialStoreCredentialManager": "Password salvata in Gestione credenziali di Windows",
@@ -109,7 +105,9 @@
     "credentialStoreFile": "Password salvata in chiaro in {{path}}",
     "credentialStoreEnv": "Password presa dalla variabile d'ambiente QOQA_PASSWORD",
     "showInFinderFailed": "Impossibile aprire il gestore file.",
-    "languagesSection": "Lingue"
+    "tabCredentials": "Credenziali",
+    "tabLanguages": "Lingue",
+    "tabDatabase": "Database"
   },
   "About": {
     "title": "Informazioni",
