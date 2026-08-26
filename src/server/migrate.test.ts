@@ -1,5 +1,6 @@
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
+import { neonConfig } from "@neondatabase/serverless";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -307,5 +308,70 @@ describe("embedded migrations", () => {
       const timestamps = migrations.map((m) => m.when);
       expect(timestamps).toEqual([...timestamps].sort((a, b) => a - b));
     }
+  });
+});
+
+describe("runMigrations on PostgreSQL", () => {
+  const PG_URL = "postgresql://user:pass@ep-test-123.eu-central-1.aws.neon.tech/qoqa";
+
+  function interceptWire(): string[] {
+    const statements: string[] = [];
+    (neonConfig as unknown as { fetchFunction: unknown }).fetchFunction = async (
+      _url: string,
+      options: { body: string }
+    ) => {
+      const { query } = JSON.parse(options.body) as { query: string };
+      statements.push(query);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ rows: [], fields: [] }),
+        text: async () => "",
+      };
+    };
+    return statements;
+  }
+
+  afterEach(() => {
+    (neonConfig as unknown as { fetchFunction: unknown }).fetchFunction = undefined;
+  });
+
+  test("creates every application table on an empty database", async () => {
+    const statements = interceptWire();
+    await reinitDb(PG_URL);
+    await runMigrations();
+
+    const created = statements
+      .filter((s) => s.startsWith("CREATE TABLE"))
+      .map((s) => s.match(/CREATE TABLE "([^"]+)"/)?.[1])
+      .filter(Boolean);
+
+    expect(created).toEqual(
+      expect.arrayContaining([
+        "qoqa_orders",
+        "qoqa_universes",
+        "qoqa_subuniverses",
+        "qoqa_order_subuniverses",
+      ])
+    );
+    expect(statements[0]).toContain("CREATE SCHEMA IF NOT EXISTS");
+    expect(statements.filter((s) => s.startsWith("CREATE UNIQUE INDEX"))).not.toBeEmpty();
+    expect(statements.some((s) => s.includes("__drizzle_migrations"))).toBe(true);
+  });
+
+  test("drops the application tables and the journal on reset", async () => {
+    const statements = interceptWire();
+    await reinitDb(PG_URL);
+    await dropAllTables();
+
+    for (const table of [
+      "qoqa_orders",
+      "qoqa_universes",
+      "qoqa_subuniverses",
+      "qoqa_order_subuniverses",
+    ]) {
+      expect(statements.some((s) => s === `DROP TABLE IF EXISTS ${table}`)).toBe(true);
+    }
+    expect(statements.some((s) => s.includes("__drizzle_migrations"))).toBe(true);
   });
 });

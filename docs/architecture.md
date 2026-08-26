@@ -127,13 +127,14 @@ qoqa-compta/
     │   ├── migrations.generated.ts # Generated — migration SQL inlined so it ships in the bundle
     │   ├── queries.ts            # All DB operations (upsert, select, aggregate)
     │   ├── settings.ts           # settings.json read/write (platform-aware path)
+    │   ├── secrets.ts            # QoQa password in the OS credential store, with a settings.json fallback
     │   ├── install.ts            # How the running copy was installed (brew, scoop, manual, web)
     │   └── routes/
     │       ├── app.ts            # GET /api/app/latest-release, GET /api/app/install
     │       ├── dashboard.ts      # GET /api/dashboard
     │       ├── orders.ts         # GET /api/orders, GET /api/orders/:n/pdf, GET /api/orders/csv
     │       ├── sync.ts           # POST /api/sync, DELETE /api/sync, GET /api/sync/stream (SSE)
-    │       └── settings.ts       # GET/PUT /api/settings, DELETE /api/settings/database
+    │       └── settings.ts       # GET/PUT /api/settings, DELETE /api/settings/database, GET /api/settings/credential-store
     ├── views/                    # Vite SPA (React 19)
     │   ├── main.tsx              # React entry point
     │   ├── globals.css           # Tailwind v4 + CSS variable theming
@@ -248,6 +249,28 @@ User settings are persisted to a platform-aware JSON file:
 macOS and Windows name the folder after the app as the user sees it; the XDG spec wants a lowercase, machine-readable name. Both used to be `qoqa-compta`: on macOS and Windows a directory left behind by an earlier version is moved across on first launch (see `src/server/paths.ts`). If the move fails the old location keeps being used, so data is never lost.
 
 In **development** only, env vars (`QOQA_EMAIL`, `QOQA_PASSWORD`, `DATABASE_URL`) take precedence over the file.
+
+### The QoQa password
+
+The password is the one setting that does not live in `settings.json`. It is stored in the OS credential store through `Bun.secrets`, under service `io.github.nyg.qoqa-compta` and name `qoqa-password`:
+
+| Platform | Store |
+|---|---|
+| macOS | Keychain Services (login keychain) |
+| Windows | Windows Credential Manager |
+| Linux | libsecret (GNOME Keyring, KWallet) |
+
+Electrobun has no credential API of its own — no equivalent of Electron's `safeStorage`. It bundles a Bun runtime (`build.mainProcess: "bun"`, currently Bun 1.4.0 per `.hutch/dependencies.lock`), and `Bun.secrets` is what that runtime offers. So the desktop app and `bun run start` reach the same store through the same code.
+
+`src/server/secrets.ts` is the only module that reads or writes the password. `readPassword()` and `writePassword()` try the credential store first and fall back to a `qoqaPassword` key in `settings.json` when it is unreachable — a headless Linux host without a secret service daemon, or a user who denies the macOS prompt — so the app never breaks, it only stops being able to protect the password. `migratePasswordToKeychain()` runs at startup in both entry points and moves a password written by an earlier version out of `settings.json`; if the store refuses the write it leaves the file alone rather than losing the password. `writeSettings()` spreads the raw file before the parsed settings for the same reason: a settings save that happens before the migration must not drop the key.
+
+On macOS the process that calls Security.framework is `Contents/MacOS/bun`, the stock Bun binary Electrobun copies into the bundle — byte-identical to an upstream Bun release and signed `Developer ID Application: Jarred Sumner (7FRXF46ZSN)`. The app's own ad-hoc signature (`scripts/postwrap.ts`) is not what the Keychain ACL binds to, which is why shipping a new app version does not re-prompt: our JavaScript changing does not change that binary's cdhash. Bumping the **bundled Bun version** does, so the release that carries one shows a single "wants to use your confidential information" prompt; the user clicks *Always Allow* once.
+
+What this protects against is worth stating precisely. The keychain keeps the password out of a file that backups, cloud-synced config directories and any process reading the home directory can see. It does not isolate the app from other local code: because the code identity is the Bun binary rather than the app bundle, any `bun` script at the same version shares that identity and can read the item without a prompt ([oven-sh/bun#28071](https://github.com/oven-sh/bun/issues/28071)).
+
+`GET /api/settings/credential-store` reports where the password actually ended up — `keychain`, `credential-manager`, `keyring`, `file` (with the path) or `env` — and the Settings modal prints it under the password field, so the user can see whether their password is protected or sitting in a JSON file.
+
+`databaseUrl` stays in `settings.json` even though a PostgreSQL connection string embeds a password.
 
 ---
 

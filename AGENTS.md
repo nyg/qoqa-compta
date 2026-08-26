@@ -39,7 +39,8 @@ bun run db:verify        # fail if src/server/migrations.generated.ts is stale
 - `GET /api/dashboard` returns all stats, charts, and initial orders in one round-trip.
 - `GET /api/orders` is used for client-side search and pagination.
 - `POST /api/sync` starts a sync job; progress is streamed via SSE (`GET /api/sync/stream`).
-- `GET/PUT /api/settings` reads/writes `settings.json`.
+- `GET/PUT /api/settings` reads/writes `settings.json`; the password goes to the OS credential store instead (see Settings below), and `GET /api/settings/credential-store` reports which store it actually landed in.
+- `POST /api/settings/reveal-db` opens the SQLite file in the system file manager. On desktop this runs through Electrobun's `Utils.showItemInFolder`, injected into `createApp()` as `revealInFileManager` so `src/server/` never imports the Electrobun SDK; web mode falls back to a platform-specific spawn.
 - `GET /api/app/latest-release` reads the GitHub releases API server-side (the opaque `views://` origin cannot satisfy CORS), cached 6h on success and 15m on failure; `?refresh=1` bypasses the cache.
 - `GET /api/app/install` reports the platform and how the running copy was installed (`homebrew`, `scoop`, `manual`, `web`), so the About dialog only shows the update path that applies.
 
@@ -94,6 +95,7 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 ### Settings
 
 - Persisted to `~/Library/Application Support/QoQa Compta/settings.json` on macOS (see `src/server/paths.ts` for platform paths and the legacy-directory migration)
+- The QoQa password is the exception: it lives in the OS credential store (macOS Keychain, Windows Credential Manager) via `Bun.secrets`, and `src/server/secrets.ts` is the only module that touches it. It falls back to `settings.json` where no store is reachable, and migrates a password left there by an earlier version at startup — see `docs/architecture.md`
 - In development only, env vars (`QOQA_EMAIL`, `QOQA_PASSWORD`, `DATABASE_URL`, `PORT`) override the settings file
 - All settings are configurable from the in-app Settings modal — no `.env` file required in production
 

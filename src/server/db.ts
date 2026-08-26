@@ -43,8 +43,9 @@ export async function initDb(databaseUrl?: string): Promise<void> {
     _handle = { dialect: "sqlite", db: drizzleBunSqlite(_bunDb, { schema }) };
   } else {
     const neonFn = neon(rawUrl!);
-    _neonExecutor = neonFn as unknown as NeonExecutor;
+    _neonExecutor = (sql, params) => neonFn.query(sql, params);
     _bunDb = null;
+    _dbFilePath = null;
     _handle = { dialect: "pg", db: drizzleNeon(neonFn, { schema }) };
   }
 }

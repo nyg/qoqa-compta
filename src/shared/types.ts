@@ -135,3 +135,15 @@ export interface InstallInfo {
   platform: InstallPlatform;
   method: InstallMethod;
 }
+
+export type CredentialStoreKind =
+  | "keychain"
+  | "credential-manager"
+  | "keyring"
+  | "file"
+  | "env";
+
+export interface CredentialStore {
+  kind: CredentialStoreKind;
+  path: string | null;
+}
