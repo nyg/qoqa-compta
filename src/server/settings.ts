@@ -3,12 +3,13 @@ import path from "path";
 import { resolveConfigDir } from "./paths";
 import type { AppSettings } from "../shared/types";
 
-export type StoredSettings = Omit<AppSettings, "qoqaPassword">;
+export type SecretKey = "qoqaPassword" | "databaseUrl";
 
-const PASSWORD_KEY = "qoqaPassword";
+export type StoredSettings = Omit<AppSettings, SecretKey>;
+
+const SECRET_KEYS: SecretKey[] = ["qoqaPassword", "databaseUrl"];
 
 const DEFAULTS: StoredSettings = {
-  databaseUrl: null,
   qoqaEmail: null,
   syncLocale: "fr",
 };
@@ -45,7 +46,7 @@ function writeFile(contents: Record<string, unknown>): void {
 export function readSettings(): StoredSettings {
   const stored = readFile();
 
-  for (const key of [...RETIRED_KEYS, PASSWORD_KEY]) {
+  for (const key of [...RETIRED_KEYS, ...SECRET_KEYS]) {
     delete stored[key];
   }
 
@@ -53,7 +54,6 @@ export function readSettings(): StoredSettings {
 
   // In development, env vars take precedence over the settings file
   if (process.env.NODE_ENV === "development") {
-    if (process.env.DATABASE_URL) settings.databaseUrl = process.env.DATABASE_URL;
     if (process.env.QOQA_EMAIL) settings.qoqaEmail = process.env.QOQA_EMAIL;
   }
 
@@ -70,19 +70,19 @@ export function writeSettings(updates: Partial<StoredSettings>): void {
   writeFile({ ...stored, ...readSettings(), ...updates });
 }
 
-export function readStoredPassword(): string | null {
-  const value = readFile()[PASSWORD_KEY];
+export function readStoredSecret(key: SecretKey): string | null {
+  const value = readFile()[key];
   return typeof value === "string" && value ? value : null;
 }
 
-export function writeStoredPassword(value: string | null): void {
+export function writeStoredSecret(key: SecretKey, value: string | null): void {
   const stored = readFile();
 
   if (value === null) {
-    if (!(PASSWORD_KEY in stored)) return;
-    delete stored[PASSWORD_KEY];
+    if (!(key in stored)) return;
+    delete stored[key];
   } else {
-    stored[PASSWORD_KEY] = value;
+    stored[key] = value;
   }
 
   writeFile(stored);

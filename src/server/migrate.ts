@@ -20,6 +20,25 @@ const APP_TABLES = [
   "qoqa_order_subuniverses",
 ];
 
+export interface MigrationReport {
+  applied: string[];
+  baselined: boolean;
+}
+
+function dialect(): string {
+  return isDbSqlite() ? "sqlite" : "pg";
+}
+
+function logApplying(migration: EmbeddedMigration): void {
+  console.log(`[db] Applying migration ${migration.tag} (${dialect()})`);
+}
+
+function logBaseline(migration: EmbeddedMigration): void {
+  console.log(
+    `[db] Baselining pre-migrations database at ${migration.tag} (${dialect()})`
+  );
+}
+
 function hashOf(migration: EmbeddedMigration): string {
   return createHash("sha256").update(migration.sql).digest("hex");
 }
@@ -65,7 +84,7 @@ function sqliteRecord(db: Database, migration: EmbeddedMigration): void {
   ).run(hashOf(migration), migration.when);
 }
 
-function migrateSqlite(): void {
+function migrateSqlite(): MigrationReport {
   const db = getRawBunDb();
   if (!db) throw new Error("No bun:sqlite database available");
 
@@ -90,12 +109,16 @@ function migrateSqlite(): void {
   if (baseline) lastAppliedAt = baseline.when;
 
   const pending = pendingAfter(sqliteMigrations, lastAppliedAt);
-  if (!baseline && pending.length === 0) return;
+  if (!baseline && pending.length === 0) return { applied: [], baselined: false };
 
   db.exec("BEGIN");
   try {
-    if (baseline) sqliteRecord(db, baseline);
+    if (baseline) {
+      logBaseline(baseline);
+      sqliteRecord(db, baseline);
+    }
     for (const migration of pending) {
+      logApplying(migration);
       for (const statement of statementsOf(migration)) {
         db.exec(statement);
       }
@@ -106,6 +129,8 @@ function migrateSqlite(): void {
     db.exec("ROLLBACK");
     throw error;
   }
+
+  return { applied: pending.map((migration) => migration.tag), baselined: baseline != null };
 }
 
 function pgRows(result: unknown): Record<string, unknown>[] {
@@ -140,7 +165,7 @@ async function pgRecord(
   );
 }
 
-async function migratePg(): Promise<void> {
+async function migratePg(): Promise<MigrationReport> {
   const exec = getRawNeonExecutor();
   if (!exec) throw new Error("No neon executor available");
 
@@ -162,23 +187,34 @@ async function migratePg(): Promise<void> {
 
   if (baseline) {
     lastAppliedAt = baseline.when;
+    logBaseline(baseline);
     await pgRecord(exec, baseline);
   }
 
-  for (const migration of pendingAfter(pgMigrations, lastAppliedAt)) {
+  const pending = pendingAfter(pgMigrations, lastAppliedAt);
+  for (const migration of pending) {
+    logApplying(migration);
     for (const statement of statementsOf(migration)) {
       await exec(statement);
     }
     await pgRecord(exec, migration);
   }
+
+  return { applied: pending.map((migration) => migration.tag), baselined: baseline != null };
 }
 
-export async function runMigrations(): Promise<void> {
+export async function runMigrations(): Promise<MigrationReport> {
+  return isDbSqlite() ? migrateSqlite() : await migratePg();
+}
+
+export async function isSchemaReady(): Promise<boolean> {
   if (isDbSqlite()) {
-    migrateSqlite();
-  } else {
-    await migratePg();
+    const db = getRawBunDb();
+    return db != null && sqliteHasTable(db, PRE_MIGRATIONS_TABLE);
   }
+
+  const exec = getRawNeonExecutor();
+  return exec != null && (await pgHasTable(exec, PRE_MIGRATIONS_TABLE));
 }
 
 export async function dropAllTables(): Promise<void> {

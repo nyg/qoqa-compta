@@ -39,7 +39,7 @@ bun run db:verify        # fail if src/server/migrations.generated.ts is stale
 - `GET /api/dashboard` returns all stats, charts, and initial orders in one round-trip.
 - `GET /api/orders` is used for client-side search and pagination.
 - `POST /api/sync` starts a sync job; progress is streamed via SSE (`GET /api/sync/stream`).
-- `GET/PUT /api/settings` reads/writes `settings.json`; the password goes to the OS credential store instead (see Settings below), and `GET /api/settings/credential-store` reports which store it actually landed in.
+- `GET/PUT /api/settings` reads/writes `settings.json`; the QoQa password and the PostgreSQL URL go to the OS credential store instead (see Settings below), and `GET /api/settings/credential-store` reports, per secret, which store each actually landed in. A changed database URL is connection-probed before anything is written and rejected with a 400 when it does not answer; the schema is left to the next sync.
 - `POST /api/settings/reveal-db` opens the SQLite file in the system file manager. On desktop this runs through Electrobun's `Utils.showItemInFolder`, injected into `createApp()` as `revealInFileManager` so `src/server/` never imports the Electrobun SDK; web mode falls back to a platform-specific spawn.
 - `GET /api/app/latest-release` reads the GitHub releases API server-side (the opaque `views://` origin cannot satisfy CORS), cached 6h on success and 15m on failure; `?refresh=1` bypasses the cache.
 - `GET /api/app/install` reports the platform and how the running copy was installed (`homebrew`, `scoop`, `manual`, `web`), so the About dialog only shows the update path that applies.
@@ -48,6 +48,7 @@ bun run db:verify        # fail if src/server/migrations.generated.ts is stale
 
 ```
 POST /api/sync { mode: "full" | "update" }
+  → migrate.ts    — runMigrations() → db_ready event naming any migration applied
   → auth.ts       — POST auth.qoqa.ch/v2/login → JWT (no browser, pure HTTP)
   → api.ts        — fetchUniverses → upsert qoqa_universes + qoqa_subuniverses
   → api.ts        — fetchPurchases (list)
@@ -87,7 +88,7 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 - `pdf_data` column holds raw invoice PDF bytes (`BLOB` on SQLite, `BYTEA` on PostgreSQL); list queries use `has_pdf` boolean instead of selecting the bytes
 - Schema defined in `src/server/schema.ts` (dual SQLite + PG via Drizzle) — the single source of truth. Adding or changing a column means editing `schema.ts` and running `bun run db:generate`; nothing else restates the DDL
 - `bun run db:generate` writes migrations to `drizzle/sqlite/` and `drizzle/pg/`, then regenerates `src/server/migrations.generated.ts`, which inlines every migration's SQL so it is compiled into the desktop bundle instead of being read from disk at runtime
-- `src/server/migrate.ts` applies them at startup and records each one in Drizzle's `__drizzle_migrations` journal. It also runs the SQLite `journal_mode=WAL` and `busy_timeout=5000` PRAGMAs, which are not schema
+- `src/server/migrate.ts` applies them at startup and as the first step of every sync — never on a settings save — and records each one in Drizzle's `__drizzle_migrations` journal. It also runs the SQLite `journal_mode=WAL` and `busy_timeout=5000` PRAGMAs, which are not schema
 - Databases created before migrations existed already have every table and no journal. On those, `runMigrations()` records migration `0000` as applied instead of executing it, then applies anything newer normally — detected as "no journal rows and `qoqa_orders` already present"
 - `dropAllTables()` (the Settings reset) drops the journal too, so the next `runMigrations()` rebuilds from `0000`
 - SQLite (`bun:sqlite`) is the default and needs no setup; PostgreSQL goes through `@neondatabase/serverless`
@@ -95,7 +96,8 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 ### Settings
 
 - Persisted to `~/Library/Application Support/QoQa Compta/settings.json` on macOS (see `src/server/paths.ts` for platform paths and the legacy-directory migration)
-- The QoQa password is the exception: it lives in the OS credential store (macOS Keychain, Windows Credential Manager) via `Bun.secrets`, and `src/server/secrets.ts` is the only module that touches it. It falls back to `settings.json` where no store is reachable, and migrates a password left there by an earlier version at startup — see `docs/architecture.md`
+- The QoQa password and the PostgreSQL URL are the exceptions: they live in the OS credential store (macOS Keychain, Windows Credential Manager) via `Bun.secrets`, and `src/server/secrets.ts` is the only module that touches them. It falls back to `settings.json` where no store is reachable, and migrates a value left there by an earlier version at startup — see `docs/architecture.md`
+- The URL reaches the SPA with its password segment masked (`src/server/database-url.ts`); an unedited mask coming back on save restores the stored password
 - In development only, env vars (`QOQA_EMAIL`, `QOQA_PASSWORD`, `DATABASE_URL`, `PORT`) override the settings file
 - All settings are configurable from the in-app Settings modal — no `.env` file required in production
 

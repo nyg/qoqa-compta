@@ -9,7 +9,12 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api-client";
 import { useInstallInfo } from "@/lib/use-install-info";
 import type { SyncMode, SyncRunner } from "@/lib/use-sync-runner";
-import type { AppSettings, CredentialStore, SyncProgressEvent } from "../../shared/types";
+import type {
+  AppSettings,
+  CredentialStore,
+  CredentialStores,
+  SyncProgressEvent,
+} from "../../shared/types";
 import i18n, { SUPPORTED_LOCALES, type SupportedLocale } from "@/i18n/index";
 
 const LOCALE_NAMES: Record<string, string> = {
@@ -32,6 +37,7 @@ function logEntryColor(type: SyncProgressEvent["type"]): string {
     type === "auth_ok" ||
     type === "universes_ok" ||
     type === "order_synced" ||
+    type === "db_ready" ||
     type === "done"
   )
     return "text-green-500";
@@ -79,7 +85,8 @@ export function SettingsModal({
   const [dbPath, setDbPath] = useState<string | null>(null);
   const [pathCopied, setPathCopied] = useState(false);
   const [revealFailed, setRevealFailed] = useState(false);
-  const [credentialStore, setCredentialStore] = useState<CredentialStore | null>(null);
+  const [credentialStore, setCredentialStore] = useState<CredentialStores | null>(null);
+  const loadedRef = useRef<AppSettings | null>(null);
 
   // Reset DB
   const [confirmReset, setConfirmReset] = useState(false);
@@ -106,6 +113,7 @@ export function SettingsModal({
     apiClient
       .getSettings()
       .then((s: AppSettings) => {
+        loadedRef.current = s;
         setEmail(s.qoqaEmail ?? "");
         setPassword(s.qoqaPassword ?? "");
         setDbMode(
@@ -138,7 +146,18 @@ export function SettingsModal({
         databaseUrl: dbMode === "postgres" ? dbUrl || null : null,
         syncLocale,
       };
-      await apiClient.updateSettings(settings);
+      const next = await apiClient.updateSettings(settings);
+      const dbChanged = next.databaseUrl !== loadedRef.current?.databaseUrl;
+      loadedRef.current = next;
+      setDbMode(next.databaseUrl?.startsWith("postgres") ? "postgres" : "local");
+      setDbUrl(next.databaseUrl ?? "");
+
+      if (dbChanged) {
+        onDataChanged?.();
+        apiClient.getDbPath().then((r) => setDbPath(r.path)).catch(console.error);
+        apiClient.getCredentialStore().then(setCredentialStore).catch(console.error);
+      }
+
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
@@ -174,15 +193,22 @@ export function SettingsModal({
     }
   }
 
-  function credentialStoreLabel(store: CredentialStore): string {
+  function storeName(store: CredentialStore): string {
     const keys: Record<CredentialStore["kind"], string> = {
-      keychain: "credentialStoreKeychain",
-      "credential-manager": "credentialStoreCredentialManager",
-      keyring: "credentialStoreKeyring",
-      file: "credentialStoreFile",
-      env: "credentialStoreEnv",
+      keychain: "storeKeychain",
+      "credential-manager": "storeCredentialManager",
+      keyring: "storeKeyring",
+      file: "storeFile",
+      env: "storeEnv",
     };
-    return t(keys[store.kind], { path: store.path ?? "" });
+    return t(keys[store.kind], {
+      path: store.path ?? "",
+      variable: store.variable ?? "",
+    });
+  }
+
+  function storedInLabel(carrier: string, store: CredentialStore): string {
+    return t(carrier, { store: storeName(store) });
   }
 
   const saveRow = (
@@ -287,7 +313,7 @@ export function SettingsModal({
                     />
                     {credentialStore && (
                       <span className="text-[0.65rem] leading-snug text-muted-foreground break-all">
-                        {credentialStoreLabel(credentialStore)}
+                        {storedInLabel("passwordStoredIn", credentialStore.qoqaPassword)}
                       </span>
                     )}
                   </label>
@@ -372,6 +398,11 @@ export function SettingsModal({
                         placeholder={t("dbUrlPlaceholder")}
                         className="font-mono text-xs"
                       />
+                      {credentialStore && (
+                        <span className="text-[0.65rem] leading-snug text-muted-foreground break-all">
+                          {storedInLabel("databaseUrlStoredIn", credentialStore.databaseUrl)}
+                        </span>
+                      )}
                     </label>
                   )}
                 </div>

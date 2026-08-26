@@ -1,4 +1,5 @@
 import { authenticate } from "./auth";
+import { runMigrations } from "./migrate";
 import {
   fetchUniverses,
   fetchPurchases,
@@ -104,7 +105,26 @@ export async function syncOrders(
 
   emit(makeEvent("start", "Starting sync…"));
 
-  // 1. Authenticate
+  // 1. Prepare the database schema
+  try {
+    console.log("[sync] Preparing database schema…");
+    const { applied, baselined } = await runMigrations();
+    const message =
+      applied.length > 0
+        ? `Database schema updated (${applied.join(", ")})`
+        : baselined
+        ? "Database schema recorded as up to date"
+        : "Database schema up to date";
+    console.log(`[sync] ${message}`);
+    emit(makeEvent("db_ready", message));
+  } catch (err) {
+    console.error("[sync] Database preparation failed:", err);
+    throw new Error(`Database preparation failed: ${(err as Error).message}`);
+  }
+
+  if (signal.aborted) { emit(makeEvent("cancelled", "Sync cancelled")); return; }
+
+  // 2. Authenticate
   let token: string;
   try {
     console.log("[sync] Authenticating…");
@@ -119,7 +139,7 @@ export async function syncOrders(
 
   if (signal.aborted) { emit(makeEvent("cancelled", "Sync cancelled")); return; }
 
-  // 2. Fetch and upsert universes
+  // 3. Fetch and upsert universes
   try {
     console.log("[sync] Fetching universes…");
     const universesData = await fetchUniverses(token, locale);
@@ -143,7 +163,7 @@ export async function syncOrders(
 
   if (signal.aborted) { emit(makeEvent("cancelled", "Sync cancelled")); return; }
 
-  // 3. Fetch all purchases
+  // 4. Fetch all purchases
   let purchases: Awaited<ReturnType<typeof fetchPurchases>>;
   try {
     console.log("[sync] Fetching purchases…");
@@ -156,7 +176,7 @@ export async function syncOrders(
     throw err;
   }
 
-  // 4. Process each purchase
+  // 5. Process each purchase
   //
   // An invoice is not always issued by the time an order is first synced, so
   // orders stored without a PDF are revisited on every update sync — including

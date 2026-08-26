@@ -6,7 +6,7 @@ import { mkdirSync } from "fs";
 import path from "path";
 import * as schema from "./schema";
 import { resolveDataDir } from "./paths";
-import { readSettings } from "./settings";
+import { readDatabaseUrl } from "./secrets";
 
 // A simple callable type for the neon query function used in schema-bootstrap
 export type NeonExecutor = (sql: string, params?: unknown[]) => Promise<unknown>;
@@ -28,9 +28,13 @@ function getDefaultSqlitePath(): string {
   return path.join(resolveDataDir(), "qoqa.db");
 }
 
+function isSqliteUrl(url: string | null | undefined): boolean {
+  return !url || url.startsWith("file:") || url.startsWith("sqlite");
+}
+
 export async function initDb(databaseUrl?: string): Promise<void> {
-  const rawUrl = databaseUrl ?? readSettings().databaseUrl ?? undefined;
-  _isSqlite = !rawUrl || rawUrl.startsWith("file:") || rawUrl.startsWith("sqlite");
+  const rawUrl = databaseUrl ?? (await readDatabaseUrl()) ?? undefined;
+  _isSqlite = isSqliteUrl(rawUrl);
 
   if (_isSqlite) {
     const filePath = rawUrl
@@ -79,4 +83,9 @@ export function getRawBunDb(): Database | null {
 
 export function getRawNeonExecutor(): NeonExecutor | null {
   return _neonExecutor;
+}
+
+export async function probeDatabaseUrl(url: string | null): Promise<void> {
+  if (!url || isSqliteUrl(url)) return;
+  await neon(url).query("SELECT 1");
 }
