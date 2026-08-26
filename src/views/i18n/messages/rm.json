@@ -107,7 +107,8 @@
     "showInFinderFailed": "Impussibel dad avrir l'administratur da datotecas.",
     "tabCredentials": "Credenzialas",
     "tabLanguages": "Linguas",
-    "tabDatabase": "Banca da datas"
+    "tabDatabase": "Banca da datas",
+    "saveFailed": "Impussibel da memorisar ils parameters: {{error}}"
   },
   "About": {
     "title": "Davart",

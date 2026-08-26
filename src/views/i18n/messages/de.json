@@ -107,7 +107,8 @@
     "showInFinderFailed": "Der Dateimanager konnte nicht geöffnet werden.",
     "tabCredentials": "Zugangsdaten",
     "tabLanguages": "Sprachen",
-    "tabDatabase": "Datenbank"
+    "tabDatabase": "Datenbank",
+    "saveFailed": "Die Einstellungen konnten nicht gespeichert werden: {{error}}"
   },
   "About": {
     "title": "Über",

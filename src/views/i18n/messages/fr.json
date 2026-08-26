@@ -107,7 +107,8 @@
     "showInFinderFailed": "Impossible d'ouvrir le gestionnaire de fichiers.",
     "tabCredentials": "Identifiants",
     "tabLanguages": "Langues",
-    "tabDatabase": "Base de données"
+    "tabDatabase": "Base de données",
+    "saveFailed": "Impossible d'enregistrer les réglages : {{error}}"
   },
   "About": {
     "title": "À propos",

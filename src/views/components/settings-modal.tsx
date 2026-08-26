@@ -74,6 +74,7 @@ export function SettingsModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [dbPath, setDbPath] = useState<string | null>(null);
   const [pathCopied, setPathCopied] = useState(false);
@@ -129,6 +130,7 @@ export function SettingsModal({
   async function handleSave() {
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
     try {
       const settings: Partial<AppSettings> = {
         qoqaEmail: email || null,
@@ -141,6 +143,7 @@ export function SettingsModal({
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
       console.error(e);
+      setSaveError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
@@ -185,20 +188,27 @@ export function SettingsModal({
   const saveRow = (
     <>
       <hr className="border-border" />
-      <div className="flex items-center gap-2">
-        <Button
-          variant="default"
-          size="sm"
-          disabled={saving || loading}
-          onClick={handleSave}
-        >
-          {saving ? (
-            <RefreshCw className="size-3 animate-spin" />
-          ) : saved ? (
-            <Check className="size-3" />
-          ) : null}
-          {saved ? t("saved") : t("save")}
-        </Button>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            disabled={saving || loading}
+            onClick={handleSave}
+          >
+            {saving ? (
+              <RefreshCw className="size-3 animate-spin" />
+            ) : saved ? (
+              <Check className="size-3" />
+            ) : null}
+            {saved ? t("saved") : t("save")}
+          </Button>
+        </div>
+        {saveError && (
+          <p className="text-xs text-destructive break-words">
+            {t("saveFailed", { error: saveError })}
+          </p>
+        )}
       </div>
     </>
   );
@@ -222,8 +232,8 @@ export function SettingsModal({
         <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 transition-opacity" />
         <DialogPrimitive.Popup
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
-            "flex h-[min(90vh,620px)] w-[min(95vw,560px)] flex-col overflow-hidden rounded-lg bg-card text-card-foreground ring-1 ring-foreground/10 shadow-xl",
+            "fixed left-1/2 top-[8vh] z-50 -translate-x-1/2",
+            "flex max-h-[84vh] w-[min(95vw,560px)] flex-col overflow-hidden rounded-lg bg-card text-card-foreground ring-1 ring-foreground/10 shadow-xl",
             "data-[starting-style]:opacity-0 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[ending-style]:scale-95 transition-[opacity,transform]"
           )}
         >
@@ -243,7 +253,7 @@ export function SettingsModal({
           </header>
 
           {/* Body */}
-          <Tabs defaultValue="credentials" className="min-h-0 flex-1">
+          <Tabs defaultValue="credentials" className="min-h-0 flex-auto">
             <TabsList className="shrink-0 border-b px-4">
               <TabsTab value="credentials">{t("tabCredentials")}</TabsTab>
               <TabsTab value="languages">{t("tabLanguages")}</TabsTab>
@@ -256,7 +266,7 @@ export function SettingsModal({
               </div>
             ) : (
               <>
-                <TabsPanel value="credentials" className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-6">
+                <TabsPanel value="credentials" className="min-h-0 flex-auto overflow-y-auto px-4 py-4 space-y-6">
                 <div className="space-y-2">
                   <label className="flex flex-col gap-1">
                     <span className="text-xs font-medium">{t("email")}</span>
@@ -286,7 +296,7 @@ export function SettingsModal({
                   {saveRow}
                 </TabsPanel>
 
-                <TabsPanel value="languages" className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-6">
+                <TabsPanel value="languages" className="min-h-0 flex-auto overflow-y-auto px-4 py-4 space-y-6">
                 <div>
                   <label className="flex flex-col gap-1">
                     <span className="text-xs font-medium">{t("uiLocale")}</span>
@@ -328,7 +338,7 @@ export function SettingsModal({
                   {saveRow}
                 </TabsPanel>
 
-                <TabsPanel value="database" className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-6">
+                <TabsPanel value="database" className="min-h-0 flex-auto overflow-y-auto px-4 py-4 space-y-6">
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -444,7 +454,7 @@ export function SettingsModal({
                   {saveRow}
                 </TabsPanel>
 
-                <TabsPanel value="sync" className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-6">
+                <TabsPanel value="sync" className="min-h-0 flex-auto overflow-y-auto px-4 py-4 space-y-6">
                 {/* Sync mode radios */}
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-2 cursor-pointer">

@@ -107,7 +107,8 @@
     "showInFinderFailed": "Impossibile aprire il gestore file.",
     "tabCredentials": "Credenziali",
     "tabLanguages": "Lingue",
-    "tabDatabase": "Database"
+    "tabDatabase": "Database",
+    "saveFailed": "Impossibile salvare le impostazioni: {{error}}"
   },
   "About": {
     "title": "Informazioni",

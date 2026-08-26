@@ -107,7 +107,8 @@
     "showInFinderFailed": "Could not open the file manager.",
     "tabCredentials": "Credentials",
     "tabLanguages": "Languages",
-    "tabDatabase": "Database"
+    "tabDatabase": "Database",
+    "saveFailed": "Could not save the settings: {{error}}"
   },
   "About": {
     "title": "About",
