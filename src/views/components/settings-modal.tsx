@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api-client";
-import { isDesktop } from "@/lib/downloads";
+import { useInstallInfo } from "@/lib/use-install-info";
 import type { SyncMode, SyncRunner } from "@/lib/use-sync-runner";
 import type { AppSettings, CredentialStore, SyncProgressEvent } from "../../shared/types";
 import i18n, { SUPPORTED_LOCALES, type SupportedLocale } from "@/i18n/index";
@@ -54,6 +54,7 @@ export function SettingsModal({
   sync: SyncRunner;
 }) {
   const { t } = useTranslation("Settings");
+  const install = useInstallInfo();
   const [internalOpen, setInternalOpen] = useState(false);
 
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -354,7 +355,7 @@ export function SettingsModal({
                         <span className="text-xs font-medium block mb-1">{t("dbLocation")}</span>
                         <div className="flex items-center gap-2">
                           <code className="flex-1 text-xs font-mono bg-muted/40 rounded px-2 py-1 truncate">{dbPath}</code>
-                          {isDesktop ? (
+                          {install && install.method !== "web" ? (
                             <Button variant="outline" size="sm" onClick={handleRevealDb} className="shrink-0 h-7 px-2 text-xs gap-1">
                               <FolderOpen className="size-3" />
                               {t("showInFinder")}
@@ -408,27 +409,42 @@ export function SettingsModal({
                   </label>
                 </div>
 
+                {/* ── QoQa language ── */}
+                <div>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium">{t("syncLocale")}</span>
+                    <select
+                      value={syncLocale}
+                      onChange={(e) => setSyncLocale(e.target.value as "fr" | "de")}
+                      className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
+                    >
+                      <option value="fr">Français</option>
+                      <option value="de">Deutsch</option>
+                    </select>
+                  </label>
+                </div>
+
+                {/* ── Save ── */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    disabled={saving || loading}
+                    onClick={handleSave}
+                  >
+                    {saving ? (
+                      <RefreshCw className="size-3 animate-spin" />
+                    ) : saved ? (
+                      <Check className="size-3" />
+                    ) : null}
+                    {saved ? t("saved") : t("save")}
+                  </Button>
+                </div>
+
                 </TabsPanel>
 
                 <TabsPanel value="sync" className="max-h-[60vh] overflow-y-auto px-4 py-4">
                 <section className="space-y-3">
-                  {/* Sync locale select */}
-                  <div>
-                    <label className="flex flex-col gap-1">
-                      <span className="text-xs font-medium">{t("syncLocale")}</span>
-                      <select
-                        value={syncLocale}
-                        onChange={(e) =>
-                          setSyncLocale(e.target.value as "fr" | "de")
-                        }
-                        className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
-                      >
-                        <option value="fr">Français</option>
-                        <option value="de">Deutsch</option>
-                      </select>
-                    </label>
-                  </div>
-
                   {/* Sync mode radios */}
                   <div className="space-y-1.5">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -515,25 +531,6 @@ export function SettingsModal({
             )}
           </Tabs>
 
-          {/* Footer */}
-          <footer className="flex items-center justify-end gap-2 border-t px-4 py-3 shrink-0">
-            <Button
-              variant="default"
-              size="sm"
-              disabled={saving || loading}
-              onClick={handleSave}
-            >
-              {saving ? (
-                <RefreshCw className="size-3 animate-spin" />
-              ) : saved ? (
-                <Check className="size-3" />
-              ) : null}
-              {saved ? t("saved") : t("save")}
-            </Button>
-            <DialogPrimitive.Close render={<Button variant="ghost" size="sm" />}>
-              {t("close")}
-            </DialogPrimitive.Close>
-          </footer>
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
