@@ -100,7 +100,15 @@
     "saved": "Saved",
     "close": "Close",
     "dbLocation": "Database location",
-    "showInFinder": "Show in Finder"
+    "showInFinder": "Show in Finder",
+    "tabSettings": "Settings",
+    "tabSync": "Sync",
+    "credentialStoreKeychain": "Password stored in the macOS Keychain",
+    "credentialStoreCredentialManager": "Password stored in Windows Credential Manager",
+    "credentialStoreKeyring": "Password stored in the system keyring",
+    "credentialStoreFile": "Password stored in plain text in {{path}}",
+    "credentialStoreEnv": "Password taken from the QOQA_PASSWORD environment variable",
+    "showInFinderFailed": "Could not open the file manager."
   },
   "About": {
     "title": "About",

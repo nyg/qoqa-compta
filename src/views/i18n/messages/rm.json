@@ -100,7 +100,15 @@
     "saved": "Memorisà",
     "close": "Serrar",
     "dbLocation": "Posiziun da la banca da datas",
-    "showInFinder": "Mussar en il Finder"
+    "showInFinder": "Mussar en il Finder",
+    "tabSettings": "Parameters",
+    "tabSync": "Sincronisaziun",
+    "credentialStoreKeychain": "Pled-clav memorisà en il trousseau da macOS",
+    "credentialStoreCredentialManager": "Pled-clav memorisà en la administraziun da credenzialas da Windows",
+    "credentialStoreKeyring": "Pled-clav memorisà en il trousseau dal sistem",
+    "credentialStoreFile": "Pled-clav memorisà en text cler en {{path}}",
+    "credentialStoreEnv": "Pled-clav da la variabla d'ambient QOQA_PASSWORD",
+    "showInFinderFailed": "Impussibel dad avrir l'administratur da datotecas."
   },
   "About": {
     "title": "Davart",

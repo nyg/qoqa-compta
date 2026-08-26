@@ -8,6 +8,7 @@ import {
 import { createApp } from "../server/app";
 import { initDb } from "../server/db";
 import { runMigrations } from "../server/migrate";
+import { migratePasswordToKeychain } from "../server/secrets";
 import { backfillOrderSubuniverses } from "../server/queries";
 import { installApplicationMenu } from "./menu";
 import { systemLocales } from "./locale";
@@ -47,6 +48,7 @@ async function main() {
   const honoApp = createApp({
     corsOrigins: ["views://", "http://localhost:3000"],
     desktop: true,
+    revealInFileManager: (filePath) => Utils.showItemInFolder(filePath),
   });
 
   try {
@@ -58,6 +60,8 @@ async function main() {
     console.error("✗ Database initialisation failed:", err);
     process.exit(1);
   }
+
+  await migratePasswordToKeychain();
 
   const server = Bun.serve({
     port: url === DEV_SERVER_URL ? DEV_API_PORT : 0,

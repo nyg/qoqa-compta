@@ -7,6 +7,7 @@ import {
   subscribeToEvents,
 } from "../sync-job";
 import { readSettings } from "../settings";
+import { readPassword } from "../secrets";
 import type { SyncProgressEvent } from "../../shared/types";
 import type { SyncOptions } from "../sync";
 
@@ -15,8 +16,9 @@ const router = new Hono();
 // POST /api/sync — start a sync job
 router.post("/sync", async (c) => {
   const settings = readSettings();
+  const password = await readPassword();
 
-  if (!settings.qoqaEmail || !settings.qoqaPassword) {
+  if (!settings.qoqaEmail || !password) {
     return c.json({ error: "QoQa credentials are not configured in settings" }, 400);
   }
 
@@ -25,7 +27,7 @@ router.post("/sync", async (c) => {
 
   const options: SyncOptions = {
     email: settings.qoqaEmail,
-    password: settings.qoqaPassword,
+    password,
     locale: settings.syncLocale,
     mode,
   };

@@ -1,4 +1,5 @@
 import type {
+  CredentialStore,
   DashboardData,
   InstallInfo,
   LatestRelease,
@@ -158,6 +159,10 @@ export const apiClient = {
 
   getDbPath(): Promise<{ path: string | null }> {
     return request<{ path: string | null }>(`${API_BASE}/api/settings/db-path`);
+  },
+
+  getCredentialStore(): Promise<CredentialStore> {
+    return request<CredentialStore>(`${API_BASE}/api/settings/credential-store`);
   },
 
   revealDbInFinder(): Promise<{ ok: boolean }> {

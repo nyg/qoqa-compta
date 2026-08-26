@@ -100,7 +100,15 @@
     "saved": "Salvato",
     "close": "Chiudi",
     "dbLocation": "Posizione del database",
-    "showInFinder": "Mostra nel Finder"
+    "showInFinder": "Mostra nel Finder",
+    "tabSettings": "Impostazioni",
+    "tabSync": "Sincronizzazione",
+    "credentialStoreKeychain": "Password salvata nel portachiavi di macOS",
+    "credentialStoreCredentialManager": "Password salvata in Gestione credenziali di Windows",
+    "credentialStoreKeyring": "Password salvata nel portachiavi di sistema",
+    "credentialStoreFile": "Password salvata in chiaro in {{path}}",
+    "credentialStoreEnv": "Password presa dalla variabile d'ambiente QOQA_PASSWORD",
+    "showInFinderFailed": "Impossibile aprire il gestore file."
   },
   "About": {
     "title": "Informazioni",

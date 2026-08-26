@@ -5,10 +5,11 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api-client";
 import { isDesktop } from "@/lib/downloads";
 import type { SyncMode, SyncRunner } from "@/lib/use-sync-runner";
-import type { AppSettings, SyncProgressEvent } from "../../shared/types";
+import type { AppSettings, CredentialStore, SyncProgressEvent } from "../../shared/types";
 import i18n, { SUPPORTED_LOCALES, type SupportedLocale } from "@/i18n/index";
 
 const LOCALE_NAMES: Record<string, string> = {
@@ -75,6 +76,8 @@ export function SettingsModal({
 
   const [dbPath, setDbPath] = useState<string | null>(null);
   const [pathCopied, setPathCopied] = useState(false);
+  const [revealFailed, setRevealFailed] = useState(false);
+  const [credentialStore, setCredentialStore] = useState<CredentialStore | null>(null);
 
   // Reset DB
   const [confirmReset, setConfirmReset] = useState(false);
@@ -93,6 +96,7 @@ export function SettingsModal({
     setSaved(false);
     setConfirmReset(false);
     setResetSuccess(false);
+    setRevealFailed(false);
     // The sync log is deliberately left alone: the dialog is opened
     // automatically when a run started from the header fails, and clearing it
     // here would discard the very log the user is being shown. `start()`
@@ -113,6 +117,7 @@ export function SettingsModal({
       .catch(console.error)
       .finally(() => setLoading(false));
     apiClient.getDbPath().then((r) => setDbPath(r.path)).catch(console.error);
+    apiClient.getCredentialStore().then(setCredentialStore).catch(console.error);
   }, [open]);
 
   // Auto-scroll log
@@ -156,11 +161,24 @@ export function SettingsModal({
   }
 
   async function handleRevealDb() {
+    setRevealFailed(false);
     try {
       await apiClient.revealDbInFinder();
     } catch (e) {
       console.error(e);
+      setRevealFailed(true);
     }
+  }
+
+  function credentialStoreLabel(store: CredentialStore): string {
+    const keys: Record<CredentialStore["kind"], string> = {
+      keychain: "credentialStoreKeychain",
+      "credential-manager": "credentialStoreCredentialManager",
+      keyring: "credentialStoreKeyring",
+      file: "credentialStoreFile",
+      env: "credentialStoreEnv",
+    };
+    return t(keys[store.kind], { path: store.path ?? "" });
   }
 
   return (
@@ -203,13 +221,18 @@ export function SettingsModal({
           </header>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+          <Tabs defaultValue="settings" className="min-h-0 flex-1">
+            <TabsList className="shrink-0 border-b px-4">
+              <TabsTab value="settings">{t("tabSettings")}</TabsTab>
+              <TabsTab value="sync">{t("tabSync")}</TabsTab>
+            </TabsList>
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <RefreshCw className="size-4 animate-spin text-muted-foreground" />
               </div>
             ) : (
               <>
+                <TabsPanel value="settings" className="max-h-[60vh] overflow-y-auto px-4 py-4 space-y-6">
                 {/* ── Credentials ── */}
                 <section className="space-y-3">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -233,6 +256,11 @@ export function SettingsModal({
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="new-password"
                       />
+                      {credentialStore && (
+                        <span className="text-[0.65rem] leading-snug text-muted-foreground break-all">
+                          {credentialStoreLabel(credentialStore)}
+                        </span>
+                      )}
                     </label>
                   </div>
                 </section>
@@ -347,6 +375,9 @@ export function SettingsModal({
                             </Button>
                           )}
                         </div>
+                        {revealFailed && (
+                          <p className="mt-1 text-xs text-destructive">{t("showInFinderFailed")}</p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -377,31 +408,10 @@ export function SettingsModal({
                   </label>
                 </div>
 
-                {/* ── Save ── */}
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    disabled={saving || loading}
-                    onClick={handleSave}
-                  >
-                    {saving ? (
-                      <RefreshCw className="size-3 animate-spin" />
-                    ) : saved ? (
-                      <Check className="size-3" />
-                    ) : null}
-                    {saved ? t("saved") : t("save")}
-                  </Button>
-                </div>
+                </TabsPanel>
 
-                <hr className="border-border" />
-
-                {/* ── Sync ── */}
+                <TabsPanel value="sync" className="max-h-[60vh] overflow-y-auto px-4 py-4">
                 <section className="space-y-3">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {t("syncSection")}
-                  </h3>
-
                   {/* Sync locale select */}
                   <div>
                     <label className="flex flex-col gap-1">
@@ -500,12 +510,26 @@ export function SettingsModal({
                     </div>
                   )}
                 </section>
+                </TabsPanel>
               </>
             )}
-          </div>
+          </Tabs>
 
           {/* Footer */}
           <footer className="flex items-center justify-end gap-2 border-t px-4 py-3 shrink-0">
+            <Button
+              variant="default"
+              size="sm"
+              disabled={saving || loading}
+              onClick={handleSave}
+            >
+              {saving ? (
+                <RefreshCw className="size-3 animate-spin" />
+              ) : saved ? (
+                <Check className="size-3" />
+              ) : null}
+              {saved ? t("saved") : t("save")}
+            </Button>
             <DialogPrimitive.Close render={<Button variant="ghost" size="sm" />}>
               {t("close")}
             </DialogPrimitive.Close>

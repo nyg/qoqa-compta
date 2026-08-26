@@ -2,6 +2,7 @@ import { existsSync, statSync } from "fs";
 import path from "path";
 import { initDb } from "./db";
 import { runMigrations } from "./migrate";
+import { migratePasswordToKeychain } from "./secrets";
 import { backfillOrderSubuniverses } from "./queries";
 import { createApp } from "./app";
 
@@ -44,6 +45,8 @@ async function main() {
     console.error("✗ Database initialisation failed:", err);
     process.exit(1);
   }
+
+  await migratePasswordToKeychain();
 
   Bun.serve({
     port: PORT,

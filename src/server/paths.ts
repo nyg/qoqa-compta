@@ -41,7 +41,7 @@ function dataDirIn(name: string): string {
 }
 
 // Move the pre-rename directory across, so an upgrade keeps the synced orders and
-// saved credentials instead of silently starting from an empty database. Returns
+// saved settings instead of silently starting from an empty database. Returns
 // the directory to use: the legacy one if it exists but could not be moved
 // (read-only parent, open handle, separate volume) — losing the data would be
 // worse than an unfashionable path.

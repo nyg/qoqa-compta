@@ -100,7 +100,15 @@
     "saved": "Enregistré",
     "close": "Fermer",
     "dbLocation": "Emplacement de la base de données",
-    "showInFinder": "Afficher dans le Finder"
+    "showInFinder": "Afficher dans le Finder",
+    "tabSettings": "Réglages",
+    "tabSync": "Synchronisation",
+    "credentialStoreKeychain": "Mot de passe enregistré dans le trousseau macOS",
+    "credentialStoreCredentialManager": "Mot de passe enregistré dans le gestionnaire d'identification Windows",
+    "credentialStoreKeyring": "Mot de passe enregistré dans le trousseau du système",
+    "credentialStoreFile": "Mot de passe enregistré en clair dans {{path}}",
+    "credentialStoreEnv": "Mot de passe issu de la variable d'environnement QOQA_PASSWORD",
+    "showInFinderFailed": "Impossible d'ouvrir le gestionnaire de fichiers."
   },
   "About": {
     "title": "À propos",

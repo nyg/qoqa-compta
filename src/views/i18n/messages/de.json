@@ -100,7 +100,15 @@
     "saved": "Gespeichert",
     "close": "Schliessen",
     "dbLocation": "Datenbankpfad",
-    "showInFinder": "Im Finder zeigen"
+    "showInFinder": "Im Finder zeigen",
+    "tabSettings": "Einstellungen",
+    "tabSync": "Synchronisation",
+    "credentialStoreKeychain": "Passwort im macOS-Schlüsselbund gespeichert",
+    "credentialStoreCredentialManager": "Passwort in der Windows-Anmeldeinformationsverwaltung gespeichert",
+    "credentialStoreKeyring": "Passwort im Schlüsselbund des Systems gespeichert",
+    "credentialStoreFile": "Passwort im Klartext in {{path}} gespeichert",
+    "credentialStoreEnv": "Passwort aus der Umgebungsvariable QOQA_PASSWORD",
+    "showInFinderFailed": "Der Dateimanager konnte nicht geöffnet werden."
   },
   "About": {
     "title": "Über",
