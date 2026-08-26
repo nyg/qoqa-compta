@@ -89,7 +89,7 @@
     "resetDbSuccess": "Database ripristinato con successo.",
     "syncSection": "Sincronizzazione",
     "uiLocale": "Lingua interfaccia",
-    "syncLocale": "Lingua QoQa",
+    "syncLocale": "Lingua di sincronizzazione QoQa",
     "syncModeFull": "Sincronizzazione completa (tutti gli ordini)",
     "syncModeUpdate": "Aggiornamento (solo nuovi ordini)",
     "runSync": "Avvia sincronizzazione",
@@ -108,7 +108,8 @@
     "credentialStoreKeyring": "Password salvata nel portachiavi di sistema",
     "credentialStoreFile": "Password salvata in chiaro in {{path}}",
     "credentialStoreEnv": "Password presa dalla variabile d'ambiente QOQA_PASSWORD",
-    "showInFinderFailed": "Impossibile aprire il gestore file."
+    "showInFinderFailed": "Impossibile aprire il gestore file.",
+    "languagesSection": "Lingue"
   },
   "About": {
     "title": "Informazioni",

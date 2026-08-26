@@ -89,7 +89,7 @@
     "resetDbSuccess": "Database reset successfully.",
     "syncSection": "Sync",
     "uiLocale": "Interface language",
-    "syncLocale": "QoQa language",
+    "syncLocale": "QoQa synchronisation language",
     "syncModeFull": "Full sync (all orders)",
     "syncModeUpdate": "Update (new orders only)",
     "runSync": "Run Sync",
@@ -108,7 +108,8 @@
     "credentialStoreKeyring": "Password stored in the system keyring",
     "credentialStoreFile": "Password stored in plain text in {{path}}",
     "credentialStoreEnv": "Password taken from the QOQA_PASSWORD environment variable",
-    "showInFinderFailed": "Could not open the file manager."
+    "showInFinderFailed": "Could not open the file manager.",
+    "languagesSection": "Languages"
   },
   "About": {
     "title": "About",

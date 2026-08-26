@@ -23,6 +23,11 @@ const settings = await import(process.env.TEST_SETTINGS_MODULE);
 const out = {};
 
 for (const step of JSON.parse(process.env.TEST_STEPS)) {
+  if (step.op === "seed") {
+    const settingsPath = settings.getSettingsPath();
+    require("fs").mkdirSync(require("path").dirname(settingsPath), { recursive: true });
+    require("fs").writeFileSync(settingsPath, JSON.stringify(step.value, null, 2));
+  }
   if (step.op === "write") await secrets.writePassword(step.value ?? null);
   if (step.op === "read") out.read = await secrets.readPassword();
   if (step.op === "migrate") await secrets.migratePasswordToKeychain();
@@ -39,18 +44,18 @@ console.log(JSON.stringify(out));
 
 const roots: string[] = [];
 
-function tempHome(seed?: Record<string, unknown>): string {
+function tempHome(): string {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "qoqa-secrets-"));
   roots.push(home);
-  if (seed) {
-    const dir = path.join(home, "Library", "Application Support", "QoQa Compta");
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, "settings.json"), JSON.stringify(seed, null, 2));
-  }
   return home;
 }
 
+function seed(value: Record<string, unknown>): Step {
+  return { op: "seed", value };
+}
+
 type Step =
+  | { op: "seed"; value: Record<string, unknown> }
   | { op: "write"; value: string | null }
   | { op: "read" }
   | { op: "migrate" }
@@ -114,8 +119,9 @@ afterAll(async () => {
 
 describe.skipIf(!hasCredentialStore)("with an OS credential store", () => {
   test("saves the password to the store and keeps it out of settings.json", () => {
-    const home = tempHome({ qoqaEmail: "user@example.com" });
+    const home = tempHome();
     const { read, file } = run(home, [
+      seed({ qoqaEmail: "user@example.com" }),
       { op: "write", value: "s3cret" },
       { op: "read" },
     ]);
@@ -124,8 +130,12 @@ describe.skipIf(!hasCredentialStore)("with an OS credential store", () => {
   });
 
   test("moves a password left in settings.json by an earlier version", () => {
-    const home = tempHome({ qoqaEmail: "user@example.com", qoqaPassword: "legacy" });
-    const { read, file } = run(home, [{ op: "migrate" }, { op: "read" }]);
+    const home = tempHome();
+    const { read, file } = run(home, [
+      seed({ qoqaEmail: "user@example.com", qoqaPassword: "legacy" }),
+      { op: "migrate" },
+      { op: "read" },
+    ]);
     expect(read).toBe("legacy");
     expect(file).not.toHaveProperty("qoqaPassword");
     expect(file).toMatchObject({ qoqaEmail: "user@example.com" });
@@ -142,8 +152,9 @@ describe.skipIf(!hasCredentialStore)("with an OS credential store", () => {
   });
 
   test("saving other settings before the migration runs keeps the password", () => {
-    const home = tempHome({ qoqaEmail: "old@example.com", qoqaPassword: "legacy" });
+    const home = tempHome();
     const { read, file } = run(home, [
+      seed({ qoqaEmail: "old@example.com", qoqaPassword: "legacy" }),
       { op: "writeSettings", value: { qoqaEmail: "new@example.com" } },
       { op: "migrate" },
       { op: "read" },
@@ -158,10 +169,10 @@ describe("without an OS credential store", () => {
   const broken = { TEST_BREAK_CREDENTIAL_STORE: "1" };
 
   test("falls back to settings.json so the app keeps working", () => {
-    const home = tempHome({ qoqaEmail: "user@example.com" });
+    const home = tempHome();
     const { read, file } = run(
       home,
-      [{ op: "write", value: "s3cret" }, { op: "read" }],
+      [seed({ qoqaEmail: "user@example.com" }), { op: "write", value: "s3cret" }, { op: "read" }],
       broken
     );
     expect(read).toBe("s3cret");
@@ -169,15 +180,23 @@ describe("without an OS credential store", () => {
   });
 
   test("leaves a password waiting in settings.json rather than losing it", () => {
-    const home = tempHome({ qoqaPassword: "legacy" });
-    const { read, file } = run(home, [{ op: "migrate" }, { op: "read" }], broken);
+    const home = tempHome();
+    const { read, file } = run(
+      home,
+      [seed({ qoqaPassword: "legacy" }), { op: "migrate" }, { op: "read" }],
+      broken
+    );
     expect(read).toBe("legacy");
     expect(file).toMatchObject({ qoqaPassword: "legacy" });
   });
 
   test("clearing the password removes it from settings.json", () => {
-    const home = tempHome({ qoqaPassword: "legacy" });
-    const { read, file } = run(home, [{ op: "write", value: null }, { op: "read" }], broken);
+    const home = tempHome();
+    const { read, file } = run(
+      home,
+      [seed({ qoqaPassword: "legacy" }), { op: "write", value: null }, { op: "read" }],
+      broken
+    );
     expect(read).toBeNull();
     expect(file).not.toHaveProperty("qoqaPassword");
   });
@@ -185,8 +204,8 @@ describe("without an OS credential store", () => {
 
 describe("the development environment override", () => {
   test("QOQA_PASSWORD wins over anything stored", () => {
-    const home = tempHome({ qoqaPassword: "stored" });
-    const { read } = run(home, [{ op: "read" }], {
+    const home = tempHome();
+    const { read } = run(home, [seed({ qoqaPassword: "stored" }), { op: "read" }], {
       NODE_ENV: "development",
       QOQA_PASSWORD: "from-env",
       TEST_BREAK_CREDENTIAL_STORE: "1",
@@ -195,8 +214,8 @@ describe("the development environment override", () => {
   });
 
   test("is ignored outside development", () => {
-    const home = tempHome({ qoqaPassword: "stored" });
-    const { read } = run(home, [{ op: "read" }], {
+    const home = tempHome();
+    const { read } = run(home, [seed({ qoqaPassword: "stored" }), { op: "read" }], {
       NODE_ENV: "production",
       QOQA_PASSWORD: "from-env",
       TEST_BREAK_CREDENTIAL_STORE: "1",

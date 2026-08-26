@@ -89,7 +89,7 @@
     "resetDbSuccess": "Datenbank erfolgreich zurückgesetzt.",
     "syncSection": "Synchronisation",
     "uiLocale": "Oberflächensprache",
-    "syncLocale": "QoQa-Sprache",
+    "syncLocale": "QoQa-Synchronisationssprache",
     "syncModeFull": "Vollständige Synchronisation (alle Bestellungen)",
     "syncModeUpdate": "Aktualisierung (nur neue Bestellungen)",
     "runSync": "Sync starten",
@@ -108,7 +108,8 @@
     "credentialStoreKeyring": "Passwort im Schlüsselbund des Systems gespeichert",
     "credentialStoreFile": "Passwort im Klartext in {{path}} gespeichert",
     "credentialStoreEnv": "Passwort aus der Umgebungsvariable QOQA_PASSWORD",
-    "showInFinderFailed": "Der Dateimanager konnte nicht geöffnet werden."
+    "showInFinderFailed": "Der Dateimanager konnte nicht geöffnet werden.",
+    "languagesSection": "Sprachen"
   },
   "About": {
     "title": "Über",

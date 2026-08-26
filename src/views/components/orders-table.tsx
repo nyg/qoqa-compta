@@ -9,7 +9,7 @@ import { useFormatter } from "@/lib/formatter-context";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
-import { fileName, saveFile } from "@/lib/downloads";
+import { saveFile } from "@/lib/downloads";
 import { selectionParams, type UniverseSelection } from "../../shared/filters";
 import { DEFAULT_PAGE_SIZE, type QoqaOrder, type Pagination } from "../../shared/types";
 
@@ -165,13 +165,11 @@ export function OrdersTable({
   });
 
   const [csvDownloading, setCsvDownloading] = useState(false);
-  const [csvSavedPath, setCsvSavedPath] = useState<string | null>(null);
 
   const handleCsvDownload = useCallback(async () => {
     setCsvDownloading(true);
-    setCsvSavedPath(null);
     try {
-      const path = await saveFile({
+      await saveFile({
         save: () =>
           apiClient.saveCsv({
             ...selectionParams(selection),
@@ -181,10 +179,6 @@ export function OrdersTable({
         url: csvUrl,
         filename: "qoqa-orders.csv",
       });
-      if (path) {
-        setCsvSavedPath(path);
-        setTimeout(() => setCsvSavedPath(null), 5000);
-      }
     } catch (e) {
       console.error("CSV download failed:", e);
     } finally {
@@ -226,11 +220,6 @@ export function OrdersTable({
                 <Download className="h-3.5 w-3.5 mr-1.5" />
                 {t("csvExport")}
               </Button>
-              {csvSavedPath && (
-                <span className="text-xs text-muted-foreground truncate max-w-48" title={csvSavedPath}>
-                  {t("savedTo", { file: fileName(csvSavedPath) })}
-                </span>
-              )}
             </div>
           </div>
         </div>

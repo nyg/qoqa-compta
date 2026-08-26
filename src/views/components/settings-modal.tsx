@@ -202,7 +202,7 @@ export function SettingsModal({
         <DialogPrimitive.Popup
           className={cn(
             "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
-            "flex max-h-[90vh] w-[min(95vw,560px)] flex-col overflow-hidden rounded-lg bg-card text-card-foreground ring-1 ring-foreground/10 shadow-xl",
+            "flex h-[min(90vh,620px)] w-[min(95vw,560px)] flex-col overflow-hidden rounded-lg bg-card text-card-foreground ring-1 ring-foreground/10 shadow-xl",
             "data-[starting-style]:opacity-0 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[ending-style]:scale-95 transition-[opacity,transform]"
           )}
         >
@@ -233,7 +233,7 @@ export function SettingsModal({
               </div>
             ) : (
               <>
-                <TabsPanel value="settings" className="max-h-[60vh] overflow-y-auto px-4 py-4 space-y-6">
+                <TabsPanel value="settings" className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-6">
                 {/* ── Credentials ── */}
                 <section className="space-y-3">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -262,6 +262,50 @@ export function SettingsModal({
                           {credentialStoreLabel(credentialStore)}
                         </span>
                       )}
+                    </label>
+                  </div>
+                </section>
+
+                {/* ── Languages ── */}
+                <section className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("languagesSection")}
+                  </h3>
+                  <div>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs font-medium">{t("uiLocale")}</span>
+                      <select
+                        value={uiLocale}
+                        onChange={(e) => {
+                          const next = e.target.value as SupportedLocale;
+                          setUiLocale(next);
+                          // Applied here rather than on Save: the language is not part
+                          // of what Save sends any more, so leaving it behind the
+                          // request meant a failing server silently kept the old one.
+                          i18n.changeLanguage(next);
+                        }}
+                        className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
+                      >
+                        {SUPPORTED_LOCALES.map((loc) => (
+                          <option key={loc} value={loc}>
+                            {LOCALE_NAMES[loc] ?? loc.toUpperCase()}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs font-medium">{t("syncLocale")}</span>
+                      <select
+                        value={syncLocale}
+                        onChange={(e) => setSyncLocale(e.target.value as "fr" | "de")}
+                        className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
+                      >
+                        <option value="fr">Français</option>
+                        <option value="de">Deutsch</option>
+                      </select>
                     </label>
                   </div>
                 </section>
@@ -384,45 +428,7 @@ export function SettingsModal({
                   </div>
                 </section>
 
-                {/* ── Interface language ── */}
-                <div>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs font-medium">{t("uiLocale")}</span>
-                    <select
-                      value={uiLocale}
-                      onChange={(e) => {
-                        const next = e.target.value as SupportedLocale;
-                        setUiLocale(next);
-                        // Applied here rather than on Save: the language is not part
-                        // of what Save sends any more, so leaving it behind the
-                        // request meant a failing server silently kept the old one.
-                        i18n.changeLanguage(next);
-                      }}
-                      className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
-                    >
-                      {SUPPORTED_LOCALES.map((loc) => (
-                        <option key={loc} value={loc}>
-                          {LOCALE_NAMES[loc] ?? loc.toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                {/* ── QoQa language ── */}
-                <div>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs font-medium">{t("syncLocale")}</span>
-                    <select
-                      value={syncLocale}
-                      onChange={(e) => setSyncLocale(e.target.value as "fr" | "de")}
-                      className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
-                    >
-                      <option value="fr">Français</option>
-                      <option value="de">Deutsch</option>
-                    </select>
-                  </label>
-                </div>
+                <hr className="border-border" />
 
                 {/* ── Save ── */}
                 <div className="flex items-center gap-2">
@@ -443,7 +449,7 @@ export function SettingsModal({
 
                 </TabsPanel>
 
-                <TabsPanel value="sync" className="max-h-[60vh] overflow-y-auto px-4 py-4">
+                <TabsPanel value="sync" className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
                 <section className="space-y-3">
                   {/* Sync mode radios */}
                   <div className="space-y-1.5">
