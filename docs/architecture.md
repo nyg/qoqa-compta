@@ -127,7 +127,8 @@ qoqa-compta/
     │   ├── migrations.generated.ts # Generated — migration SQL inlined so it ships in the bundle
     │   ├── queries.ts            # All DB operations (upsert, select, aggregate)
     │   ├── settings.ts           # settings.json read/write (platform-aware path)
-    │   ├── secrets.ts            # QoQa password in the OS credential store, with a settings.json fallback
+    │   ├── secrets.ts            # QoQa password + PostgreSQL URL in the OS credential store, with a settings.json fallback
+    │   ├── database-url.ts       # Masks the password inside a connection string for the SPA, and restores it on save
     │   ├── install.ts            # How the running copy was installed (brew, scoop, manual, web)
     │   └── routes/
     │       ├── app.ts            # GET /api/app/latest-release, GET /api/app/install
@@ -222,6 +223,7 @@ The sync runs inside the Hono server process as an async task managed by `src/se
 
 ```
 POST /api/sync { mode: "full" | "update" }
+  → migrate.ts       — runMigrations() → emits db_ready with the migrations it applied
   → auth.ts          — POST auth.qoqa.ch/v2/login → JWT
   → api.ts           — fetchUniverses + sub-universes → upsert to qoqa_universes / qoqa_subuniverses
   → api.ts           — fetchPurchases (paginated list)
@@ -233,6 +235,8 @@ POST /api/sync { mode: "full" | "update" }
 ```
 
 In **update** mode, sync stops after 5 consecutive already-known orders to avoid full re-scans.
+
+The schema step comes first because saving a database URL no longer creates anything — see [Schema migrations](#schema-migrations). It is idempotent, so on every sync after the first it costs one journal read and emits *Database schema up to date*.
 
 ---
 
@@ -250,9 +254,9 @@ macOS and Windows name the folder after the app as the user sees it; the XDG spe
 
 In **development** only, env vars (`QOQA_EMAIL`, `QOQA_PASSWORD`, `DATABASE_URL`) take precedence over the file.
 
-### The QoQa password
+### The secrets
 
-The password is the one setting that does not live in `settings.json`. It is stored in the OS credential store through `Bun.secrets`, under service `io.github.nyg.qoqa-compta` and name `qoqa-password`:
+Two settings do not live in `settings.json`: the QoQa password and the PostgreSQL connection string, both of which are credentials. They are stored in the OS credential store through `Bun.secrets`, under service `io.github.nyg.qoqa-compta` and names `qoqa-password` and `database-url`:
 
 | Platform | Store |
 |---|---|
@@ -262,15 +266,15 @@ The password is the one setting that does not live in `settings.json`. It is sto
 
 Electrobun has no credential API of its own — no equivalent of Electron's `safeStorage`. It bundles a Bun runtime (`build.mainProcess: "bun"`, currently Bun 1.4.0 per `.hutch/dependencies.lock`), and `Bun.secrets` is what that runtime offers. So the desktop app and `bun run start` reach the same store through the same code.
 
-`src/server/secrets.ts` is the only module that reads or writes the password. `readPassword()` and `writePassword()` try the credential store first and fall back to a `qoqaPassword` key in `settings.json` when it is unreachable — a headless Linux host without a secret service daemon, or a user who denies the macOS prompt — so the app never breaks, it only stops being able to protect the password. `migratePasswordToKeychain()` runs at startup in both entry points and moves a password written by an earlier version out of `settings.json`; if the store refuses the write it leaves the file alone rather than losing the password. `writeSettings()` spreads the raw file before the parsed settings for the same reason: a settings save that happens before the migration must not drop the key.
+`src/server/secrets.ts` is the only module that reads or writes either of them. `readPassword()` / `writePassword()` and `readDatabaseUrl()` / `writeDatabaseUrl()` try the credential store first and fall back to a `qoqaPassword` or `databaseUrl` key in `settings.json` when it is unreachable — a headless Linux host without a secret service daemon, or a user who denies the macOS prompt — so the app never breaks, it only stops being able to protect the value. `migrateSecretsToCredentialStore()` runs at startup in both entry points, before `initDb()`, and moves either key written by an earlier version out of `settings.json`; if the store refuses the write it leaves the file alone rather than losing the value. `writeSettings()` spreads the raw file before the parsed settings for the same reason: a settings save that happens before the migration must not drop the keys.
 
 On macOS the process that calls Security.framework is `Contents/MacOS/bun`, the stock Bun binary Electrobun copies into the bundle — byte-identical to an upstream Bun release and signed `Developer ID Application: Jarred Sumner (7FRXF46ZSN)`. The app's own ad-hoc signature (`scripts/postwrap.ts`) is not what the Keychain ACL binds to, which is why shipping a new app version does not re-prompt: our JavaScript changing does not change that binary's cdhash. Bumping the **bundled Bun version** does, so the release that carries one shows a single "wants to use your confidential information" prompt; the user clicks *Always Allow* once.
 
-What this protects against is worth stating precisely. The keychain keeps the password out of a file that backups, cloud-synced config directories and any process reading the home directory can see. It does not isolate the app from other local code: because the code identity is the Bun binary rather than the app bundle, any `bun` script at the same version shares that identity and can read the item without a prompt ([oven-sh/bun#28071](https://github.com/oven-sh/bun/issues/28071)).
+What this protects against is worth stating precisely. The keychain keeps these values out of a file that backups, cloud-synced config directories and any process reading the home directory can see. It does not isolate the app from other local code: because the code identity is the Bun binary rather than the app bundle, any `bun` script at the same version shares that identity and can read the item without a prompt ([oven-sh/bun#28071](https://github.com/oven-sh/bun/issues/28071)).
 
-`GET /api/settings/credential-store` reports where the password actually ended up — `keychain`, `credential-manager`, `keyring`, `file` (with the path) or `env` — and the Settings modal prints it under the password field, so the user can see whether their password is protected or sitting in a JSON file.
+`GET /api/settings/credential-store` reports where each secret actually ended up — `keychain`, `credential-manager`, `keyring`, `file` (with the path) or `env` (with the variable name) — and the Settings modal prints it under the password field and under the database URL field, so the user can see whether a value is protected or sitting in a JSON file. The two are reported separately because they can genuinely differ: a store that refuses one write leaves that secret in the file while the other stays in the store.
 
-`databaseUrl` stays in `settings.json` even though a PostgreSQL connection string embeds a password.
+The connection string reaches the SPA with only its password segment replaced by `*****` (`src/server/database-url.ts`), so the host stays readable for troubleshooting while the credential does not leave the server in the clear. `PUT /api/settings` puts the stored password back when the mask returns unedited, which also means the host can be corrected without retyping the password. A URL whose password is genuinely retyped is taken as-is, and a string that does not parse as a URL is passed through untouched in both directions.
 
 ---
 
@@ -294,6 +298,10 @@ The same first-launch migration described under [Settings](#settings) applies he
 
 Set `DATABASE_URL` to a `postgresql://…` connection string in the Settings modal (or `.env` in dev).
 
+Saving a URL neither creates nor touches a schema. `PUT /api/settings` runs `probeDatabaseUrl()` — a `SELECT 1` on a throwaway client — and rejects the save with a 400 when the server does not answer, so a typo leaves the working connection in place instead of writing itself into `settings.json` and then failing. Only once the probe passes is the URL stored and the live connection swapped.
+
+Between that save and the first sync the target has no tables. `GET /api/dashboard` and `GET /api/orders` handle that by checking `isSchemaReady()` when a query fails and answering with an empty payload rather than a 500, which is what puts the SPA in its "no orders — run a sync" state. The check only runs on the failure path, so a working database never pays for it.
+
 ### Schema migrations
 
 `src/server/schema.ts` is the single source of truth. It declares each table twice — once with `sqliteTable`, once with `pgTable` — because the two dialects differ in real ways (`BLOB` vs `BYTEA`, `AUTOINCREMENT` vs `GENERATED ALWAYS AS IDENTITY`). Nothing else restates the DDL.
@@ -310,7 +318,9 @@ bun run db:generate
 
 `scripts/embed-migrations.ts` then regenerates `src/server/migrations.generated.ts`, which holds every migration's SQL as a string constant. The SQL is inlined rather than read from `drizzle/` at runtime, because the desktop app is a single compiled Bun bundle — a migrations directory that only exists in the repo would be missing at first run on a user's machine. `bun test` asserts the generated file still matches `drizzle/`, so a forgotten `db:generate` fails CI instead of shipping.
 
-`src/server/migrate.ts` applies the migrations at startup, in place of the old `bootstrapSchema()`. It reuses Drizzle's own journal format — a `__drizzle_migrations` table holding the SHA-256 of each applied migration and its timestamp, in the `drizzle` schema on PostgreSQL — and the same "apply everything newer than the newest recorded timestamp" rule, so the journal stays readable by Drizzle's stock migrator. On SQLite it also runs `PRAGMA journal_mode=WAL` and `PRAGMA busy_timeout=5000`, which are connection settings rather than schema and so sit outside the migration transaction.
+`src/server/migrate.ts` applies the migrations at two points: at startup in both entry points, and as the first step of every sync, where it emits a `db_ready` progress event naming the migrations it applied. Those are the only two, and neither is a settings save — creating tables in a remote database as a side effect of typing a URL into a form was the behaviour this replaced. `runMigrations()` returns what it did (`{ applied, baselined }`) so the sync log can say it, and it is idempotent, so the sync step is a journal read on every run after the first.
+
+It replaced the old `bootstrapSchema()` and reuses Drizzle's own journal format — a `__drizzle_migrations` table holding the SHA-256 of each applied migration and its timestamp, in the `drizzle` schema on PostgreSQL — and the same "apply everything newer than the newest recorded timestamp" rule, so the journal stays readable by Drizzle's stock migrator. On SQLite it also runs `PRAGMA journal_mode=WAL` and `PRAGMA busy_timeout=5000`, which are connection settings rather than schema and so sit outside the migration transaction.
 
 #### Baselining databases that predate migrations
 

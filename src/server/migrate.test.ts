@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { getDb, getRawBunDb, reinitDb } from "./db";
-import { dropAllTables, runMigrations } from "./migrate";
+import { dropAllTables, isSchemaReady, runMigrations } from "./migrate";
 import { pgMigrations, sqliteMigrations } from "./migrations.generated";
 import { qoqaOrdersSqlite } from "./schema";
 
@@ -218,6 +218,44 @@ describe("runMigrations on SQLite", () => {
     expect(journal[0]!.hash).toBe(
       createHash("sha256").update(baseline.sql).digest("hex")
     );
+  });
+
+  test("reports the migrations it applied, and nothing on the next run", async () => {
+    const filePath = tempDbPath();
+    await openAt(filePath);
+
+    const first = await runMigrations();
+    expect(first.applied).toEqual(sqliteMigrations.map((migration) => migration.tag));
+    expect(first.baselined).toBe(false);
+
+    await openAt(filePath);
+    const second = await runMigrations();
+    expect(second.applied).toEqual([]);
+    expect(second.baselined).toBe(false);
+  });
+
+  test("reports a baseline without claiming to have applied it", async () => {
+    const filePath = tempDbPath();
+    seedLegacyDatabase(filePath, ["QO-300"]);
+
+    await openAt(filePath);
+    const report = await runMigrations();
+
+    expect(report.baselined).toBe(true);
+    expect(report.applied).toEqual(
+      sqliteMigrations.slice(1).map((migration) => migration.tag)
+    );
+  });
+
+  test("reports a schema-less database as not ready until it is migrated", async () => {
+    await openAt(tempDbPath());
+    expect(await isSchemaReady()).toBe(false);
+
+    await runMigrations();
+    expect(await isSchemaReady()).toBe(true);
+
+    await dropAllTables();
+    expect(await isSchemaReady()).toBe(false);
   });
 
   test("does not baseline a fresh database", async () => {

@@ -6,7 +6,7 @@ import path from "path";
 const SECRETS_MODULE = path.join(import.meta.dir, "secrets.ts");
 const SETTINGS_MODULE = path.join(import.meta.dir, "settings.ts");
 const SERVICE = `io.github.nyg.qoqa-compta.test.${process.pid}`;
-const NAME = "qoqa-password";
+const NAMES = ["qoqa-password", "database-url"];
 
 const CHILD = `
 require("os").homedir = () => process.env.TEST_HOME;
@@ -28,9 +28,17 @@ for (const step of JSON.parse(process.env.TEST_STEPS)) {
     require("fs").mkdirSync(require("path").dirname(settingsPath), { recursive: true });
     require("fs").writeFileSync(settingsPath, JSON.stringify(step.value, null, 2));
   }
-  if (step.op === "write") await secrets.writePassword(step.value ?? null);
-  if (step.op === "read") out.read = await secrets.readPassword();
-  if (step.op === "migrate") await secrets.migratePasswordToKeychain();
+  if (step.op === "write") {
+    await (step.secret === "databaseUrl" ? secrets.writeDatabaseUrl : secrets.writePassword)(
+      step.value ?? null
+    );
+  }
+  if (step.op === "read") {
+    out.read = await (step.secret === "databaseUrl"
+      ? secrets.readDatabaseUrl()
+      : secrets.readPassword());
+  }
+  if (step.op === "migrate") await secrets.migrateSecretsToCredentialStore();
   if (step.op === "writeSettings") settings.writeSettings(step.value);
 }
 
@@ -54,10 +62,12 @@ function seed(value: Record<string, unknown>): Step {
   return { op: "seed", value };
 }
 
+type SecretName = "qoqaPassword" | "databaseUrl";
+
 type Step =
   | { op: "seed"; value: Record<string, unknown> }
-  | { op: "write"; value: string | null }
-  | { op: "read" }
+  | { op: "write"; value: string | null; secret?: SecretName }
+  | { op: "read"; secret?: SecretName }
   | { op: "migrate" }
   | { op: "writeSettings"; value: Record<string, unknown> };
 
@@ -110,7 +120,9 @@ afterAll(async () => {
     fs.rmSync(root, { recursive: true, force: true });
   }
   try {
-    await Bun.secrets.delete({ service: SERVICE, name: NAME });
+    for (const name of NAMES) {
+      await Bun.secrets.delete({ service: SERVICE, name });
+    }
     await Bun.secrets.delete({ service: SERVICE, name: "probe" });
   } catch {
     // Nothing to clean up on a host without a credential store
@@ -147,6 +159,45 @@ describe.skipIf(!hasCredentialStore)("with an OS credential store", () => {
       { op: "write", value: "s3cret" },
       { op: "write", value: null },
       { op: "read" },
+    ]);
+    expect(read).toBeNull();
+  });
+
+  test("keeps the PostgreSQL URL out of settings.json too", () => {
+    const home = tempHome();
+    const { read, file } = run(home, [
+      seed({ qoqaEmail: "user@example.com" }),
+      { op: "write", secret: "databaseUrl", value: "postgresql://u:p@host/db" },
+      { op: "read", secret: "databaseUrl" },
+    ]);
+    expect(read).toBe("postgresql://u:p@host/db");
+    expect(file).toEqual({ qoqaEmail: "user@example.com" });
+  });
+
+  test("moves both secrets left in settings.json by an earlier version", () => {
+    const home = tempHome();
+    const { file } = run(home, [
+      seed({
+        qoqaEmail: "user@example.com",
+        qoqaPassword: "legacy",
+        databaseUrl: "postgresql://u:p@host/db",
+      }),
+      { op: "migrate" },
+    ]);
+    expect(file).toEqual({ qoqaEmail: "user@example.com" });
+
+    expect(run(home, [{ op: "read" }]).read).toBe("legacy");
+    expect(run(home, [{ op: "read", secret: "databaseUrl" }]).read).toBe(
+      "postgresql://u:p@host/db"
+    );
+  });
+
+  test("switching back to local SQLite clears the stored URL", () => {
+    const home = tempHome();
+    const { read } = run(home, [
+      { op: "write", secret: "databaseUrl", value: "postgresql://u:p@host/db" },
+      { op: "write", secret: "databaseUrl", value: null },
+      { op: "read", secret: "databaseUrl" },
     ]);
     expect(read).toBeNull();
   });
@@ -190,6 +241,20 @@ describe("without an OS credential store", () => {
     expect(file).toMatchObject({ qoqaPassword: "legacy" });
   });
 
+  test("falls back to settings.json for the PostgreSQL URL as well", () => {
+    const home = tempHome();
+    const { read, file } = run(
+      home,
+      [
+        { op: "write", secret: "databaseUrl", value: "postgresql://u:p@host/db" },
+        { op: "read", secret: "databaseUrl" },
+      ],
+      broken
+    );
+    expect(read).toBe("postgresql://u:p@host/db");
+    expect(file).toMatchObject({ databaseUrl: "postgresql://u:p@host/db" });
+  });
+
   test("clearing the password removes it from settings.json", () => {
     const home = tempHome();
     const { read, file } = run(
@@ -211,6 +276,20 @@ describe("the development environment override", () => {
       TEST_BREAK_CREDENTIAL_STORE: "1",
     });
     expect(read).toBe("from-env");
+  });
+
+  test("DATABASE_URL wins over anything stored", () => {
+    const home = tempHome();
+    const { read } = run(
+      home,
+      [seed({ databaseUrl: "postgresql://stored/db" }), { op: "read", secret: "databaseUrl" }],
+      {
+        NODE_ENV: "development",
+        DATABASE_URL: "postgresql://from-env/db",
+        TEST_BREAK_CREDENTIAL_STORE: "1",
+      }
+    );
+    expect(read).toBe("postgresql://from-env/db");
   });
 
   test("is ignored outside development", () => {

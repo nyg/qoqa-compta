@@ -8,6 +8,7 @@ import {
   fetchUniverses,
   fetchSpendingByGroup,
 } from "../queries";
+import { isSchemaReady } from "../migrate";
 import { readSettings } from "../settings";
 import { parseSubuniverseKey } from "../../shared/filters";
 import {
@@ -20,6 +21,20 @@ const router = new Hono();
 
 function parseList(param: string | undefined): string[] {
   return param ? param.split(",").filter(Boolean) : [];
+}
+
+function emptyDashboard(): DashboardData {
+  return {
+    stats: { total_spent: 0, order_count: 0, average_per_order: 0 },
+    monthly: [],
+    yearly: [],
+    orders: [],
+    pagination: { page: 1, pageSize: DEFAULT_PAGE_SIZE, total: 0, totalPages: 0 },
+    universes: [],
+    pieData: null,
+    pieMode: null,
+    syncLocale: readSettings().syncLocale,
+  };
 }
 
 router.get("/dashboard", async (c) => {
@@ -91,6 +106,7 @@ router.get("/dashboard", async (c) => {
 
     return c.json(body);
   } catch (err) {
+    if (!(await isSchemaReady())) return c.json(emptyDashboard());
     console.error("[dashboard]", err);
     return c.json({ error: (err as Error).message }, 500);
   }

@@ -1,5 +1,5 @@
 import type {
-  CredentialStore,
+  CredentialStores,
   DashboardData,
   InstallInfo,
   LatestRelease,
@@ -23,11 +23,20 @@ const API_BASE =
     ? `http://127.0.0.1:${window.__API_PORT__ ?? 3001}`
     : "";
 
+function errorMessage(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as { error?: unknown };
+    return typeof parsed.error === "string" && parsed.error ? parsed.error : null;
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, options);
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
-    throw new Error(`${res.status} ${text}`);
+    throw new Error(errorMessage(text) ?? `${res.status} ${text}`);
   }
   // 204 No Content — return undefined cast to T
   if (res.status === 204) return undefined as T;
@@ -161,8 +170,8 @@ export const apiClient = {
     return request<{ path: string | null }>(`${API_BASE}/api/settings/db-path`);
   },
 
-  getCredentialStore(): Promise<CredentialStore> {
-    return request<CredentialStore>(`${API_BASE}/api/settings/credential-store`);
+  getCredentialStore(): Promise<CredentialStores> {
+    return request<CredentialStores>(`${API_BASE}/api/settings/credential-store`);
   },
 
   revealDbInFinder(): Promise<{ ok: boolean }> {

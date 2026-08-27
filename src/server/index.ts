@@ -2,7 +2,7 @@ import { existsSync, statSync } from "fs";
 import path from "path";
 import { initDb } from "./db";
 import { runMigrations } from "./migrate";
-import { migratePasswordToKeychain } from "./secrets";
+import { migrateSecretsToCredentialStore } from "./secrets";
 import { backfillOrderSubuniverses } from "./queries";
 import { createApp } from "./app";
 
@@ -36,6 +36,8 @@ if (IS_PROD) {
 // ── Startup ────────────────────────────────────────────────────────────────────
 
 async function main() {
+  await migrateSecretsToCredentialStore();
+
   try {
     await initDb();
     await runMigrations();
@@ -45,8 +47,6 @@ async function main() {
     console.error("✗ Database initialisation failed:", err);
     process.exit(1);
   }
-
-  await migratePasswordToKeychain();
 
   Bun.serve({
     port: PORT,

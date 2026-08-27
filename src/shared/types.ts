@@ -62,6 +62,8 @@ export interface SpendingByGroup {
 
 export const DEFAULT_PAGE_SIZE = 10;
 
+export const SECRET_MASK = "*****";
+
 export interface Pagination {
   page: number;
   pageSize: number;
@@ -88,6 +90,7 @@ export interface OrdersResponse {
 
 export type SyncEventType =
   | "start"
+  | "db_ready"
   | "auth_ok"
   | "auth_error"
   | "universes_ok"
@@ -146,4 +149,10 @@ export type CredentialStoreKind =
 export interface CredentialStore {
   kind: CredentialStoreKind;
   path: string | null;
+  variable: string | null;
+}
+
+export interface CredentialStores {
+  qoqaPassword: CredentialStore;
+  databaseUrl: CredentialStore;
 }

@@ -1,10 +1,17 @@
 import { Hono } from "hono";
 import path from "path";
 import { readSettings, writeSettings, type StoredSettings } from "../settings";
-import { credentialStore, readPassword, writePassword } from "../secrets";
-import { reinitDb, getDbFilePath } from "../db";
+import {
+  credentialStores,
+  readDatabaseUrl,
+  readPassword,
+  writeDatabaseUrl,
+  writePassword,
+} from "../secrets";
+import { maskDatabaseUrl, unmaskDatabaseUrl } from "../database-url";
+import { reinitDb, getDbFilePath, probeDatabaseUrl } from "../db";
 import { runMigrations, dropAllTables } from "../migrate";
-import type { AppSettings } from "../../shared/types";
+import { SECRET_MASK, type AppSettings } from "../../shared/types";
 
 function revealWithSystemFileManager(filePath: string): void {
   const commands: Record<string, string[]> = {
@@ -20,12 +27,24 @@ export default function settingsRoutes(opts?: {
 }) {
   const router = new Hono();
 
-  function maskSettings(settings: StoredSettings, password: string | null): AppSettings {
-    return { ...settings, qoqaPassword: password ? "*****" : null };
+  function maskSettings(
+    settings: StoredSettings,
+    password: string | null,
+    databaseUrl: string | null
+  ): AppSettings {
+    return {
+      ...settings,
+      qoqaPassword: password ? SECRET_MASK : null,
+      databaseUrl: maskDatabaseUrl(databaseUrl),
+    };
   }
 
   async function currentSettingsResponse(): Promise<AppSettings> {
-    return maskSettings(readSettings(), await readPassword());
+    const [password, databaseUrl] = await Promise.all([
+      readPassword(),
+      readDatabaseUrl(),
+    ]);
+    return maskSettings(readSettings(), password, databaseUrl);
   }
 
   // GET /api/settings
@@ -36,22 +55,34 @@ export default function settingsRoutes(opts?: {
   // PUT /api/settings
   router.put("/settings", async (c) => {
     try {
-      const { qoqaPassword, ...updates } = (await c.req.json()) as Partial<AppSettings>;
+      const { qoqaPassword, databaseUrl, ...updates } =
+        (await c.req.json()) as Partial<AppSettings>;
 
-      const currentSettings = readSettings();
-      const dbUrlChanged =
-        "databaseUrl" in updates && updates.databaseUrl !== currentSettings.databaseUrl;
+      const storedDatabaseUrl = await readDatabaseUrl();
+      const nextDatabaseUrl =
+        databaseUrl === undefined
+          ? storedDatabaseUrl
+          : unmaskDatabaseUrl(databaseUrl, storedDatabaseUrl);
+      const dbUrlChanged = nextDatabaseUrl !== storedDatabaseUrl;
+
+      if (dbUrlChanged) {
+        try {
+          await probeDatabaseUrl(nextDatabaseUrl);
+        } catch (err) {
+          return c.json({ error: (err as Error).message }, 400);
+        }
+      }
 
       // Don't overwrite a real password with the mask placeholder
-      if (qoqaPassword !== undefined && qoqaPassword !== "*****") {
+      if (qoqaPassword !== undefined && qoqaPassword !== SECRET_MASK) {
         await writePassword(qoqaPassword);
       }
 
       writeSettings(updates);
 
       if (dbUrlChanged) {
-        await reinitDb(updates.databaseUrl ?? undefined);
-        await runMigrations();
+        await writeDatabaseUrl(nextDatabaseUrl);
+        await reinitDb(nextDatabaseUrl ?? undefined);
       }
 
       return c.json(await currentSettingsResponse());
@@ -78,9 +109,9 @@ export default function settingsRoutes(opts?: {
     return c.json({ path: getDbFilePath() });
   });
 
-  // GET /api/settings/credential-store — where the QoQa password is actually kept
+  // GET /api/settings/credential-store — where each secret is actually kept
   router.get("/settings/credential-store", async (c) => {
-    return c.json(await credentialStore());
+    return c.json(await credentialStores());
   });
 
   // POST /api/settings/reveal-db — reveal the SQLite file in the system file manager
