@@ -1,6 +1,42 @@
 # Changelog
 
 
+## [0.5.0](https://github.com/nyg/qoqa-compta/compare/v0.4.0..v0.5.0) - 2026-09-02
+
+### ⛰️  Features
+
+- [`8c1a737`](https://github.com/nyg/qoqa-compta/commit/8c1a737b8cf9fc162d246187330780007bcbca56) *(db)* Create the schema on sync, not on save, and store the PostgreSQL URL in the credential store ([#155](https://github.com/nyg/qoqa-compta/issues/155))
+- [`c8b5e98`](https://github.com/nyg/qoqa-compta/commit/c8b5e98b46bb2d8cc1deaaf8114e08366a79f30a) *(settings)* OS credential store, tabbed Settings, and a PostgreSQL fix ([#153](https://github.com/nyg/qoqa-compta/issues/153))
+- [`2cb7084`](https://github.com/nyg/qoqa-compta/commit/2cb70847c90cd7f510d80cfb79a29bc798fdbef8) *(db)* Make schema.ts the single source of truth via Drizzle migrations ([#150](https://github.com/nyg/qoqa-compta/issues/150))
+
+### 🐛 Bug Fixes
+
+- [`30c8cf2`](https://github.com/nyg/qoqa-compta/commit/30c8cf2e0864ea39abb3337a04d1ab7362c03bc3) *(deps)* Update all stable non-major dependencies ([#158](https://github.com/nyg/qoqa-compta/issues/158))
+- [`bdde3f7`](https://github.com/nyg/qoqa-compta/commit/bdde3f791d80aad0130133d8b382efffa1a26f94) *(types)* Give test files their own tsconfig project ([#148](https://github.com/nyg/qoqa-compta/issues/148))
+- [`c723305`](https://github.com/nyg/qoqa-compta/commit/c72330591fc4b7a2e3c4c4233c528ba1c8537ca2) *(db)* Read DATABASE_URL only in drizzle.config.ts ([#143](https://github.com/nyg/qoqa-compta/issues/143))
+- [`f2bc15f`](https://github.com/nyg/qoqa-compta/commit/f2bc15f7c619e22260f4b97f6d2a84032d8173a4) *(desktop)* Close the macOS installer panel automatically ([#138](https://github.com/nyg/qoqa-compta/issues/138))
+
+### 🚜 Refactor
+
+- [`8ccb34e`](https://github.com/nyg/qoqa-compta/commit/8ccb34e8a57115888dd87258996419fe6051cf2d) *(queries)* Restore Drizzle result typing ([#147](https://github.com/nyg/qoqa-compta/issues/147))
+- [`65c1ce5`](https://github.com/nyg/qoqa-compta/commit/65c1ce537cb8af1e61ae87efbb5e23a2e30302bd) Type the Electrobun and Recharts call sites without any ([#142](https://github.com/nyg/qoqa-compta/issues/142))
+
+### 📚 Documentation
+
+- [`6ad6773`](https://github.com/nyg/qoqa-compta/commit/6ad6773aa5f184df1532cf749cca38cdb0161f15) Correct the documented @/* path alias target ([#140](https://github.com/nyg/qoqa-compta/issues/140))
+
+### 🧪 Testing
+
+- [`67f91f2`](https://github.com/nyg/qoqa-compta/commit/67f91f2b26f4d5f3dafe833f932160ffa4b473df) Cover the universe selection model, locale and paths ([#146](https://github.com/nyg/qoqa-compta/issues/146))
+
+### ⚙️ Miscellaneous
+
+- [`6d04b98`](https://github.com/nyg/qoqa-compta/commit/6d04b98b57c690c29ddcf65a976e61634e10c69d) *(types)* Tighten tsconfig strictness ([#149](https://github.com/nyg/qoqa-compta/issues/149))
+- [`4c10306`](https://github.com/nyg/qoqa-compta/commit/4c103061facfaecfc1736717dd8a0caf690093da) *(types)* Give each runtime its own tsconfig ([#145](https://github.com/nyg/qoqa-compta/issues/145))
+- [`c5c18ee`](https://github.com/nyg/qoqa-compta/commit/c5c18ee86d077cee7f318720f10a0b80d4cf7b2f) *(build)* Drop the inert es-toolkit ESM shim ([#144](https://github.com/nyg/qoqa-compta/issues/144))
+- [`f545aaa`](https://github.com/nyg/qoqa-compta/commit/f545aaa3d7700431ef8bfc94911ad694ab3ba44b) Run typecheck, lint and build on pull requests ([#141](https://github.com/nyg/qoqa-compta/issues/141))
+- [`1df01bd`](https://github.com/nyg/qoqa-compta/commit/1df01bd5aa349b69a5030b4967cf6635f45840f1) *(deps)* Drop the unused unpdf and @types/three packages ([#139](https://github.com/nyg/qoqa-compta/issues/139))
+
 ## [0.4.0](https://github.com/nyg/qoqa-compta/compare/v0.3.0..v0.4.0) - 2026-08-24
 
 ### ⛰️  Features
