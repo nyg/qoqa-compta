@@ -33,6 +33,8 @@ function isSqliteUrl(url: string | null | undefined): boolean {
 }
 
 export async function initDb(databaseUrl?: string): Promise<void> {
+  closeDb();
+
   const rawUrl = databaseUrl ?? (await readDatabaseUrl()) ?? undefined;
   _isSqlite = isSqliteUrl(rawUrl);
 
@@ -54,14 +56,16 @@ export async function initDb(databaseUrl?: string): Promise<void> {
   }
 }
 
-export async function reinitDb(databaseUrl?: string): Promise<void> {
-  if (_bunDb) {
-    _bunDb.close();
-    _bunDb = null;
-  }
+export function closeDb(): void {
+  const bunDb = _bunDb;
+  _bunDb = null;
   _handle = null;
   _neonExecutor = null;
-  await initDb(databaseUrl);
+
+  if (!bunDb) return;
+
+  Bun.gc(true);
+  bunDb.close();
 }
 
 export function getDb(): DatabaseHandle {

@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { getDb, getRawBunDb, reinitDb } from "./db";
+import { closeDb, getDb, getRawBunDb, initDb } from "./db";
 import { dropAllTables, isSchemaReady, runMigrations } from "./migrate";
 import { pgMigrations, sqliteMigrations } from "./migrations.generated";
 import { qoqaOrdersSqlite } from "./schema";
@@ -83,7 +83,7 @@ function tempDbPath(): string {
 }
 
 async function openAt(filePath: string): Promise<void> {
-  await reinitDb(`file:${filePath}`);
+  await initDb(`file:${filePath}`);
 }
 
 function seedLegacyDatabase(filePath: string, orderNumbers: string[]): void {
@@ -135,13 +135,14 @@ function insertOrder(orderNumber: string): void {
 }
 
 afterEach(() => {
+  closeDb();
   for (const root of roots.splice(0)) {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
-afterAll(async () => {
-  await reinitDb(`file:${path.join(os.tmpdir(), "qoqa-migrate-teardown.db")}`);
+afterAll(() => {
+  closeDb();
 });
 
 describe("runMigrations on SQLite", () => {
@@ -376,7 +377,7 @@ describe("runMigrations on PostgreSQL", () => {
 
   test("creates every application table on an empty database", async () => {
     const statements = interceptWire();
-    await reinitDb(PG_URL);
+    await initDb(PG_URL);
     await runMigrations();
 
     const created = statements
@@ -399,7 +400,7 @@ describe("runMigrations on PostgreSQL", () => {
 
   test("drops the application tables and the journal on reset", async () => {
     const statements = interceptWire();
-    await reinitDb(PG_URL);
+    await initDb(PG_URL);
     await dropAllTables();
 
     for (const table of [
