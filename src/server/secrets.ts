@@ -1,3 +1,4 @@
+import { environmentOverridesEnabled } from "./environment";
 import {
   getSettingsPath,
   readStoredSecret,
@@ -45,7 +46,7 @@ function reportUnavailable(action: string, secret: Secret, error: unknown): void
 }
 
 function fromEnvironment(secret: Secret): string | null {
-  if (process.env.NODE_ENV !== "development") return null;
+  if (!environmentOverridesEnabled()) return null;
   return process.env[secret.variable] || null;
 }
 

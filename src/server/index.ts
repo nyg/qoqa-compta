@@ -1,6 +1,7 @@
 import { existsSync, statSync } from "fs";
 import path from "path";
 import { initDb } from "./db";
+import { allowEnvironmentOverrides } from "./environment";
 import { runMigrations } from "./migrate";
 import { migrateSecretsToCredentialStore } from "./secrets";
 import { backfillOrderSubuniverses } from "./queries";
@@ -36,6 +37,8 @@ if (IS_PROD) {
 // ── Startup ────────────────────────────────────────────────────────────────────
 
 async function main() {
+  allowEnvironmentOverrides();
+
   await migrateSecretsToCredentialStore();
 
   try {

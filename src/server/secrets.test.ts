@@ -5,6 +5,7 @@ import path from "path";
 
 const SECRETS_MODULE = path.join(import.meta.dir, "secrets.ts");
 const SETTINGS_MODULE = path.join(import.meta.dir, "settings.ts");
+const ENVIRONMENT_MODULE = path.join(import.meta.dir, "environment.ts");
 const SERVICE = `io.github.nyg.qoqa-compta.test.${process.pid}`;
 const NAMES = ["qoqa-password", "database-url"];
 
@@ -20,9 +21,11 @@ if (process.env.TEST_BREAK_CREDENTIAL_STORE) {
 
 const secrets = await import(process.env.TEST_SECRETS_MODULE);
 const settings = await import(process.env.TEST_SETTINGS_MODULE);
+const environment = await import(process.env.TEST_ENVIRONMENT_MODULE);
 const out = {};
 
 for (const step of JSON.parse(process.env.TEST_STEPS)) {
+  if (step.op === "webMode") environment.allowEnvironmentOverrides();
   if (step.op === "seed") {
     const settingsPath = settings.getSettingsPath();
     require("fs").mkdirSync(require("path").dirname(settingsPath), { recursive: true });
@@ -40,6 +43,7 @@ for (const step of JSON.parse(process.env.TEST_STEPS)) {
   }
   if (step.op === "migrate") await secrets.migrateSecretsToCredentialStore();
   if (step.op === "writeSettings") settings.writeSettings(step.value);
+  if (step.op === "readEmail") out.email = settings.readSettings().qoqaEmail;
 }
 
 const settingsPath = settings.getSettingsPath();
@@ -68,10 +72,16 @@ type Step =
   | { op: "seed"; value: Record<string, unknown> }
   | { op: "write"; value: string | null; secret?: SecretName }
   | { op: "read"; secret?: SecretName }
+  | { op: "readEmail" }
   | { op: "migrate" }
+  | { op: "webMode" }
   | { op: "writeSettings"; value: Record<string, unknown> };
 
-type Result = { read?: string | null; file: Record<string, unknown> | null };
+type Result = {
+  read?: string | null;
+  email?: string | null;
+  file: Record<string, unknown> | null;
+};
 
 function run(
   home: string,
@@ -94,6 +104,7 @@ function run(
       QOQA_KEYCHAIN_SERVICE: SERVICE,
       TEST_SECRETS_MODULE: SECRETS_MODULE,
       TEST_SETTINGS_MODULE: SETTINGS_MODULE,
+      TEST_ENVIRONMENT_MODULE: ENVIRONMENT_MODULE,
       TEST_STEPS: JSON.stringify(steps),
     },
     stdout: "pipe",
@@ -300,5 +311,69 @@ describe("the development environment override", () => {
       TEST_BREAK_CREDENTIAL_STORE: "1",
     });
     expect(read).toBe("stored");
+  });
+});
+
+describe("the web entry point in production", () => {
+  const production = {
+    NODE_ENV: "production",
+    QOQA_EMAIL: "env@example.com",
+    QOQA_PASSWORD: "from-env",
+    DATABASE_URL: "postgresql://from-env/db",
+  };
+
+  test("takes the password from the environment once web mode is on", () => {
+    const home = tempHome();
+    const { read } = run(
+      home,
+      [seed({ qoqaPassword: "stored" }), { op: "webMode" }, { op: "read" }],
+      production
+    );
+    expect(read).toBe("from-env");
+  });
+
+  test("takes the database URL from the environment as well", () => {
+    const home = tempHome();
+    const { read } = run(
+      home,
+      [{ op: "webMode" }, { op: "read", secret: "databaseUrl" }],
+      production
+    );
+    expect(read).toBe("postgresql://from-env/db");
+  });
+
+  test("takes the email from the environment, over the settings file", () => {
+    const home = tempHome();
+    const { email } = run(
+      home,
+      [seed({ qoqaEmail: "file@example.com" }), { op: "webMode" }, { op: "readEmail" }],
+      production
+    );
+    expect(email).toBe("env@example.com");
+  });
+
+  test("wins over a password the app has already saved", () => {
+    const home = tempHome();
+    const { read } = run(
+      home,
+      [{ op: "write", value: "in-the-store" }, { op: "webMode" }, { op: "read" }],
+      production
+    );
+    expect(read).toBe("from-env");
+  });
+
+  test("leaves the desktop shell reading what is stored", () => {
+    const home = tempHome();
+    const { read, email } = run(
+      home,
+      [
+        seed({ qoqaEmail: "file@example.com", qoqaPassword: "stored" }),
+        { op: "read" },
+        { op: "readEmail" },
+      ],
+      { ...production, TEST_BREAK_CREDENTIAL_STORE: "1" }
+    );
+    expect(read).toBe("stored");
+    expect(email).toBe("file@example.com");
   });
 });

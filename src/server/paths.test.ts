@@ -6,6 +6,8 @@ import path from "path";
 const PATHS_MODULE = path.join(import.meta.dir, "paths.ts");
 
 const CHILD = `
+require("os").homedir = () => process.env.TEST_HOME;
+
 Object.defineProperty(process, "platform", {
   value: process.env.TEST_PLATFORM,
   configurable: true,
@@ -36,7 +38,8 @@ function tempRoot(): string {
 
 function resolveIn(
   platform: string,
-  env: Record<string, string | undefined>,
+  home: string,
+  env: Record<string, string | undefined> = {},
   calls = "config,data"
 ): { config: string; data: string } {
   const child = Bun.spawnSync({
@@ -47,6 +50,7 @@ function resolveIn(
       XDG_CONFIG_HOME: undefined,
       XDG_DATA_HOME: undefined,
       ...env,
+      TEST_HOME: home,
       TEST_PLATFORM: platform,
       TEST_MODULE: PATHS_MODULE,
       TEST_CALLS: calls,
@@ -65,27 +69,34 @@ function appSupport(home: string): string {
   return path.join(home, "Library", "Application Support");
 }
 
+function blockRename(support: string, legacy: string): () => void {
+  if (process.platform === "win32") {
+    const handle = fs.openSync(path.join(legacy, "settings.json"), "r");
+    return () => fs.closeSync(handle);
+  }
+
+  fs.chmodSync(support, 0o555);
+  return () => fs.chmodSync(support, 0o755);
+}
+
 describe("where the app keeps its data on each platform", () => {
   test("names the macOS folder after the app, under Application Support", () => {
     const home = tempRoot();
-    const { config, data } = resolveIn("darwin", { HOME: home });
+    const { config, data } = resolveIn("darwin", home);
     expect(config).toBe(path.join(appSupport(home), "QoQa Compta"));
     expect(data).toBe(config);
   });
 
   test("names the Windows folder after the app, under APPDATA", () => {
     const appdata = tempRoot();
-    const { config, data } = resolveIn("win32", {
-      HOME: appdata,
-      APPDATA: appdata,
-    });
+    const { config, data } = resolveIn("win32", appdata, { APPDATA: appdata });
     expect(config).toBe(path.join(appdata, "QoQa Compta"));
     expect(data).toBe(config);
   });
 
   test("keeps the Windows folder under the home directory when APPDATA is unset", () => {
     const home = tempRoot();
-    const { config } = resolveIn("win32", { HOME: home }, "config");
+    const { config } = resolveIn("win32", home, {}, "config");
     expect(config).toBe(path.join(home, "QoQa Compta"));
   });
 
@@ -93,8 +104,7 @@ describe("where the app keeps its data on each platform", () => {
     const root = tempRoot();
     const configHome = path.join(root, "config");
     const dataHome = path.join(root, "data");
-    const { config, data } = resolveIn("linux", {
-      HOME: root,
+    const { config, data } = resolveIn("linux", root, {
       XDG_CONFIG_HOME: configHome,
       XDG_DATA_HOME: dataHome,
     });
@@ -105,7 +115,7 @@ describe("where the app keeps its data on each platform", () => {
 
   test("falls back to the XDG default roots when neither variable is set", () => {
     const home = tempRoot();
-    const { config, data } = resolveIn("linux", { HOME: home });
+    const { config, data } = resolveIn("linux", home);
     expect(config).toBe(path.join(home, ".config", "qoqa-compta"));
     expect(data).toBe(path.join(home, ".local", "share", "qoqa-compta"));
   });
@@ -119,7 +129,7 @@ describe("upgrading from the pre-rename directory", () => {
     fs.writeFileSync(path.join(legacy, "settings.json"), "kept");
     fs.writeFileSync(path.join(legacy, "qoqa.db"), "kept too");
 
-    const { config, data } = resolveIn("darwin", { HOME: home });
+    const { config, data } = resolveIn("darwin", home);
 
     expect(config).toBe(path.join(appSupport(home), "QoQa Compta"));
     expect(data).toBe(config);
@@ -138,7 +148,7 @@ describe("upgrading from the pre-rename directory", () => {
     fs.mkdirSync(legacy, { recursive: true });
     fs.writeFileSync(path.join(legacy, "qoqa.db"), "kept");
 
-    const { data } = resolveIn("win32", { HOME: appdata, APPDATA: appdata });
+    const { data } = resolveIn("win32", appdata, { APPDATA: appdata });
 
     expect(data).toBe(path.join(appdata, "QoQa Compta"));
     expect(fs.readFileSync(path.join(data, "qoqa.db"), "utf8")).toBe("kept");
@@ -154,7 +164,7 @@ describe("upgrading from the pre-rename directory", () => {
     fs.writeFileSync(path.join(legacy, "settings.json"), "stale");
     fs.writeFileSync(path.join(current, "settings.json"), "current");
 
-    const { config } = resolveIn("darwin", { HOME: home }, "config");
+    const { config } = resolveIn("darwin", home, {}, "config");
 
     expect(config).toBe(current);
     expect(fs.readFileSync(path.join(current, "settings.json"), "utf8")).toBe(
@@ -170,11 +180,7 @@ describe("upgrading from the pre-rename directory", () => {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "settings.json"), "kept");
 
-    const { config } = resolveIn(
-      "linux",
-      { HOME: root, XDG_CONFIG_HOME: configHome },
-      "config"
-    );
+    const { config } = resolveIn("linux", root, { XDG_CONFIG_HOME: configHome }, "config");
 
     expect(config).toBe(dir);
     expect(fs.readFileSync(path.join(config, "settings.json"), "utf8")).toBe(
@@ -188,16 +194,16 @@ describe("upgrading from the pre-rename directory", () => {
     const legacy = path.join(support, "qoqa-compta");
     fs.mkdirSync(legacy, { recursive: true });
     fs.writeFileSync(path.join(legacy, "settings.json"), "kept");
-    fs.chmodSync(support, 0o555);
+    const unblock = blockRename(support, legacy);
 
     try {
-      const { config } = resolveIn("darwin", { HOME: home }, "config");
+      const { config } = resolveIn("darwin", home, {}, "config");
       expect(config).toBe(legacy);
       expect(fs.readFileSync(path.join(config, "settings.json"), "utf8")).toBe(
         "kept"
       );
     } finally {
-      fs.chmodSync(support, 0o755);
+      unblock();
     }
   });
 });

@@ -82,6 +82,7 @@ All scripts are run with `bun run <name>`.
 
 ```
 qoqa-compta/
+├── .gitattributes                # Pins LF in the working tree — the embedded migrations are compared byte for byte
 ├── .gitignore
 ├── renovate.json
 ├── README.md
@@ -128,6 +129,7 @@ qoqa-compta/
     │   ├── queries.ts            # All DB operations (upsert, select, aggregate)
     │   ├── settings.ts           # settings.json read/write (platform-aware path)
     │   ├── secrets.ts            # QoQa password + PostgreSQL URL in the OS credential store, with a settings.json fallback
+    │   ├── environment.ts        # Whether env vars may override stored settings — always in dev, web mode only in production
     │   ├── database-url.ts       # Masks the password inside a connection string for the SPA, and restores it on save
     │   ├── install.ts            # How the running copy was installed (brew, scoop, manual, web)
     │   └── routes/
@@ -252,7 +254,7 @@ User settings are persisted to a platform-aware JSON file:
 
 macOS and Windows name the folder after the app as the user sees it; the XDG spec wants a lowercase, machine-readable name. Both used to be `qoqa-compta`: on macOS and Windows a directory left behind by an earlier version is moved across on first launch (see `src/server/paths.ts`). If the move fails the old location keeps being used, so data is never lost.
 
-In **development** only, env vars (`QOQA_EMAIL`, `QOQA_PASSWORD`, `DATABASE_URL`) take precedence over the file.
+Env vars (`QOQA_EMAIL`, `QOQA_PASSWORD`, `DATABASE_URL`) take precedence over the file wherever `src/server/environment.ts` says they may: always in development, and in production only for the web entry point, which opts in by calling `allowEnvironmentOverrides()`. See [Web mode and headless hosts](#web-mode-and-headless-hosts).
 
 ### The secrets
 
@@ -272,9 +274,19 @@ On macOS the process that calls Security.framework is `Contents/MacOS/bun`, the 
 
 What this protects against is worth stating precisely. The keychain keeps these values out of a file that backups, cloud-synced config directories and any process reading the home directory can see. It does not isolate the app from other local code: because the code identity is the Bun binary rather than the app bundle, any `bun` script at the same version shares that identity and can read the item without a prompt ([oven-sh/bun#28071](https://github.com/oven-sh/bun/issues/28071)).
 
+On Windows the same two calls land in Credential Manager as **generic** credentials, encrypted with the Data Protection API and persisted `CRED_PERSIST_ENTERPRISE`, so they are scoped to the Windows account and roam with an enterprise profile where one exists. Bun composes the target name as `service/name`, which makes them `io.github.nyg.qoqa-compta/qoqa-password` and `io.github.nyg.qoqa-compta/database-url`. Plain `cmdkey /list` does not enumerate them; `cmdkey /list:io.github.nyg.qoqa-compta/qoqa-password` shows the entry, and Control Panel → Credential Manager → Windows Credentials lists it.
+
+The protection boundary is weaker than on macOS and it is worth being blunt about it: Windows shows no consent prompt and binds no per-application ACL, so **any** process running as the same user can read the value straight back. What is gained is the same thing macOS gains — the credential is not sitting in a JSON file that a backup, a synced profile directory or a stray `type settings.json` will expose — not isolation from other local code.
+
 `GET /api/settings/credential-store` reports where each secret actually ended up — `keychain`, `credential-manager`, `keyring`, `file` (with the path) or `env` (with the variable name) — and the Settings modal prints it under the password field and under the database URL field, so the user can see whether a value is protected or sitting in a JSON file. The two are reported separately because they can genuinely differ: a store that refuses one write leaves that secret in the file while the other stays in the store.
 
 The connection string reaches the SPA with only its password segment replaced by `*****` (`src/server/database-url.ts`), so the host stays readable for troubleshooting while the credential does not leave the server in the clear. `PUT /api/settings` puts the stored password back when the mask returns unedited, which also means the host can be corrected without retyping the password. A URL whose password is genuinely retyped is taken as-is, and a string that does not parse as a URL is passed through untouched in both directions.
+
+### Web mode and headless hosts
+
+`bun run start` uses the host's credential store exactly like the desktop app; on a developer's own Mac or Windows machine the two are indistinguishable. A container or a headless Linux server usually has no secret service daemon at all, so the store throws, `secrets.ts` warns once and falls back to `settings.json`, and the Settings modal says so per secret rather than implying a protection that is not there.
+
+Because writing a password into a plaintext file is a poor answer for a server, `src/server/index.ts` calls `allowEnvironmentOverrides()` at startup, which lets `QOQA_EMAIL`, `QOQA_PASSWORD` and `DATABASE_URL` win over anything stored — in production as well as development. `GET /api/settings/credential-store` then reports `env` with the variable name, so the UI stays honest about where the value came from. `src/electrobun/index.ts` deliberately does **not** call it: a `DATABASE_URL` exported on a developer's machine belongs to whatever project they exported it for, and a desktop app that silently pointed itself at that database would be a bug. Outside development the desktop app therefore reads only the credential store and `settings.json`.
 
 ---
 

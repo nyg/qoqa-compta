@@ -98,7 +98,7 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 - Persisted to `~/Library/Application Support/QoQa Compta/settings.json` on macOS (see `src/server/paths.ts` for platform paths and the legacy-directory migration)
 - The QoQa password and the PostgreSQL URL are the exceptions: they live in the OS credential store (macOS Keychain, Windows Credential Manager) via `Bun.secrets`, and `src/server/secrets.ts` is the only module that touches them. It falls back to `settings.json` where no store is reachable, and migrates a value left there by an earlier version at startup — see `docs/architecture.md`
 - The URL reaches the SPA with its password segment masked (`src/server/database-url.ts`); an unedited mask coming back on save restores the stored password
-- In development only, env vars (`QOQA_EMAIL`, `QOQA_PASSWORD`, `DATABASE_URL`, `PORT`) override the settings file
+- Env vars (`QOQA_EMAIL`, `QOQA_PASSWORD`, `DATABASE_URL`, `PORT`) override the settings file in development, and in production only in web mode — `src/server/index.ts` opts in through `allowEnvironmentOverrides()` in `src/server/environment.ts` so a headless deployment has somewhere to put a password; the desktop entry point deliberately does not
 - All settings are configurable from the in-app Settings modal — no `.env` file required in production
 
 ### Desktop
@@ -117,4 +117,6 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 
 - No `.env` file required for production; the Settings modal handles all config
 - In development, optionally create a `.env` at the repo root with `DATABASE_URL`, `QOQA_EMAIL`, `QOQA_PASSWORD`, or `PORT`
+- A headless web deployment may pass the same variables in production — see the Settings bullet above
+- CI runs the full `verify` job on `ubuntu-latest` and a second, test-only job on `windows-latest`: the Ubuntu runner has no secret service, so the credential-store half of `secrets.test.ts` only ever executes on Windows. Keep the tests platform-neutral — no `HOME`, no `chmod`, and close the database before deleting a temp directory
 - Dependency updates managed by Renovate (config extends `github>nyg/renovate-presets`)

@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { environmentOverridesEnabled } from "./environment";
 import { resolveConfigDir } from "./paths";
 import type { AppSettings } from "../shared/types";
 
@@ -52,8 +53,7 @@ export function readSettings(): StoredSettings {
 
   const settings: StoredSettings = { ...DEFAULTS, ...(stored as Partial<StoredSettings>) };
 
-  // In development, env vars take precedence over the settings file
-  if (process.env.NODE_ENV === "development") {
+  if (environmentOverridesEnabled()) {
     if (process.env.QOQA_EMAIL) settings.qoqaEmail = process.env.QOQA_EMAIL;
   }
 

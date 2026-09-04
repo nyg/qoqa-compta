@@ -9,7 +9,7 @@ import {
   writePassword,
 } from "../secrets";
 import { maskDatabaseUrl, unmaskDatabaseUrl } from "../database-url";
-import { reinitDb, getDbFilePath, probeDatabaseUrl } from "../db";
+import { initDb, getDbFilePath, probeDatabaseUrl } from "../db";
 import { runMigrations, dropAllTables } from "../migrate";
 import { SECRET_MASK, type AppSettings } from "../../shared/types";
 
@@ -82,7 +82,7 @@ export default function settingsRoutes(opts?: {
 
       if (dbUrlChanged) {
         await writeDatabaseUrl(nextDatabaseUrl);
-        await reinitDb(nextDatabaseUrl ?? undefined);
+        await initDb(nextDatabaseUrl ?? undefined);
       }
 
       return c.json(await currentSettingsResponse());
