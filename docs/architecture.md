@@ -137,7 +137,7 @@ qoqa-compta/
     │       ├── dashboard.ts      # GET /api/dashboard
     │       ├── orders.ts         # GET /api/orders, GET /api/orders/:n/pdf, GET /api/orders/csv
     │       ├── sync.ts           # POST /api/sync, DELETE /api/sync, GET /api/sync/stream (SSE)
-    │       └── settings.ts       # GET/PUT /api/settings, DELETE /api/settings/database, GET /api/settings/credential-store
+    │       └── settings.ts       # GET/PUT /api/settings, DELETE /api/settings/database, DELETE /api/settings/database/file, GET /api/settings/credential-store
     ├── views/                    # Vite SPA (React 19)
     │   ├── main.tsx              # React entry point
     │   ├── globals.css           # Tailwind v4 + CSS variable theming
@@ -350,7 +350,9 @@ Migration `0000` is the schema as it stood when migrations were introduced, whic
 
 #### Resetting
 
-`dropAllTables()`, behind the Settings modal's reset action, drops the journal along with the four tables. The next `runMigrations()` therefore sees neither a journal nor a `qoqa_orders` table, takes the fresh path, and rebuilds from `0000`.
+`dropAllTables()` drops the journal along with the four tables. The next `runMigrations()` therefore sees neither a journal nor a `qoqa_orders` table, takes the fresh path, and rebuilds from `0000`.
+
+The Settings modal picks the destructive action that fits the database actually in use, because dropping tables is the only thing a remote PostgreSQL server allows and it is not what a user asking to delete a local database means. On PostgreSQL the button resets: `dropAllTables()` followed by `runMigrations()`, so the schema is back and empty. On SQLite it deletes: `deleteSqliteFile()` closes the handle, removes `qoqa.db` along with its `-wal` and `-shm` sidecars, and reopens the same path, leaving a file with no schema at all until the next sync creates one. Both leave the dashboard empty — `isSchemaReady()` is what keeps the API answering with empty results rather than errors in between.
 
 ### Table structure
 

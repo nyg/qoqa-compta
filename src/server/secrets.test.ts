@@ -266,6 +266,19 @@ describe("without an OS credential store", () => {
     expect(file).toMatchObject({ databaseUrl: "postgresql://u:p@host/db" });
   });
 
+  test("prunes the null secret placeholders an earlier version left behind", () => {
+    const home = tempHome();
+    const { file } = run(
+      home,
+      [
+        seed({ qoqaEmail: "user@example.com", qoqaPassword: null, databaseUrl: null }),
+        { op: "migrate" },
+      ],
+      broken
+    );
+    expect(file).toEqual({ qoqaEmail: "user@example.com" });
+  });
+
   test("clearing the password removes it from settings.json", () => {
     const home = tempHome();
     const { read, file } = run(

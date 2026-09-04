@@ -166,6 +166,10 @@ export const apiClient = {
     return request<void>(`${API_BASE}/api/settings/database`, { method: "DELETE" });
   },
 
+  deleteDatabaseFile(): Promise<void> {
+    return request<void>(`${API_BASE}/api/settings/database/file`, { method: "DELETE" });
+  },
+
   getDbPath(): Promise<{ path: string | null }> {
     return request<{ path: string | null }>(`${API_BASE}/api/settings/db-path`);
   },

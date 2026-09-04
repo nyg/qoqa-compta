@@ -40,6 +40,7 @@ bun run db:verify        # fail if src/server/migrations.generated.ts is stale
 - `GET /api/orders` is used for client-side search and pagination.
 - `POST /api/sync` starts a sync job; progress is streamed via SSE (`GET /api/sync/stream`).
 - `GET/PUT /api/settings` reads/writes `settings.json`; the QoQa password and the PostgreSQL URL go to the OS credential store instead (see Settings below), and `GET /api/settings/credential-store` reports, per secret, which store each actually landed in. A changed database URL is connection-probed before anything is written and rejected with a 400 when it does not answer; the schema is left to the next sync.
+- `DELETE /api/settings/database` drops and recreates every table; `DELETE /api/settings/database/file` deletes the SQLite file itself and reopens an empty one, and answers 400 when PostgreSQL is the active database. The Settings modal offers whichever of the two matches the database in use.
 - `POST /api/settings/reveal-db` opens the SQLite file in the system file manager. On desktop this runs through Electrobun's `Utils.showItemInFolder`, injected into `createApp()` as `revealInFileManager` so `src/server/` never imports the Electrobun SDK; web mode falls back to a platform-specific spawn.
 - `GET /api/app/latest-release` reads the GitHub releases API server-side (the opaque `views://` origin cannot satisfy CORS), cached 6h on success and 15m on failure; `?refresh=1` bypasses the cache.
 - `GET /api/app/install` reports the platform and how the running copy was installed (`homebrew`, `scoop`, `manual`, `web`), so the About dialog only shows the update path that applies.
@@ -90,7 +91,7 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 - `bun run db:generate` writes migrations to `drizzle/sqlite/` and `drizzle/pg/`, then regenerates `src/server/migrations.generated.ts`, which inlines every migration's SQL so it is compiled into the desktop bundle instead of being read from disk at runtime
 - `src/server/migrate.ts` applies them at startup and as the first step of every sync — never on a settings save — and records each one in Drizzle's `__drizzle_migrations` journal. It also runs the SQLite `journal_mode=WAL` and `busy_timeout=5000` PRAGMAs, which are not schema
 - Databases created before migrations existed already have every table and no journal. On those, `runMigrations()` records migration `0000` as applied instead of executing it, then applies anything newer normally — detected as "no journal rows and `qoqa_orders` already present"
-- `dropAllTables()` (the Settings reset) drops the journal too, so the next `runMigrations()` rebuilds from `0000`
+- `dropAllTables()` (the Settings reset, offered for PostgreSQL) drops the journal too, so the next `runMigrations()` rebuilds from `0000`. For SQLite the modal deletes the database file instead — see `docs/architecture.md`
 - SQLite (`bun:sqlite`) is the default and needs no setup; PostgreSQL goes through `@neondatabase/serverless`
 
 ### Settings

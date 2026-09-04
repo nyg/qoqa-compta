@@ -9,7 +9,7 @@ import {
   writePassword,
 } from "../secrets";
 import { maskDatabaseUrl, unmaskDatabaseUrl } from "../database-url";
-import { initDb, getDbFilePath, probeDatabaseUrl } from "../db";
+import { initDb, deleteSqliteFile, getDbFilePath, probeDatabaseUrl } from "../db";
 import { runMigrations, dropAllTables } from "../migrate";
 import { SECRET_MASK, type AppSettings } from "../../shared/types";
 
@@ -100,6 +100,20 @@ export default function settingsRoutes(opts?: {
       return c.json({ ok: true });
     } catch (err) {
       console.error("[settings/database DELETE]", err);
+      return c.json({ error: (err as Error).message }, 500);
+    }
+  });
+
+  router.delete("/settings/database/file", async (c) => {
+    if (!getDbFilePath()) {
+      return c.json({ error: "Not using local SQLite" }, 400);
+    }
+
+    try {
+      await deleteSqliteFile();
+      return c.json({ ok: true });
+    } catch (err) {
+      console.error("[settings/database/file DELETE]", err);
       return c.json({ error: (err as Error).message }, 500);
     }
   });
