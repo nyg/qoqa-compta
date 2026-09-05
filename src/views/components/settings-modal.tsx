@@ -192,7 +192,6 @@ export function SettingsModal({
   const activeIsSqlite = dbPath !== null;
   const dbSelectionPending = dbMode !== savedDbMode;
   const noDatabaseYet = activeIsSqlite && !dbFileExists;
-  const missingDbUrl = dbMode === "postgres" && dbUrl.trim() === "";
 
   function refreshDbFileInfo() {
     apiClient
@@ -289,7 +288,7 @@ export function SettingsModal({
           <Button
             variant="default"
             size="sm"
-            disabled={saving || loading || missingDbUrl}
+            disabled={saving || loading}
             onClick={handleSave}
           >
             {saving ? (
@@ -300,9 +299,6 @@ export function SettingsModal({
             {saved ? t("saved") : t("save")}
           </Button>
         </div>
-        {missingDbUrl && (
-          <p className="text-xs text-muted-foreground">{t("dbUrlRequired")}</p>
-        )}
         {saveError && (
           <p className="text-xs text-destructive break-words">
             {t("saveFailed", { error: saveError })}
@@ -503,7 +499,7 @@ export function SettingsModal({
                   )}
                 </div>
 
-                {dbMode === "local" && dbPath && (
+                {dbMode === "local" && dbPath && dbFileExists && (
                   <div className="pt-1">
                     <span className="text-xs font-medium block mb-1">{t("dbLocation")}</span>
                     <div className="flex items-center gap-2">
@@ -512,7 +508,6 @@ export function SettingsModal({
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={!dbFileExists}
                           onClick={handleRevealDb}
                           className="shrink-0 h-7 px-2 text-xs gap-1"
                         >
@@ -543,9 +538,7 @@ export function SettingsModal({
                 )}
 
                 <div className="pt-1 space-y-2">
-                  {dbSelectionPending ? (
-                    <p className="text-xs text-muted-foreground">{t("dbActionsPending")}</p>
-                  ) : pendingAction ? (
+                  {dbSelectionPending ? null : pendingAction ? (
                     <div className="space-y-2">
                       <p className="text-xs text-destructive">
                         {pendingAction === "delete" ? t("deleteDbConfirm") : t("clearDbConfirm")}
