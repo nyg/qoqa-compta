@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { fetchOrders, fetchOrderPdf, fetchAllOrders } from "../queries";
-import { isSchemaReady } from "../migrate";
+import { hasUsableSchema } from "../migrate";
 import { saveToDownloads } from "../downloads";
 import {
   DEFAULT_PAGE_SIZE,
@@ -181,7 +181,7 @@ export default function ordersRouter(opts?: { desktop?: boolean }) {
 
       return c.json(body);
     } catch (err) {
-      if (!(await isSchemaReady())) {
+      if (!(await hasUsableSchema())) {
         const body: OrdersResponse = {
           orders: [],
           pagination: { page: 1, pageSize: DEFAULT_PAGE_SIZE, total: 0, totalPages: 0 },

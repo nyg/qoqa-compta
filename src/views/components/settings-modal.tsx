@@ -19,6 +19,13 @@ import type {
 } from "../../shared/types";
 import i18n, { SUPPORTED_LOCALES, type SupportedLocale } from "@/i18n/index";
 
+type DbMode = "local" | "postgres";
+type DbAction = "clear" | "delete";
+
+function databaseMode(databaseUrl: string | null | undefined): DbMode {
+  return databaseUrl?.startsWith("postgres") ? "postgres" : "local";
+}
+
 const LOCALE_NAMES: Record<string, string> = {
   en: "English",
   fr: "Français",
@@ -76,7 +83,7 @@ export function SettingsModal({
   // Settings form state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [dbMode, setDbMode] = useState<"local" | "postgres">("local");
+  const [dbMode, setDbMode] = useState<DbMode>("local");
   const [dbUrl, setDbUrl] = useState("");
   const [uiLocale, setUiLocale] = useState<SupportedLocale>(activeLocale);
   const [syncLocale, setSyncLocale] = useState<"fr" | "de">("fr");
@@ -89,15 +96,17 @@ export function SettingsModal({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [dbPath, setDbPath] = useState<string | null>(null);
+  const [dbFileExists, setDbFileExists] = useState(false);
+  const [savedDbMode, setSavedDbMode] = useState<DbMode>("local");
   const [pathCopied, setPathCopied] = useState(false);
   const [revealFailed, setRevealFailed] = useState(false);
   const [destroyError, setDestroyError] = useState<string | null>(null);
   const [credentialStore, setCredentialStore] = useState<CredentialStores | null>(null);
   const loadedRef = useRef<AppSettings | null>(null);
 
-  const [confirmDestroy, setConfirmDestroy] = useState(false);
-  const [destroying, setDestroying] = useState(false);
-  const [destroySuccess, setDestroySuccess] = useState(false);
+  const [pendingAction, setPendingAction] = useState<DbAction | null>(null);
+  const [destroying, setDestroying] = useState<DbAction | null>(null);
+  const [destroySuccess, setDestroySuccess] = useState<DbAction | null>(null);
 
   // Sync
   const [syncMode, setSyncMode] = useState<SyncMode>("update");
@@ -109,8 +118,8 @@ export function SettingsModal({
     if (!open) return;
     setLoading(true);
     setSaved(false);
-    setConfirmDestroy(false);
-    setDestroySuccess(false);
+    setPendingAction(null);
+    setDestroySuccess(null);
     setRevealFailed(false);
     setDestroyError(null);
     setTestResult(null);
@@ -124,17 +133,20 @@ export function SettingsModal({
         loadedRef.current = s;
         setEmail(s.qoqaEmail ?? "");
         setPassword(s.qoqaPassword ?? "");
-        setDbMode(
-          s.databaseUrl && s.databaseUrl.startsWith("postgres")
-            ? "postgres"
-            : "local"
-        );
+        setDbMode(databaseMode(s.databaseUrl));
+        setSavedDbMode(databaseMode(s.databaseUrl));
         setDbUrl(s.databaseUrl ?? "");
         setSyncLocale(s.syncLocale ?? "fr");
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-    apiClient.getDbPath().then((r) => setDbPath(r.path)).catch(console.error);
+    apiClient
+      .getDbPath()
+      .then((r) => {
+        setDbPath(r.path);
+        setDbFileExists(r.exists);
+      })
+      .catch(console.error);
     apiClient.getCredentialStore().then(setCredentialStore).catch(console.error);
   }, [open]);
 
@@ -157,12 +169,13 @@ export function SettingsModal({
       const next = await apiClient.updateSettings(settings);
       const dbChanged = next.databaseUrl !== loadedRef.current?.databaseUrl;
       loadedRef.current = next;
-      setDbMode(next.databaseUrl?.startsWith("postgres") ? "postgres" : "local");
+      setDbMode(databaseMode(next.databaseUrl));
+      setSavedDbMode(databaseMode(next.databaseUrl));
       setDbUrl(next.databaseUrl ?? "");
 
       if (dbChanged) {
         onDataChanged?.();
-        apiClient.getDbPath().then((r) => setDbPath(r.path)).catch(console.error);
+        refreshDbFileInfo();
         apiClient.getCredentialStore().then(setCredentialStore).catch(console.error);
       }
 
@@ -176,8 +189,20 @@ export function SettingsModal({
     }
   }
 
-  const usesSqlite = dbPath !== null;
+  const activeIsSqlite = dbPath !== null;
+  const dbSelectionPending = dbMode !== savedDbMode;
+  const noDatabaseYet = activeIsSqlite && !dbFileExists;
   const missingDbUrl = dbMode === "postgres" && dbUrl.trim() === "";
+
+  function refreshDbFileInfo() {
+    apiClient
+      .getDbPath()
+      .then((r) => {
+        setDbPath(r.path);
+        setDbFileExists(r.exists);
+      })
+      .catch(console.error);
+  }
 
   function revealLabel(): string {
     if (install?.platform === "windows") return t("showInExplorer");
@@ -185,20 +210,23 @@ export function SettingsModal({
     return t("showInFileManager");
   }
 
-  async function handleDestroyDatabase() {
-    setDestroying(true);
+  async function handleDbAction(action: DbAction) {
+    setDestroying(action);
     setDestroyError(null);
     try {
-      await (usesSqlite ? apiClient.deleteDatabaseFile() : apiClient.resetDatabase());
-      setDestroySuccess(true);
-      setConfirmDestroy(false);
+      await (action === "delete"
+        ? apiClient.deleteDatabaseFile()
+        : apiClient.clearDatabase());
+      setDestroySuccess(action);
+      setPendingAction(null);
       onDataChanged?.();
-      setTimeout(() => setDestroySuccess(false), 3000);
+      refreshDbFileInfo();
+      setTimeout(() => setDestroySuccess(null), 3000);
     } catch (e) {
       console.error(e);
       setDestroyError(e instanceof Error ? e.message : String(e));
     } finally {
-      setDestroying(false);
+      setDestroying(null);
     }
   }
 
@@ -475,7 +503,7 @@ export function SettingsModal({
                   )}
                 </div>
 
-                {dbPath && (
+                {dbMode === "local" && dbPath && (
                   <div className="pt-1">
                     <span className="text-xs font-medium block mb-1">{t("dbLocation")}</span>
                     <div className="flex items-center gap-2">
@@ -484,6 +512,7 @@ export function SettingsModal({
                         <Button
                           variant="outline"
                           size="sm"
+                          disabled={!dbFileExists}
                           onClick={handleRevealDb}
                           className="shrink-0 h-7 px-2 text-xs gap-1"
                         >
@@ -514,46 +543,66 @@ export function SettingsModal({
                 )}
 
                 <div className="pt-1 space-y-2">
-                  {!confirmDestroy ? (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      disabled={destroying}
-                      onClick={() => setConfirmDestroy(true)}
-                    >
-                      <AlertTriangle className="size-3" />
-                      {usesSqlite ? t("deleteDb") : t("resetDb")}
-                    </Button>
-                  ) : (
+                  {dbSelectionPending ? (
+                    <p className="text-xs text-muted-foreground">{t("dbActionsPending")}</p>
+                  ) : pendingAction ? (
                     <div className="space-y-2">
                       <p className="text-xs text-destructive">
-                        {usesSqlite ? t("deleteDbConfirm") : t("resetDbConfirm")}
+                        {pendingAction === "delete" ? t("deleteDbConfirm") : t("clearDbConfirm")}
                       </p>
                       <div className="flex items-center gap-2">
                         <Button
                           variant="destructive"
                           size="sm"
-                          disabled={destroying}
-                          onClick={handleDestroyDatabase}
+                          disabled={destroying !== null}
+                          onClick={() => handleDbAction(pendingAction)}
                         >
                           {destroying && <RefreshCw className="size-3 animate-spin" />}
-                          {usesSqlite ? t("deleteDbYes") : t("resetDbYes")}
+                          {pendingAction === "delete" ? t("deleteDbYes") : t("clearDbYes")}
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={destroying}
-                          onClick={() => setConfirmDestroy(false)}
+                          disabled={destroying !== null}
+                          onClick={() => setPendingAction(null)}
                         >
-                          {t("resetDbCancel")}
+                          {t("dbActionCancel")}
                         </Button>
                       </div>
                     </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={noDatabaseYet}
+                          onClick={() => setPendingAction("clear")}
+                        >
+                          <AlertTriangle className="size-3" />
+                          {t("clearDb")}
+                        </Button>
+                        {activeIsSqlite && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={noDatabaseYet}
+                            onClick={() => setPendingAction("delete")}
+                          >
+                            <AlertTriangle className="size-3" />
+                            {t("deleteDb")}
+                          </Button>
+                        )}
+                      </div>
+                      {noDatabaseYet && (
+                        <p className="text-xs text-muted-foreground">{t("noDatabaseYet")}</p>
+                      )}
+                    </>
                   )}
                   {destroySuccess && (
                     <span className="text-xs text-green-500 flex items-center gap-1">
                       <Check className="size-3" />
-                      {usesSqlite ? t("deleteDbSuccess") : t("resetDbSuccess")}
+                      {destroySuccess === "delete" ? t("deleteDbSuccess") : t("clearDbSuccess")}
                     </span>
                   )}
                   {destroyError && (

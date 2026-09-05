@@ -21,10 +21,12 @@ Both used to be `qoqa-compta` everywhere. On macOS and Windows a directory left 
 |---|---|---|---|
 | `settings.json` | config | `src/server/settings.ts` | Non-secret settings, plus a credential only when the OS store refused it |
 | `window-state.json` | config | `src/electrobun/window-state.ts` | Window frame, maximized flag, display fingerprint. Desktop only |
-| `qoqa.db` | data | `src/server/db.ts` | The SQLite database. Absent when a PostgreSQL URL is configured |
+| `qoqa.db` | data | `src/server/db.ts` | The SQLite database. Created by the first sync, not by starting the app. Absent when a PostgreSQL URL is configured |
 | `qoqa.db-wal`, `qoqa.db-shm` | data | SQLite | WAL sidecars, present while the database is open |
 
 A `file:` or `sqlite://` URL saved as the database URL overrides the `qoqa.db` path; anything else is treated as PostgreSQL and no local file exists at all.
+
+Neither does one exist before the first sync, nor after the file has been deleted from Settings. Starting the app opens `qoqa.db` only when it is already there, so an install that is launched and quit writes nothing into the data directory — which is itself only created alongside the database. `ensureDb()`, the first step of a sync, is the one thing that creates either.
 
 ### `settings.json`
 
@@ -135,7 +137,8 @@ Gone the moment the process exits, and never written anywhere:
 
 | What | How |
 |---|---|
-| Order data, keeping the database | Settings → the destructive button, which is *reset* on PostgreSQL (`DELETE /api/settings/database` drops and recreates every table, journal included) and *delete* on SQLite (`DELETE /api/settings/database/file` removes `qoqa.db` and its sidecars, then reopens an empty file) |
+| Order data, keeping the database | Settings → *Clear database* (`DELETE /api/settings/database` drops and recreates every table, journal included). Offered for both SQLite and PostgreSQL |
+| The SQLite database itself, from the app | Settings → *Delete database file* (`DELETE /api/settings/database/file` removes `qoqa.db` and its sidecars and leaves nothing behind). SQLite only; the next sync recreates it |
 | The SQLite file, by hand | Settings → *Reveal in Finder/Explorer* (`POST /api/settings/reveal-db`), then delete it with the app closed |
 | The QoQa password | Clear the password field in Settings and save — an empty field sends `null`, which deletes the credential-store item. Or delete it directly in Keychain Access / Credential Manager |
 | The PostgreSQL URL | Switch the database back to local in Settings and save; same deletion path |

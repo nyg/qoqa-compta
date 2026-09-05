@@ -1,10 +1,8 @@
 import { existsSync, statSync } from "fs";
 import path from "path";
-import { initDb } from "./db";
 import { allowEnvironmentOverrides } from "./environment";
-import { runMigrations } from "./migrate";
 import { migrateSecretsToCredentialStore } from "./secrets";
-import { backfillOrderSubuniverses } from "./queries";
+import { prepareDatabase } from "./startup";
 import { createApp } from "./app";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
@@ -41,15 +39,7 @@ async function main() {
 
   await migrateSecretsToCredentialStore();
 
-  try {
-    await initDb();
-    await runMigrations();
-    await backfillOrderSubuniverses();
-    console.log("✓ Database ready");
-  } catch (err) {
-    console.error("✗ Database initialisation failed:", err);
-    process.exit(1);
-  }
+  await prepareDatabase();
 
   Bun.serve({
     port: PORT,

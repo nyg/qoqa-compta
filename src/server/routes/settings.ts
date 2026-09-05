@@ -10,7 +10,15 @@ import {
 } from "../secrets";
 import { maskDatabaseUrl, unmaskDatabaseUrl } from "../database-url";
 import { authenticate } from "../auth";
-import { initDb, deleteSqliteFile, getDbFilePath, probeDatabaseUrl } from "../db";
+import {
+  initDb,
+  deleteSqliteFile,
+  ensureDb,
+  getDbFilePath,
+  isDbSqlite,
+  probeDatabaseUrl,
+  sqliteFileExists,
+} from "../db";
 import { runMigrations, dropAllTables } from "../migrate";
 import { SECRET_MASK, type AppSettings } from "../../shared/types";
 
@@ -116,9 +124,14 @@ export default function settingsRoutes(opts?: {
     }
   });
 
-  // DELETE /api/settings/database — reset (drop + recreate) all tables
+  // DELETE /api/settings/database — clear (drop + recreate) all tables
   router.delete("/settings/database", async (c) => {
+    if (isDbSqlite() && !sqliteFileExists()) {
+      return c.json({ error: "No database file yet" }, 400);
+    }
+
     try {
+      ensureDb();
       await dropAllTables();
       await runMigrations();
       return c.json({ ok: true });
@@ -128,13 +141,16 @@ export default function settingsRoutes(opts?: {
     }
   });
 
-  router.delete("/settings/database/file", async (c) => {
+  router.delete("/settings/database/file", (c) => {
     if (!getDbFilePath()) {
       return c.json({ error: "Not using local SQLite" }, 400);
     }
+    if (!sqliteFileExists()) {
+      return c.json({ error: "No database file yet" }, 400);
+    }
 
     try {
-      await deleteSqliteFile();
+      deleteSqliteFile();
       return c.json({ ok: true });
     } catch (err) {
       console.error("[settings/database/file DELETE]", err);
@@ -144,7 +160,7 @@ export default function settingsRoutes(opts?: {
 
   // GET /api/settings/db-path — returns current SQLite file path (null for Postgres)
   router.get("/settings/db-path", (c) => {
-    return c.json({ path: getDbFilePath() });
+    return c.json({ path: getDbFilePath(), exists: sqliteFileExists() });
   });
 
   // GET /api/settings/credential-store — where each secret is actually kept
@@ -157,6 +173,9 @@ export default function settingsRoutes(opts?: {
     const filePath = getDbFilePath();
     if (!filePath) {
       return c.json({ error: "Not using local SQLite" }, 400);
+    }
+    if (!sqliteFileExists()) {
+      return c.json({ error: "No database file yet" }, 400);
     }
 
     try {

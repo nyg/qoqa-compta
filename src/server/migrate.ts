@@ -207,6 +207,10 @@ export async function runMigrations(): Promise<MigrationReport> {
   return isDbSqlite() ? migrateSqlite() : await migratePg();
 }
 
+export async function hasUsableSchema(): Promise<boolean> {
+  return isSchemaReady().catch(() => false);
+}
+
 export async function isSchemaReady(): Promise<boolean> {
   if (isDbSqlite()) {
     const db = getRawBunDb();

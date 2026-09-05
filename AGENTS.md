@@ -44,8 +44,8 @@ bun run db:verify        # fail if src/server/migrations.generated.ts is stale
 - `POST /api/sync` starts a sync job; progress is streamed via SSE (`GET /api/sync/stream`).
 - `GET/PUT /api/settings` reads/writes `settings.json`; the QoQa password and the PostgreSQL URL go to the OS credential store instead (see Settings below), and `GET /api/settings/credential-store` reports, per secret, which store each actually landed in. A changed database URL is connection-probed before anything is written and rejected with a 400 when it does not answer; the schema is left to the next sync.
 - `POST /api/settings/test-credentials` tries a QoQa login and reports the outcome without starting a sync; the Settings modal offers it as *Test connection*.
-- `DELETE /api/settings/database` drops and recreates every table; `DELETE /api/settings/database/file` deletes the SQLite file itself and reopens an empty one, and answers 400 when PostgreSQL is the active database. The Settings modal offers whichever of the two matches the database in use.
-- `GET /api/settings/db-path` returns the active SQLite file path, or `null` on PostgreSQL — what the Settings modal uses to decide between the reset and the delete button.
+- `DELETE /api/settings/database` drops and recreates every table; `DELETE /api/settings/database/file` deletes the SQLite file itself and leaves nothing in its place, and answers 400 when PostgreSQL is the active database. The Settings modal offers *Clear database* for both dialects and *Delete database file* alongside it on SQLite. Both endpoints, and `reveal-db`, answer 400 when the SQLite file has not been created yet.
+- `GET /api/settings/db-path` returns `{ path, exists }` — the active SQLite file path (`null` on PostgreSQL) and whether that file is on disk yet. The Settings modal uses it to decide which buttons to show and whether to disable them.
 - `POST /api/settings/reveal-db` opens the SQLite file in the system file manager. On desktop this runs through Electrobun's `Utils.showItemInFolder`, injected into `createApp()` as `revealInFileManager` so `src/server/` never imports the Electrobun SDK; web mode falls back to a platform-specific spawn.
 - `GET /api/app/latest-release` reads the GitHub releases API server-side (the opaque `views://` origin cannot satisfy CORS), cached 6h on success and 15m on failure; `?refresh=1` bypasses the cache.
 - `POST /api/app/open-external` hands an http(s) link to the system browser through Electrobun's `Utils.openExternal`, injected into `createApp()` as `openExternal`. The SPA routes every `target="_blank"` link through it in desktop mode (`src/views/lib/external-links.ts`), because a WebView opens one in a tab-less window of its own instead.
@@ -55,6 +55,7 @@ bun run db:verify        # fail if src/server/migrations.generated.ts is stale
 
 ```
 POST /api/sync { mode: "full" | "update" }
+  → db.ts         — ensureDb() → creates the SQLite file on a first sync
   → migrate.ts    — runMigrations() → db_ready event naming any migration applied
   → auth.ts       — POST auth.qoqa.ch/v2/login → JWT (no browser, pure HTTP)
   → api.ts        — fetchUniverses → upsert qoqa_universes + qoqa_subuniverses
@@ -97,8 +98,11 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 - Schema defined in `src/server/schema.ts` (dual SQLite + PG via Drizzle) — the single source of truth. Adding or changing a column means editing `schema.ts` and running `bun run db:generate`; nothing else restates the DDL
 - `bun run db:generate` writes migrations to `drizzle/sqlite/` and `drizzle/pg/`, then regenerates `src/server/migrations.generated.ts`, which inlines every migration's SQL so it is compiled into the desktop bundle instead of being read from disk at runtime
 - `src/server/migrate.ts` applies them at startup and as the first step of every sync — never on a settings save — and records each one in Drizzle's `__drizzle_migrations` journal. It also runs the SQLite `journal_mode=WAL` and `busy_timeout=5000` PRAGMAs, which are not schema
+- The two are not symmetric. `prepareDatabase()` in `src/server/startup.ts` — the shared boot body both entry points call — migrates only when `isSchemaReady()` is already true, so startup upgrades an existing database and never creates one; it logs failures instead of exiting, so an unreachable PostgreSQL still leaves the app startable. Creating a schema is always the sync, whose first step is `ensureDb()` followed by `runMigrations()`
+- `GET /api/dashboard` and `GET /api/orders` degrade to an empty payload through `hasUsableSchema()` — `isSchemaReady()` with a `catch`, because an unreachable server and a missing schema both mean there is nothing to serve, and a 500 there would take the Settings modal down with it. `isSchemaReady()` stays strict for startup and the sync, which need the real error
+- `initDb()` never creates the SQLite file — it resolves the path and opens the file only when it already exists, so launching the app writes nothing to disk. `ensureDb()` is the only creating path. `getDbFilePath()` still reports the path while the file is absent (the SPA reads a `null` path as PostgreSQL); `sqliteFileExists()` is the separate existence question
 - Databases created before migrations existed already have every table and no journal. On those, `runMigrations()` records migration `0000` as applied instead of executing it, then applies anything newer normally — detected as "no journal rows and `qoqa_orders` already present"
-- `dropAllTables()` (the Settings reset, offered for PostgreSQL) drops the journal too, so the next `runMigrations()` rebuilds from `0000`. For SQLite the modal deletes the database file instead — see `docs/architecture.md`
+- `dropAllTables()` (the Settings *Clear database*, offered for both dialects) drops the journal too, so the next `runMigrations()` rebuilds from `0000`. On SQLite the modal additionally offers deleting the file — see `docs/architecture.md`
 - SQLite (`bun:sqlite`) is the default and needs no setup; PostgreSQL goes through `@neondatabase/serverless`
 
 ### Settings
