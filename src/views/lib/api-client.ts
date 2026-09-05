@@ -32,11 +32,21 @@ function errorMessage(body: string): string | null {
   }
 }
 
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, options);
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
-    throw new Error(errorMessage(text) ?? `${res.status} ${text}`);
+    throw new ApiError(res.status, errorMessage(text) ?? `${res.status} ${text}`);
   }
   // 204 No Content — return undefined cast to T
   if (res.status === 204) return undefined as T;

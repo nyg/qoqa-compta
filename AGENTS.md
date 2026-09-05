@@ -76,7 +76,8 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 - UI built with Base UI (`@base-ui/react`) primitives, CVA + `cn()` utility from `src/views/lib/utils.ts`
 - Tailwind v4 with CSS-variable theming in `src/views/globals.css` (`@theme inline` directive) — no `tailwind.config.ts`
 - Charts use Recharts (`ComposedChart` with bar + line dual-axis; pie chart for spending breakdown); the date range picker uses react-day-picker through `src/views/components/ui/calendar.tsx`
-- UI text internationalised with react-i18next (5 locales: `en`, `fr`, `de`, `it`, `rm`); message files live in `src/views/i18n/messages/` — a new key goes into all five
+- UI text internationalised with react-i18next (5 locales: `en`, `fr`, `de`, `it`, `rm`); message files live in `src/views/i18n/messages/` — a new key goes into all five, and `messages.test.ts` fails when one is missing
+- Sync progress events carry a `messageKey` from `SYNC_MESSAGE_KEYS` plus its parameters, and the SPA renders them through the `SyncLog` namespace; the English `message` the server also sends is the console text and the fallback. A new event message means a new key in `src/shared/types.ts` and a line in all five message files
 - Locale auto-detected from the browser in `src/views/i18n/index.ts`; Romansh (`rm`) falls back to `de-CH` for `Intl` formatting
 - Number/date formatting pairs the UI language with a region resolved from the host (`src/views/lib/locale.ts`), falling back to `CH`; on desktop the real OS region is injected by `src/electrobun/locale.ts` via Electrobun's `preload`, because WKWebView and WebView2 do not expose it. Helpers in `src/views/lib/formatters.ts` + `src/views/lib/formatter-context.tsx`
 - Filter state (universe selection, date range) lives in `src/views/lib/use-filter-state.ts` and is persisted to `localStorage`; every call site turns a selection into query parameters through `selectionParams()` in `src/shared/filters.ts`

@@ -10,7 +10,7 @@ import { apiClient } from "@/lib/api-client";
 import { copyText } from "@/lib/clipboard";
 import { useFormatter } from "@/lib/formatter-context";
 import { useInstallInfo } from "@/lib/use-install-info";
-import type { SyncMode, SyncRunner } from "@/lib/use-sync-runner";
+import type { SyncLogEntry, SyncMode, SyncRunner } from "@/lib/use-sync-runner";
 import type {
   AppSettings,
   CredentialStore,
@@ -62,6 +62,7 @@ export function SettingsModal({
   sync: SyncRunner;
 }) {
   const { t } = useTranslation("Settings");
+  const { t: tLog } = useTranslation("SyncLog");
   const { formatTime } = useFormatter();
   const install = useInstallInfo();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -224,6 +225,14 @@ export function SettingsModal({
       console.error(e);
       setRevealFailed(true);
     }
+  }
+
+  function logMessage(entry: SyncLogEntry): string {
+    if (!entry.messageKey) return entry.message;
+    return tLog(entry.messageKey, {
+      ...entry.messageParams,
+      defaultValue: entry.message,
+    });
   }
 
   function storeName(store: CredentialStore): string {
@@ -608,11 +617,19 @@ export function SettingsModal({
                 {(syncRunning || syncDone) && (
                   <div className="mt-2 space-y-1">
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 rounded-md border bg-muted/30 px-2.5 py-1.5 text-[0.65rem] font-mono">
-                      <span className="text-green-500">{syncStats.synced} synced</span>
-                      <span className="text-muted-foreground">{syncStats.withPdf} PDF</span>
-                      <span className="text-yellow-500">{syncStats.skipped} skipped</span>
+                      <span className="text-green-500">
+                        {t("statsSynced", { count: syncStats.synced })}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {t("statsPdf", { count: syncStats.withPdf })}
+                      </span>
+                      <span className="text-yellow-500">
+                        {t("statsSkipped", { count: syncStats.skipped })}
+                      </span>
                       {syncStats.errors > 0 && (
-                        <span className="text-red-500">{syncStats.errors} errors</span>
+                        <span className="text-red-500">
+                          {t("statsErrors", { count: syncStats.errors })}
+                        </span>
                       )}
                       {syncRunning && (
                         <span className="ml-auto animate-pulse text-muted-foreground">{t("syncRunning")}</span>
@@ -628,7 +645,7 @@ export function SettingsModal({
                             <span className="text-muted-foreground/60 select-none mr-1.5">
                               {formatTime(entry.timestamp)}
                             </span>
-                            {entry.message}
+                            {logMessage(entry)}
                           </div>
                         ))}
                         <div ref={logEndRef} />

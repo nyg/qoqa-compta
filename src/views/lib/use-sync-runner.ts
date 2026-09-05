@@ -1,13 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { apiClient } from "@/lib/api-client";
-import type { SyncProgressEvent } from "../../shared/types";
+import { ApiError, apiClient } from "@/lib/api-client";
+import type {
+  SyncMessageKey,
+  SyncMessageParams,
+  SyncProgressEvent,
+} from "../../shared/types";
 
 export type SyncMode = "full" | "update";
 
 export interface SyncLogEntry {
   type: SyncProgressEvent["type"];
   message: string;
+  messageKey?: SyncMessageKey;
+  messageParams?: SyncMessageParams;
   timestamp: string;
+}
+
+function startFailure(error: unknown): SyncLogEntry {
+  const message = error instanceof Error ? error.message : String(error);
+  const status = error instanceof ApiError ? error.status : 0;
+  const messageKey: SyncMessageKey =
+    status === 400 ? "credentialsMissing" : status === 409 ? "alreadyRunning" : "startFailed";
+
+  return {
+    type: "error",
+    message,
+    messageKey,
+    messageParams: { error: message },
+    timestamp: new Date().toISOString(),
+  };
 }
 
 export interface SyncStats {
@@ -66,13 +87,7 @@ export function useSyncRunner(onComplete?: () => void) {
       try {
         await apiClient.startSync(mode);
       } catch (e) {
-        setLog([
-          {
-            type: "error",
-            message: e instanceof Error ? e.message : String(e),
-            timestamp: new Date().toISOString(),
-          },
-        ]);
+        setLog([startFailure(e)]);
         runningRef.current = false;
         setRunning(false);
         setDone(true);
@@ -92,7 +107,13 @@ export function useSyncRunner(onComplete?: () => void) {
 
         setLog((prev) => [
           ...prev,
-          { type: parsed.type, message: parsed.message, timestamp: parsed.timestamp },
+          {
+            type: parsed.type,
+            message: parsed.message,
+            messageKey: parsed.messageKey,
+            messageParams: parsed.messageParams,
+            timestamp: parsed.timestamp,
+          },
         ]);
 
         if (parsed.type === "order_synced") {
