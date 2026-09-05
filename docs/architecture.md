@@ -68,7 +68,8 @@ All scripts are run with `bun run <name>`.
 | `build` | `vite build` | Compile the React SPA to `dist/`. Used both for web production and as the `preBuild` step for desktop releases. |
 | `build:stable` | `bunx electrobun build --env=stable` | Build a production desktop bundle (`.app` on macOS, `.exe` on Windows). Runs `scripts/prebuild.ts` (`vite build`) first, then packages everything with Hutch, and finally runs `scripts/postwrap.ts` (installer-panel `LSEnvironment` stamp and ad-hoc code-signing on macOS). Hutch runs both hooks with Cottontail rather than Bun, so they shell out instead of importing from `bun`. |
 | `start` | `NODE_ENV=production bun src/server/index.ts` | Start the Hono server in web production mode. Serves the pre-built SPA from `dist/` in addition to the API. Run `build` first. |
-| `lint` | `eslint src --ext .ts,.tsx` | Lint all TypeScript source files. |
+| `test` | `bun test` | Run the Bun test suite — settings paths, secrets, auth, the database URL mask, the universe selection model, locale resolution and the message-file completeness check. |
+| `lint` | `eslint src` | Lint all TypeScript source files. |
 | `typecheck` | `bunx electrobun prepare && tsc --build` | Type-check every runtime without emitting output. `tsconfig.json` is a solution file that only references the per-runtime projects, so `--build` checks each of them against its own globals. Prepares the devkit first, because `tsconfig.electrobun.json` and `tsconfig.tools.json` map the `electrobun` specifiers into `.hutch/devkit/`. Each project drops a gitignored `tsconfig.*.tsbuildinfo` at the repo root for incremental reruns. |
 | `db:generate` | `db:generate:sqlite && db:generate:pg && db:embed` | Regenerate the migrations for both dialects from `src/server/schema.ts`, then re-embed them. The only command needed after changing the schema. Needs no database and no `DATABASE_URL` — `drizzle-kit generate` diffs `schema.ts` against the snapshots in `drizzle/*/meta/` entirely offline. |
 | `db:generate:sqlite` | `drizzle-kit generate --config=drizzle.config.sqlite.ts` | Write the SQLite migration into `drizzle/sqlite/`. Drizzle Kit picks the `sqliteTable` definitions out of the shared `schema.ts` and ignores the `pgTable` ones. |
@@ -84,19 +85,24 @@ All scripts are run with `bun run <name>`.
 qoqa-compta/
 ├── .gitattributes                # Pins LF in the working tree — the embedded migrations are compared byte for byte
 ├── .gitignore
-├── renovate.json
+├── renovate.json                 # Renovate config — extends github>nyg/renovate-presets
+├── cliff.toml                    # git-cliff config — generates CHANGELOG.md from Conventional Commits
+├── eslint.config.js
+├── CHANGELOG.md
+├── LICENSE
 ├── README.md
 ├── AGENTS.md                     # Instructions for coding agents
 ├── CLAUDE.md                     # Points Claude Code at AGENTS.md
 ├── index.html                    # Vite SPA entry
 ├── vite.config.ts
-├── tsconfig.json                 # Solution file — references the five per-runtime projects below
+├── tsconfig.json                 # Solution file — references the six projects below
 ├── tsconfig.base.json            # Options shared by all of them: strictness flags, lib ES2022 only, types []
 ├── tsconfig.shared.json          # src/shared/ — no DOM, no Bun
 ├── tsconfig.server.json          # src/server/ — Bun types, no DOM
 ├── tsconfig.views.json           # src/views/ — DOM, no Bun, @/* alias
 ├── tsconfig.electrobun.json      # src/electrobun/ — Bun types + the electrobun specifier mappings
 ├── tsconfig.tools.json           # vite/electrobun/hutch configs and scripts/ — Bun types
+├── tsconfig.tests.json           # src/**/*.test.ts — Bun types plus DOM, so a test may reach either side
 ├── drizzle.config.sqlite.ts      # Drizzle Kit — SQLite migrations into drizzle/sqlite/
 ├── drizzle.config.pg.ts          # Drizzle Kit — PostgreSQL migrations into drizzle/pg/
 ├── drizzle/                      # Generated migrations, committed and shipped
@@ -104,6 +110,8 @@ qoqa-compta/
 │   └── pg/                       # same, for PostgreSQL
 ├── electrobun.config.ts          # Electrobun build config (app name, icons, entry, hooks)
 ├── hutch.config.ts               # Hutch workspace config — keeps Bun as the package manager
+├── .github/                      # CI workflows — verify on ubuntu-latest, tests on windows-latest
+├── assets/                       # App icon and README screenshot
 ├── docs/
 │   ├── architecture.md           # this file
 │   └── universe-filters.md       # how the universe/sub-universe filter behaves
@@ -114,7 +122,9 @@ qoqa-compta/
 └── src/
     ├── electrobun/
     │   ├── index.ts              # Desktop entry — starts Hono, opens BrowserWindow, installs the menu
-    │   └── menu.ts               # Application menu — macOS only
+    │   ├── menu.ts               # Application menu — macOS only
+    │   ├── locale.ts             # Reads the OS languages and region, injected into the SPA by the preload
+    │   └── window-state.ts       # Persists and restores the window frame (window-state.json)
     ├── server/                   # Hono API + sync engine (Bun)
     │   ├── index.ts              # Web entry point — mounts routes, migrates DB, serves dist/
     │   ├── app.ts                # Hono app factory (shared by web and desktop entry points)
@@ -132,19 +142,21 @@ qoqa-compta/
     │   ├── environment.ts        # Whether env vars may override stored settings — always in dev, web mode only in production
     │   ├── database-url.ts       # Masks the password inside a connection string for the SPA, and restores it on save
     │   ├── install.ts            # How the running copy was installed (brew, scoop, manual, web)
+    │   ├── paths.ts              # Platform-aware config and data directories, plus the legacy-directory migration
+    │   ├── downloads.ts          # Writes exported files into the user's Downloads folder (desktop only)
     │   └── routes/
     │       ├── app.ts            # GET /api/app/latest-release, GET /api/app/install, POST /api/app/open-external
     │       ├── dashboard.ts      # GET /api/dashboard
-    │       ├── orders.ts         # GET /api/orders, GET /api/orders/:n/pdf, GET /api/orders/csv
+    │       ├── orders.ts         # GET /api/orders, GET /api/orders/:n/pdf, GET /api/orders/csv, and the desktop-only …/csv-save and …/:n/pdf-save
     │       ├── sync.ts           # POST /api/sync, DELETE /api/sync, GET /api/sync/stream (SSE)
-    │       └── settings.ts       # GET/PUT /api/settings, POST /api/settings/test-credentials, DELETE /api/settings/database, DELETE /api/settings/database/file, GET /api/settings/credential-store
+    │       └── settings.ts       # GET/PUT /api/settings, POST /api/settings/test-credentials, DELETE /api/settings/database, DELETE /api/settings/database/file, GET /api/settings/db-path, GET /api/settings/credential-store, POST /api/settings/reveal-db
     ├── views/                    # Vite SPA (React 19)
     │   ├── main.tsx              # React entry point
     │   ├── globals.css           # Tailwind v4 + CSS variable theming
     │   ├── pages/
     │   │   └── DashboardPage.tsx # Main dashboard page
     │   ├── components/
-    │   │   ├── ui/               # Base UI primitives (button, input, card, badge)
+    │   │   ├── ui/               # Base UI primitives (button, input, card, badge, tabs, calendar)
     │   │   ├── universe-picker.tsx    # Hierarchical universe+subuniverse filter
     │   │   ├── orders-table.tsx       # Searchable, paginated orders table
     │   │   ├── order-pdf-dialog.tsx   # Invoice PDF popup (Base UI Dialog + iframe)
@@ -164,16 +176,22 @@ qoqa-compta/
     │       ├── about-event.ts    # Name of the window event the menu dispatches to open About
     │       ├── clipboard.ts      # Copy helper with an execCommand fallback for the WebView
     │       ├── desktop.ts        # Flags injected by the Electrobun preload (title bar)
-    │       ├── formatter-context.tsx  # React context for fr-CH number/date formatters
+    │       ├── downloads.ts      # Saves a file the way the runtime allows — blob download, or a server-side write on desktop
+    │       ├── external-links.ts # Routes target="_blank" clicks through the system browser in desktop mode
+    │       ├── formatter-context.tsx  # React context for the number/date formatters
     │       ├── formatters.ts     # formatCHF, formatDate, formatMonth
+    │       ├── locale.ts         # Resolves the formatting region from the host locales, falling back to CH
     │       ├── use-filter-state.ts    # Persisted universe/date filter state (localStorage)
     │       ├── use-install-info.ts    # Install method, fetched once per app load
     │       ├── use-latest-release.ts  # Shared release-check store, compared to the built version
+    │       ├── use-sync-runner.ts     # Starts a sync and consumes the SSE progress stream
     │       └── utils.ts          # cn() and other utilities
     └── shared/
         ├── filters.ts            # Universe selection model — see universe-filters.md
         └── types.ts              # Shared TypeScript types (QoqaOrder, AppSettings, …)
 ```
+
+Tests live next to what they cover as `*.test.ts` (`src/server/`, `src/shared/`, `src/views/lib/`, `src/views/i18n/`) and are collected by `tsconfig.tests.json` rather than by a directory of their own.
 
 ### Compiler strictness
 
@@ -215,7 +233,26 @@ Both entry points bind the API to loopback — the desktop one to `127.0.0.1` al
 
 ### Window state
 
+`src/electrobun/window-state.ts` writes `window-state.json` next to `settings.json`, in the config directory `resolveConfigDir()` returns. It holds a version, the frame (`x`, `y`, `width`, `height`), whether the window was maximized, and a fingerprint of the displays that were attached when it was captured — nothing else, and nothing about the content of the app.
+
 The window is created hidden at its saved frame and maximized on restore. On Windows the maximize happens after `show()`, so it reaches a window whose WebView2 controller already exists; on macOS it happens before, which is what keeps the maximize animation off screen.
+
+The saved frame is not trusted blindly. Sizes are clamped to the union of the current displays and to an 800×600 minimum; a frame that would land off every screen, or one captured against a different display fingerprint, is discarded in favour of a centred default, so unplugging a monitor never hides the window. Writes are debounced 400 ms, skipped for the first 600 ms after launch while the frame settles, skipped while minimized or fullscreen, and written to a `.tmp` file that is renamed over the target. Every failure path is swallowed: losing the window layout must never take the app down.
+
+### Exports and downloads
+
+The dashboard exports the filtered orders as CSV, and the PDF dialog saves the invoice being viewed. The same two buttons take different routes depending on the runtime, behind `saveFile()` in `src/views/lib/downloads.ts`:
+
+- **Browser** — `GET /api/orders/csv` (or the PDF endpoint) is fetched and handed to a blob `<a download>`. The browser's own download flow applies, and the app never learns where the file went.
+- **Desktop** — the WebView ignores `<a download>` and renders a PDF in a full-screen viewer of its own instead, so the server writes the file: `POST /api/orders/csv-save` and `POST /api/orders/:orderNumber/pdf-save`. Both are mounted only when `createApp()` is given `desktop: true`, which is what keeps a hosted web deployment from writing into the server's home directory.
+
+`src/server/downloads.ts` writes into `~/Downloads`, creating it if a freshly provisioned profile has none, and never overwrites: `report.csv` becomes `report (1).csv`. Files are named `qoqa-orders-<YYYY-MM-DD>.csv` and `invoice-<order number>.pdf`, with the order number sanitised to `[A-Za-z0-9_-]`. On macOS it then posts the `com.apple.DownloadFileFinished` distributed notification through JXA, which bounces the Dock's Downloads stack and adds the file to its recent items, the same feedback a browser download gives — best effort, since the file is already written. Windows toasts need a registered AppUserModelID, so there the in-app *Saved to …* indicator stands alone.
+
+### Locale and region
+
+The UI language and the formatting region are resolved separately. The language comes from `i18next-browser-languagedetector` — a stored choice first, then the navigator — and is one of the five shipped locales. The region is what `Intl` needs to format CHF amounts and dates the way the user's machine does, and a WebView does not expose it: WKWebView and WebView2 report a language without a region.
+
+So the desktop main process reads it from the OS itself (`src/electrobun/locale.ts`): `defaults read -g AppleLanguages` plus the `rg=` override inside `AppleLocale` on macOS, `PreferredUILanguages` and `LocaleName` under `HKCU\Control Panel` on Windows. The result is injected by the preload as `window.__LOCALES__`, and `src/views/lib/locale.ts` picks the host locale whose language matches the UI language, falling back to the first one and finally to `CH`. In the browser the same code reads `navigator.languages`. Romansh has no `Intl` data, so `rm` formats through `de-CH`.
 
 ---
 
@@ -425,3 +462,8 @@ How the picker turns a user's choice into those filters — the three selection 
 
 Each row in `qoqa_orders` carries the raw invoice PDF in the `pdf_data` column. List queries never select `pdf_data`; instead they project a `has_pdf` boolean (`pdf_data IS NOT NULL`) to keep the orders endpoint cheap. PDFs are served via `GET /api/orders/:orderNumber/pdf`.
 
+---
+
+## Where data is stored
+
+Every location the app writes to — the config and data directories, the credential store, `localStorage`, the database, the exports and the in-memory caches — plus how to remove each of them, is inventoried in [storage.md](storage.md).

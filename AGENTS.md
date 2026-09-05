@@ -9,9 +9,10 @@ Single Bun application — a Hono REST API + sync engine that serves a Vite/Reac
 - **`src/electrobun/`** — desktop entry point. Starts the Hono server on an ephemeral loopback port, opens the `BrowserWindow`, installs the macOS application menu, injects preload flags (API port, OS locales, inset title bar) and persists the window frame.
 - **`src/shared/`** — TypeScript types and the universe selection model shared between server and SPA.
 
-Two deeper documents exist and are the reference for their subjects — read them instead of re-deriving:
+Three deeper documents exist and are the reference for their subjects — read them instead of re-deriving:
 
 - [`docs/architecture.md`](docs/architecture.md) — web vs desktop mode, scripts, project structure, desktop shell, sync pipeline, settings paths, full database schema.
+- [`docs/storage.md`](docs/storage.md) — every location the app writes to: config and data directories, `settings.json` keys, the credential store, `localStorage`, the database tables, the exports, the in-memory caches, and how to remove each. Add a line there whenever a change introduces or moves persisted state.
 - [`docs/universe-filters.md`](docs/universe-filters.md) — the three selection states, normalization rules, what the picker label counts, and what to check when changing any of it.
 
 ## Commands
@@ -26,6 +27,7 @@ bun run build            # production: compile SPA to dist/
 bun run build:stable     # production: package the desktop app into artifacts/
 bun run start            # production: serve dist/ + API from :3001
 bun run typecheck        # electrobun prepare && tsc --build (one project per runtime)
+bun run test             # bun test — server, shared and views unit tests
 bun run lint             # ESLint over src
 bun run db:generate      # regenerate SQLite + PG migrations from schema.ts, then re-embed them
 bun run db:verify        # fail if src/server/migrations.generated.ts is stale
@@ -38,10 +40,12 @@ bun run db:verify        # fail if src/server/migrations.generated.ts is stale
 - The SPA makes all API calls through `src/views/lib/api-client.ts` — isolated so the HTTP transport can be swapped for Electrobun RPC in the future.
 - `GET /api/dashboard` returns all stats, charts, and initial orders in one round-trip.
 - `GET /api/orders` is used for client-side search and pagination.
+- `GET /api/orders/csv` exports the filtered orders; `POST /api/orders/csv-save` and `POST /api/orders/:orderNumber/pdf-save` are the desktop-only equivalents, mounted only when `createApp()` gets `desktop: true`. The WebView ignores `<a download>`, so there the server writes into `~/Downloads` through `src/server/downloads.ts` and returns the path; the browser gets a blob download. `saveFile()` in `src/views/lib/downloads.ts` picks between them.
 - `POST /api/sync` starts a sync job; progress is streamed via SSE (`GET /api/sync/stream`).
 - `GET/PUT /api/settings` reads/writes `settings.json`; the QoQa password and the PostgreSQL URL go to the OS credential store instead (see Settings below), and `GET /api/settings/credential-store` reports, per secret, which store each actually landed in. A changed database URL is connection-probed before anything is written and rejected with a 400 when it does not answer; the schema is left to the next sync.
 - `POST /api/settings/test-credentials` tries a QoQa login and reports the outcome without starting a sync; the Settings modal offers it as *Test connection*.
 - `DELETE /api/settings/database` drops and recreates every table; `DELETE /api/settings/database/file` deletes the SQLite file itself and reopens an empty one, and answers 400 when PostgreSQL is the active database. The Settings modal offers whichever of the two matches the database in use.
+- `GET /api/settings/db-path` returns the active SQLite file path, or `null` on PostgreSQL — what the Settings modal uses to decide between the reset and the delete button.
 - `POST /api/settings/reveal-db` opens the SQLite file in the system file manager. On desktop this runs through Electrobun's `Utils.showItemInFolder`, injected into `createApp()` as `revealInFileManager` so `src/server/` never imports the Electrobun SDK; web mode falls back to a platform-specific spawn.
 - `GET /api/app/latest-release` reads the GitHub releases API server-side (the opaque `views://` origin cannot satisfy CORS), cached 6h on success and 15m on failure; `?refresh=1` bypasses the cache.
 - `POST /api/app/open-external` hands an http(s) link to the system browser through Electrobun's `Utils.openExternal`, injected into `createApp()` as `openExternal`. The SPA routes every `target="_blank"` link through it in desktop mode (`src/views/lib/external-links.ts`), because a WebView opens one in a tab-less window of its own instead.
@@ -104,6 +108,7 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 - The URL reaches the SPA with its password segment masked (`src/server/database-url.ts`); an unedited mask coming back on save restores the stored password
 - Env vars (`QOQA_EMAIL`, `QOQA_PASSWORD`, `DATABASE_URL`, `PORT`) override the settings file in development, and in production only in web mode — `src/server/index.ts` opts in through `allowEnvironmentOverrides()` in `src/server/environment.ts` so a headless deployment has somewhere to put a password; the desktop entry point deliberately does not
 - All settings are configurable from the in-app Settings modal — no `.env` file required in production
+- Client-side preferences never reach the server: `localStorage` holds `qoqa-compta-filters` (universe selection + date range, revalidated on read), `qoqa-compta-language` (UI language, written by the i18next detector) and `theme` (written by `next-themes`). Every access is wrapped, so a profile that blocks storage loses the preference and nothing else
 
 ### Desktop
 
@@ -111,6 +116,8 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 - Only macOS gets an application menu; on Windows there is none, and About sits behind the version number in the header.
 - Both entry points bind the API to loopback — a wildcard bind raises a Windows Defender Firewall prompt on first run.
 - The macOS DMG ships a self-extracting wrapper, not the app; `scripts/postwrap.ts` stamps `ELECTROBUN_INSTALLER_UI_AUTOCLOSE=1` into its `Info.plist` so the first-run installer panel closes itself instead of sitting behind the app window. Windows keeps its installer UI.
+- The window frame is persisted to `window-state.json` in the config directory by `src/electrobun/window-state.ts` — debounced, written through a `.tmp` rename, and discarded on restore when the display set changed or the frame would land off screen. Every failure path is swallowed on purpose.
+- The OS region is not visible to a WebView, so `src/electrobun/locale.ts` reads it from `defaults`/the registry and the preload injects it as `window.__LOCALES__`; `src/views/lib/locale.ts` consumes it and falls back to `navigator.languages`, then `CH`.
 
 ### Git
 
