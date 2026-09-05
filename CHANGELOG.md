@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [1.0.1](https://github.com/nyg/qoqa-compta/compare/v1.0.0..v1.0.1) - 2026-09-05
+
+### 📚 Documentation
+
+- [`62a1877`](https://github.com/nyg/qoqa-compta/commit/62a187728ffa9af3fec4bde2e0d0ee1c2521a069) *(release)* Restructure the install guidance in the release notes ([#169](https://github.com/nyg/qoqa-compta/issues/169))
+
 ## [1.0.0](https://github.com/nyg/qoqa-compta/compare/v0.5.0..v1.0.0) - 2026-09-05
 
 ### ⛰️  Features
