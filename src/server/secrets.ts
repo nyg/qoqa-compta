@@ -116,14 +116,14 @@ async function storeOf(secret: Secret): Promise<CredentialStore> {
     path: null,
     variable: null,
   };
+  const nothing: CredentialStore = { kind: "none", path: null, variable: null };
 
-  try {
-    if (await Bun.secrets.get({ service: SERVICE, name: secret.name })) return native;
-  } catch {
-    return inFile;
-  }
+  const stored = await Bun.secrets
+    .get({ service: SERVICE, name: secret.name })
+    .catch(() => null);
+  if (stored) return native;
 
-  return readStoredSecret(secret.key) === null ? native : inFile;
+  return readStoredSecret(secret.key) === null ? nothing : inFile;
 }
 
 export function readPassword(): Promise<string | null> {

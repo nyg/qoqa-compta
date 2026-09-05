@@ -179,7 +179,8 @@ export type CredentialStoreKind =
   | "credential-manager"
   | "keyring"
   | "file"
-  | "env";
+  | "env"
+  | "none";
 
 export interface CredentialStore {
   kind: CredentialStoreKind;

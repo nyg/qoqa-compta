@@ -17,6 +17,7 @@ import type {
   CredentialStores,
   SyncProgressEvent,
 } from "../../shared/types";
+
 import i18n, { SUPPORTED_LOCALES, type SupportedLocale } from "@/i18n/index";
 
 type DbMode = "local" | "postgres";
@@ -192,6 +193,7 @@ export function SettingsModal({
   const activeIsSqlite = dbPath !== null;
   const dbSelectionPending = dbMode !== savedDbMode;
   const noDatabaseYet = activeIsSqlite && !dbFileExists;
+  const missingDbUrl = dbMode === "postgres" && dbUrl.trim() === "";
 
   function refreshDbFileInfo() {
     apiClient
@@ -262,25 +264,29 @@ export function SettingsModal({
     });
   }
 
-  function storeName(store: CredentialStore): string {
-    const keys: Record<CredentialStore["kind"], string> = {
+  function storeName(store: CredentialStore): string | null {
+    const keys: Record<CredentialStore["kind"], string | null> = {
       keychain: "storeKeychain",
       "credential-manager": "storeCredentialManager",
       keyring: "storeKeyring",
       file: "storeFile",
       env: "storeEnv",
+      none: null,
     };
-    return t(keys[store.kind], {
+    const key = keys[store.kind];
+    if (key === null) return null;
+    return t(key, {
       path: store.path ?? "",
       variable: store.variable ?? "",
     });
   }
 
-  function storedInLabel(carrier: string, store: CredentialStore): string {
-    return t(carrier, { store: storeName(store) });
+  function storedInLabel(carrier: string, store: CredentialStore): string | null {
+    const name = storeName(store);
+    return name === null ? null : t(carrier, { store: name });
   }
 
-  const saveRow = (
+  const saveRow = (blocked = false) => (
     <>
       <hr className="border-border" />
       <div className="space-y-2">
@@ -288,7 +294,7 @@ export function SettingsModal({
           <Button
             variant="default"
             size="sm"
-            disabled={saving || loading}
+            disabled={saving || loading || blocked}
             onClick={handleSave}
           >
             {saving ? (
@@ -380,7 +386,7 @@ export function SettingsModal({
                       onChange={(e) => setPassword(e.target.value)}
                       autoComplete="new-password"
                     />
-                    {credentialStore && (
+                    {credentialStore && credentialStore.qoqaPassword.kind !== "none" && (
                       <span className="text-[0.65rem] leading-snug text-muted-foreground break-all">
                         {storedInLabel("passwordStoredIn", credentialStore.qoqaPassword)}
                       </span>
@@ -411,7 +417,7 @@ export function SettingsModal({
                   </div>
                 </div>
 
-                  {saveRow}
+                  {saveRow()}
                 </TabsPanel>
 
                 <TabsPanel value="languages" className="min-h-0 flex-auto overflow-y-auto px-4 py-4 space-y-6">
@@ -453,7 +459,7 @@ export function SettingsModal({
                   </label>
                 </div>
 
-                  {saveRow}
+                  {saveRow()}
                 </TabsPanel>
 
                 <TabsPanel value="database" className="min-h-0 flex-auto overflow-y-auto px-4 py-4 space-y-6">
@@ -490,7 +496,7 @@ export function SettingsModal({
                         placeholder={t("dbUrlPlaceholder")}
                         className="font-mono text-xs"
                       />
-                      {credentialStore && (
+                      {credentialStore && credentialStore.databaseUrl.kind !== "none" && (
                         <span className="text-[0.65rem] leading-snug text-muted-foreground break-all">
                           {storedInLabel("databaseUrlStoredIn", credentialStore.databaseUrl)}
                         </span>
@@ -603,7 +609,7 @@ export function SettingsModal({
                   )}
                 </div>
 
-                  {saveRow}
+                  {saveRow(missingDbUrl)}
                 </TabsPanel>
 
                 <TabsPanel value="sync" className="min-h-0 flex-auto overflow-y-auto px-4 py-4 space-y-6">
