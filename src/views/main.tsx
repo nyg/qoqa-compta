@@ -7,6 +7,7 @@ import { I18nextProvider } from "react-i18next";
 import { ThemeProvider } from "./components/theme-provider";
 import { FormatterProvider } from "./lib/formatter-context";
 import { documentLocale } from "./lib/formatters";
+import { installExternalLinkHandler } from "./lib/external-links";
 import { DashboardPage } from "./pages/DashboardPage";
 import i18n from "./i18n/index";
 
@@ -43,6 +44,8 @@ function App() {
     </ThemeProvider>
   );
 }
+
+installExternalLinkHandler();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

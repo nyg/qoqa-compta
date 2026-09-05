@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api-client";
 import { copyText } from "@/lib/clipboard";
+import { useFormatter } from "@/lib/formatter-context";
 import { useInstallInfo } from "@/lib/use-install-info";
 import type { SyncMode, SyncRunner } from "@/lib/use-sync-runner";
 import type {
@@ -61,6 +62,7 @@ export function SettingsModal({
   sync: SyncRunner;
 }) {
   const { t } = useTranslation("Settings");
+  const { formatTime } = useFormatter();
   const install = useInstallInfo();
   const [internalOpen, setInternalOpen] = useState(false);
 
@@ -80,6 +82,8 @@ export function SettingsModal({
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -108,6 +112,7 @@ export function SettingsModal({
     setDestroySuccess(false);
     setRevealFailed(false);
     setDestroyError(null);
+    setTestResult(null);
     // The sync log is deliberately left alone: the dialog is opened
     // automatically when a run started from the header fails, and clearing it
     // here would discard the very log the user is being shown. `start()`
@@ -193,6 +198,21 @@ export function SettingsModal({
       setDestroyError(e instanceof Error ? e.message : String(e));
     } finally {
       setDestroying(false);
+    }
+  }
+
+  async function handleTestCredentials() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      setTestResult(
+        await apiClient.testCredentials({ qoqaEmail: email, qoqaPassword: password })
+      );
+    } catch (e) {
+      console.error(e);
+      setTestResult({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -333,6 +353,29 @@ export function SettingsModal({
                       </span>
                     )}
                   </label>
+                  <div className="space-y-1 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={testing || !email || !password}
+                      onClick={handleTestCredentials}
+                    >
+                      {testing ? (
+                        <RefreshCw className="size-3 animate-spin" />
+                      ) : testResult?.ok ? (
+                        <Check className="size-3" />
+                      ) : null}
+                      {t("testConnection")}
+                    </Button>
+                    {testResult?.ok && (
+                      <p className="text-xs text-green-500">{t("testConnectionOk")}</p>
+                    )}
+                    {testResult && !testResult.ok && (
+                      <p className="text-xs text-destructive break-words">
+                        {t("testConnectionFailed", { error: testResult.error })}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                   {saveRow}
@@ -427,7 +470,7 @@ export function SettingsModal({
                   <div className="pt-1">
                     <span className="text-xs font-medium block mb-1">{t("dbLocation")}</span>
                     <div className="flex items-center gap-2">
-                      <code className="flex-1 text-xs font-mono bg-muted/40 rounded px-2 py-1 truncate">{dbPath}</code>
+                      <code title={dbPath} className="flex-1 text-xs font-mono bg-muted/40 rounded px-2 py-1 truncate">{dbPath}</code>
                       {install && install.method !== "web" && (
                         <Button
                           variant="outline"
@@ -583,7 +626,7 @@ export function SettingsModal({
                             className={cn("leading-relaxed", logEntryColor(entry.type))}
                           >
                             <span className="text-muted-foreground/60 select-none mr-1.5">
-                              {entry.timestamp.slice(11, 19)}
+                              {formatTime(entry.timestamp)}
                             </span>
                             {entry.message}
                           </div>

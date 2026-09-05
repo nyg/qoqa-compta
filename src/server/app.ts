@@ -16,6 +16,7 @@ export function createApp(opts?: {
   corsOrigins?: string[];
   desktop?: boolean;
   revealInFileManager?: (filePath: string) => void;
+  openExternal?: (url: string) => boolean;
 }) {
   const app = new Hono();
 
@@ -47,7 +48,7 @@ export function createApp(opts?: {
 
   // ── API routes ───────────────────────────────────────────────────────────────
 
-  app.route("/api", appRoutes({ desktop: opts?.desktop }));
+  app.route("/api", appRoutes({ desktop: opts?.desktop, openExternal: opts?.openExternal }));
   app.route("/api", dashboardRoutes);
   app.route("/api", ordersRoutes({ desktop: opts?.desktop }));
   app.route("/api", syncRoutes);

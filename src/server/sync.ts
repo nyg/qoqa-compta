@@ -134,7 +134,7 @@ export async function syncOrders(
   } catch (err) {
     console.error("[sync] Auth failed:", err);
     emit(makeEvent("auth_error", `Authentication failed: ${(err as Error).message}`));
-    throw err;
+    return;
   }
 
   if (signal.aborted) { emit(makeEvent("cancelled", "Sync cancelled")); return; }
@@ -173,7 +173,7 @@ export async function syncOrders(
   } catch (err) {
     console.error("[sync] Failed to fetch purchases:", err);
     emit(makeEvent("error", `Failed to fetch purchases: ${(err as Error).message}`));
-    throw err;
+    return;
   }
 
   // 5. Process each purchase

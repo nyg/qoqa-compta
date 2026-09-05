@@ -133,11 +133,11 @@ qoqa-compta/
     │   ├── database-url.ts       # Masks the password inside a connection string for the SPA, and restores it on save
     │   ├── install.ts            # How the running copy was installed (brew, scoop, manual, web)
     │   └── routes/
-    │       ├── app.ts            # GET /api/app/latest-release, GET /api/app/install
+    │       ├── app.ts            # GET /api/app/latest-release, GET /api/app/install, POST /api/app/open-external
     │       ├── dashboard.ts      # GET /api/dashboard
     │       ├── orders.ts         # GET /api/orders, GET /api/orders/:n/pdf, GET /api/orders/csv
     │       ├── sync.ts           # POST /api/sync, DELETE /api/sync, GET /api/sync/stream (SSE)
-    │       └── settings.ts       # GET/PUT /api/settings, DELETE /api/settings/database, DELETE /api/settings/database/file, GET /api/settings/credential-store
+    │       └── settings.ts       # GET/PUT /api/settings, POST /api/settings/test-credentials, DELETE /api/settings/database, DELETE /api/settings/database/file, GET /api/settings/credential-store
     ├── views/                    # Vite SPA (React 19)
     │   ├── main.tsx              # React entry point
     │   ├── globals.css           # Tailwind v4 + CSS variable theming

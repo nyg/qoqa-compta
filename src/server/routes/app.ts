@@ -41,10 +41,31 @@ async function fetchLatestRelease(): Promise<LatestRelease> {
   };
 }
 
-export default function appRouter(opts?: { desktop?: boolean }) {
+export default function appRouter(opts?: {
+  desktop?: boolean;
+  openExternal?: (url: string) => boolean;
+}) {
   const router = new Hono();
 
   router.get("/app/install", (c) => c.json(installInfo(Boolean(opts?.desktop))));
+
+  router.post("/app/open-external", async (c) => {
+    const { url } = (await c.req.json().catch(() => ({}))) as { url?: string };
+
+    if (!url || !/^https?:\/\//i.test(url)) {
+      return c.json({ error: "Only http and https links can be opened" }, 400);
+    }
+
+    if (!opts?.openExternal) {
+      return c.json({ error: "No system browser is reachable from here" }, 501);
+    }
+
+    if (!opts.openExternal(url)) {
+      return c.json({ error: "The system browser could not be opened" }, 500);
+    }
+
+    return c.json({ ok: true });
+  });
 
   router.get("/app/latest-release", async (c) => {
     const refresh = c.req.query("refresh") === "1";

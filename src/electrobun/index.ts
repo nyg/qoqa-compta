@@ -49,6 +49,7 @@ async function main() {
     corsOrigins: ["views://", "http://localhost:3000"],
     desktop: true,
     revealInFileManager: (filePath) => Utils.showItemInFolder(filePath),
+    openExternal: (link) => Utils.openExternal(link),
   });
 
   await migrateSecretsToCredentialStore();

@@ -162,6 +162,20 @@ export const apiClient = {
     });
   },
 
+  testCredentials(credentials: {
+    qoqaEmail: string;
+    qoqaPassword: string;
+  }): Promise<{ ok: boolean; error?: string }> {
+    return request<{ ok: boolean; error?: string }>(
+      `${API_BASE}/api/settings/test-credentials`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      }
+    );
+  },
+
   resetDatabase(): Promise<void> {
     return request<void>(`${API_BASE}/api/settings/database`, { method: "DELETE" });
   },
@@ -186,6 +200,14 @@ export const apiClient = {
     return request<LatestRelease>(
       `${API_BASE}/api/app/latest-release${refresh ? "?refresh=1" : ""}`
     );
+  },
+
+  openExternal(url: string): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>(`${API_BASE}/api/app/open-external`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
   },
 
   getInstallInfo(): Promise<InstallInfo> {

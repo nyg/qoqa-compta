@@ -40,9 +40,11 @@ bun run db:verify        # fail if src/server/migrations.generated.ts is stale
 - `GET /api/orders` is used for client-side search and pagination.
 - `POST /api/sync` starts a sync job; progress is streamed via SSE (`GET /api/sync/stream`).
 - `GET/PUT /api/settings` reads/writes `settings.json`; the QoQa password and the PostgreSQL URL go to the OS credential store instead (see Settings below), and `GET /api/settings/credential-store` reports, per secret, which store each actually landed in. A changed database URL is connection-probed before anything is written and rejected with a 400 when it does not answer; the schema is left to the next sync.
+- `POST /api/settings/test-credentials` tries a QoQa login and reports the outcome without starting a sync; the Settings modal offers it as *Test connection*.
 - `DELETE /api/settings/database` drops and recreates every table; `DELETE /api/settings/database/file` deletes the SQLite file itself and reopens an empty one, and answers 400 when PostgreSQL is the active database. The Settings modal offers whichever of the two matches the database in use.
 - `POST /api/settings/reveal-db` opens the SQLite file in the system file manager. On desktop this runs through Electrobun's `Utils.showItemInFolder`, injected into `createApp()` as `revealInFileManager` so `src/server/` never imports the Electrobun SDK; web mode falls back to a platform-specific spawn.
 - `GET /api/app/latest-release` reads the GitHub releases API server-side (the opaque `views://` origin cannot satisfy CORS), cached 6h on success and 15m on failure; `?refresh=1` bypasses the cache.
+- `POST /api/app/open-external` hands an http(s) link to the system browser through Electrobun's `Utils.openExternal`, injected into `createApp()` as `openExternal`. The SPA routes every `target="_blank"` link through it in desktop mode (`src/views/lib/external-links.ts`), because a WebView opens one in a tab-less window of its own instead.
 - `GET /api/app/install` reports the platform and how the running copy was installed (`homebrew`, `scoop`, `manual`, `web`), so the About dialog only shows the update path that applies.
 
 ### Sync pipeline
