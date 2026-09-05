@@ -1,16 +1,111 @@
-import { useEffect, useRef, type ComponentProps } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  type ChangeEvent,
+  type ComponentProps,
+} from "react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   DayPicker,
   getDefaultClassNames,
+  type ChevronProps,
+  type CustomComponents,
   type DayButtonProps,
+  type DropdownProps,
+  type RootProps,
 } from "react-day-picker";
+import { Select } from "@base-ui/react/select";
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 
 type CalendarProps = ComponentProps<typeof DayPicker> & {
   buttonVariant?: ComponentProps<typeof Button>["variant"];
 };
+
+function CalendarRoot({ className, rootRef, ...props }: RootProps) {
+  return <div data-slot="calendar" ref={rootRef} className={className} {...props} />;
+}
+
+function CalendarChevron({ className, orientation, ...props }: ChevronProps) {
+  const Icon =
+    orientation === "left"
+      ? ChevronLeft
+      : orientation === "right"
+        ? ChevronRight
+        : ChevronDown;
+  return <Icon className={cn("size-4", className)} {...props} />;
+}
+
+function CalendarDropdown({
+  options,
+  value,
+  onChange,
+  disabled,
+  className,
+  "aria-label": ariaLabel,
+}: DropdownProps) {
+  const selected = options?.find((option) => option.value === Number(value));
+
+  return (
+    <Select.Root
+      value={Number(value)}
+      disabled={disabled}
+      modal={false}
+      onValueChange={(next) => {
+        onChange?.({
+          target: { value: String(next) },
+        } as ChangeEvent<HTMLSelectElement>);
+      }}
+    >
+      <Select.Trigger
+        aria-label={ariaLabel}
+        className={cn(
+          "relative flex cursor-pointer select-none items-center gap-1 rounded-(--cell-radius) border border-transparent px-1.5",
+          "hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
+          "data-disabled:pointer-events-none data-disabled:opacity-50",
+          className
+        )}
+      >
+        {selected?.label}
+        <Select.Icon>
+          <ChevronDown className="size-3.5 text-muted-foreground" />
+        </Select.Icon>
+      </Select.Trigger>
+      <Select.Positioner
+        positionMethod="fixed"
+        sideOffset={4}
+        alignItemWithTrigger={false}
+        className="z-50 outline-none"
+      >
+        <Select.Popup className="min-w-(--anchor-width) rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+          <Select.List className="max-h-(--available-height) overflow-y-auto">
+            {options?.map((option) => (
+              <Select.Item
+                key={option.value}
+                value={option.value}
+                disabled={option.disabled}
+                className="grid cursor-pointer select-none grid-cols-[1rem_1fr] items-center gap-1.5 rounded-sm py-1 pl-1.5 pr-3 outline-none data-highlighted:bg-muted data-disabled:pointer-events-none data-disabled:opacity-50"
+              >
+                <Select.ItemIndicator className="col-start-1">
+                  <Check className="size-3" />
+                </Select.ItemIndicator>
+                <Select.ItemText className="col-start-2">{option.label}</Select.ItemText>
+              </Select.Item>
+            ))}
+          </Select.List>
+        </Select.Popup>
+      </Select.Positioner>
+    </Select.Root>
+  );
+}
+
+const CALENDAR_COMPONENTS = {
+  Root: CalendarRoot,
+  Chevron: CalendarChevron,
+  Dropdown: CalendarDropdown,
+  DayButton: CalendarDayButton,
+} satisfies Partial<CustomComponents>;
 
 function Calendar({
   className,
@@ -23,14 +118,16 @@ function Calendar({
 }: CalendarProps) {
   const defaultClassNames = getDefaultClassNames();
 
+  const mergedComponents = useMemo(
+    () => (components ? { ...CALENDAR_COMPONENTS, ...components } : CALENDAR_COMPONENTS),
+    [components]
+  );
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
       captionLayout={captionLayout}
       className={cn(
-        // font-sans is stated rather than inherited: the month grid is a <table>,
-        // and a table is the one element WebKit hands its serif standard font when
-        // the document is not in standards mode.
         "group/calendar bg-popover p-3 font-sans [--cell-radius:var(--radius-md)] [--cell-size:--spacing(8)]",
         className
       )}
@@ -60,19 +157,8 @@ function Calendar({
           "flex h-(--cell-size) w-full items-center justify-center gap-1.5 text-xs font-medium",
           defaultClassNames.dropdowns
         ),
-        dropdown_root: cn(
-          "relative rounded-(--cell-radius) border border-transparent hover:border-border",
-          defaultClassNames.dropdown_root
-        ),
-        dropdown: cn(
-          "absolute inset-0 bg-popover opacity-0",
-          defaultClassNames.dropdown
-        ),
         caption_label: cn(
-          "select-none font-medium",
-          captionLayout === "label"
-            ? "text-xs"
-            : "flex items-center gap-1 rounded-(--cell-radius) px-1.5 text-xs [&>svg]:size-3.5 [&>svg]:text-muted-foreground",
+          "select-none text-xs font-medium",
           defaultClassNames.caption_label
         ),
         month_grid: cn("w-full border-collapse", defaultClassNames.month_grid),
@@ -107,22 +193,7 @@ function Calendar({
         hidden: cn("invisible", defaultClassNames.hidden),
         ...classNames,
       }}
-      components={{
-        Root: ({ className, rootRef, ...rootProps }) => (
-          <div data-slot="calendar" ref={rootRef} className={cn(className)} {...rootProps} />
-        ),
-        Chevron: ({ className, orientation, ...chevronProps }) => {
-          const Icon =
-            orientation === "left"
-              ? ChevronLeft
-              : orientation === "right"
-                ? ChevronRight
-                : ChevronDown;
-          return <Icon className={cn("size-4", className)} {...chevronProps} />;
-        },
-        DayButton: CalendarDayButton,
-        ...components,
-      }}
+      components={mergedComponents}
       {...props}
     />
   );
