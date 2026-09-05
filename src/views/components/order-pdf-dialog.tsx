@@ -4,7 +4,7 @@ import { Check, Download, FileText, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
-import { fileName, saveFile } from "@/lib/downloads";
+import { fileName, saveFile, useShowsSavedPath } from "@/lib/downloads";
 
 interface OrderPdfDialogProps {
   orderNumber: string;
@@ -24,6 +24,7 @@ export function OrderPdfDialog({
   const [open, setOpen] = useState(false);
   const [savedPath, setSavedPath] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const showsSavedPath = useShowsSavedPath();
 
   const pdfUrl = apiClient.getPdfUrl(orderNumber);
   const label = disabled ? tTable("noInvoice") : tTable("viewInvoice");
@@ -36,8 +37,10 @@ export function OrderPdfDialog({
         url: pdfUrl,
         filename: `invoice-${orderNumber}.pdf`,
       });
-      setSavedPath(path ?? "");
-      setTimeout(() => setSavedPath(null), 5000);
+      if (path && showsSavedPath) {
+        setSavedPath(path);
+        setTimeout(() => setSavedPath(null), 5000);
+      }
     } catch (e) {
       console.error("PDF download failed:", e);
     } finally {

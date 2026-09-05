@@ -1,3 +1,5 @@
+import { useInstallInfo } from "@/lib/use-install-info";
+
 /** The SPA is served from views://main/index.html inside the desktop WebView. */
 export const isDesktop = window.location.protocol === "views:";
 
@@ -38,4 +40,8 @@ export async function saveFile(opts: {
   document.body.removeChild(a);
   URL.revokeObjectURL(objectUrl);
   return null;
+}
+
+export function useShowsSavedPath(): boolean {
+  return useInstallInfo()?.platform === "windows";
 }

@@ -9,7 +9,7 @@ import { useFormatter } from "@/lib/formatter-context";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
-import { fileName, saveFile } from "@/lib/downloads";
+import { fileName, saveFile, useShowsSavedPath } from "@/lib/downloads";
 import { selectionParams, type UniverseSelection } from "../../shared/filters";
 import { DEFAULT_PAGE_SIZE, type QoqaOrder, type Pagination } from "../../shared/types";
 
@@ -166,6 +166,7 @@ export function OrdersTable({
 
   const [csvDownloading, setCsvDownloading] = useState(false);
   const [csvSavedPath, setCsvSavedPath] = useState<string | null>(null);
+  const showsSavedPath = useShowsSavedPath();
 
   const handleCsvDownload = useCallback(async () => {
     setCsvDownloading(true);
@@ -181,7 +182,7 @@ export function OrdersTable({
         url: csvUrl,
         filename: "qoqa-orders.csv",
       });
-      if (path) {
+      if (path && showsSavedPath) {
         setCsvSavedPath(path);
         setTimeout(() => setCsvSavedPath(null), 5000);
       }
@@ -190,7 +191,7 @@ export function OrdersTable({
     } finally {
       setCsvDownloading(false);
     }
-  }, [csvUrl, selection, from, to]);
+  }, [csvUrl, selection, from, to, showsSavedPath]);
 
   return (
     <Card>
