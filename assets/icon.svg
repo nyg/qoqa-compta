@@ -4,9 +4,10 @@
   <rect x="0" y="0" width="1024" height="1024" rx="230" ry="230" fill="#FF3C78"/>
   <rect x="0" y="0" width="1024" height="512" rx="230" ry="230" fill="rgba(255,255,255,0.08)"/>
 
-  <path d="M296 160 h432 a44 44 0 0 1 44 44 v640 l-72 -52 l-72 52 l-72 -52 l-72 52 l-72 -52 l-72 52 v-640 a44 44 0 0 1 44 -44 z" fill="white"/>
+  <circle cx="512" cy="512" r="284" fill="none" stroke="white" stroke-width="104"/>
+  <polygon points="606,659 541,724 711,894 776,829" fill="white"/>
 
-  <rect x="340" y="540" width="88" height="200" rx="22" fill="#FF3C78"/>
-  <rect x="468" y="430" width="88" height="310" rx="22" fill="#FF3C78"/>
-  <rect x="596" y="320" width="88" height="420" rx="22" fill="#FF3C78"/>
+  <rect x="386" y="522" width="60" height="100" rx="14" fill="white"/>
+  <rect x="482" y="462" width="60" height="160" rx="14" fill="white"/>
+  <rect x="578" y="402" width="60" height="220" rx="14" fill="white"/>
 </svg>
