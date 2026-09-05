@@ -32,11 +32,21 @@ function errorMessage(body: string): string | null {
   }
 }
 
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, options);
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
-    throw new Error(errorMessage(text) ?? `${res.status} ${text}`);
+    throw new ApiError(res.status, errorMessage(text) ?? `${res.status} ${text}`);
   }
   // 204 No Content — return undefined cast to T
   if (res.status === 204) return undefined as T;
@@ -162,8 +172,26 @@ export const apiClient = {
     });
   },
 
+  testCredentials(credentials: {
+    qoqaEmail: string;
+    qoqaPassword: string;
+  }): Promise<{ ok: boolean; error?: string }> {
+    return request<{ ok: boolean; error?: string }>(
+      `${API_BASE}/api/settings/test-credentials`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      }
+    );
+  },
+
   resetDatabase(): Promise<void> {
     return request<void>(`${API_BASE}/api/settings/database`, { method: "DELETE" });
+  },
+
+  deleteDatabaseFile(): Promise<void> {
+    return request<void>(`${API_BASE}/api/settings/database/file`, { method: "DELETE" });
   },
 
   getDbPath(): Promise<{ path: string | null }> {
@@ -182,6 +210,14 @@ export const apiClient = {
     return request<LatestRelease>(
       `${API_BASE}/api/app/latest-release${refresh ? "?refresh=1" : ""}`
     );
+  },
+
+  openExternal(url: string): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>(`${API_BASE}/api/app/open-external`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
   },
 
   getInstallInfo(): Promise<InstallInfo> {

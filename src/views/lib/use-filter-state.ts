@@ -42,16 +42,26 @@ function readSelection(parsed: Record<string, unknown>): UniverseSelection {
   return { mode: "custom", universes, subuniverses };
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function readDate(value: unknown): string | undefined {
+  if (typeof value !== "string" || !ISO_DATE.test(value)) return undefined;
+  return Number.isNaN(Date.parse(value)) ? undefined : value;
+}
+
+function readRange(parsed: Record<string, unknown>): { from?: string; to?: string } {
+  const from = readDate(parsed.from);
+  const to = readDate(parsed.to);
+  if (from && to && from > to) return {};
+  return { from, to };
+}
+
 function readFromStorage(): FilterState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Record<string, unknown>;
-      return {
-        selection: readSelection(parsed),
-        from: typeof parsed.from === "string" ? parsed.from : undefined,
-        to: typeof parsed.to === "string" ? parsed.to : undefined,
-      };
+      return { selection: readSelection(parsed), ...readRange(parsed) };
     }
   } catch {}
   return { selection: ALL_UNIVERSES };

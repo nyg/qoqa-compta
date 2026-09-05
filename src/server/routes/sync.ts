@@ -11,6 +11,17 @@ import { readPassword } from "../secrets";
 import type { SyncProgressEvent } from "../../shared/types";
 import type { SyncOptions } from "../sync";
 
+const TERMINAL_EVENTS: SyncProgressEvent["type"][] = [
+  "done",
+  "cancelled",
+  "error",
+  "auth_error",
+];
+
+function isTerminal(type: SyncProgressEvent["type"]): boolean {
+  return TERMINAL_EVENTS.includes(type);
+}
+
 const router = new Hono();
 
 // POST /api/sync — start a sync job
@@ -89,7 +100,7 @@ router.get("/sync/stream", () => {
       const unsubscribe = subscribeToEvents((event) => {
         try {
           enqueue(event);
-          if (event.type === "done" || event.type === "cancelled" || event.type === "error") {
+          if (isTerminal(event.type)) {
             close();
           }
         } catch {

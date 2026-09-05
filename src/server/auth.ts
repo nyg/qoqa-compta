@@ -1,4 +1,22 @@
 const AUTH_URL = "https://auth.qoqa.ch";
+const MAX_BODY_LENGTH = 200;
+
+interface QoqaError {
+  title?: string;
+  detail?: string;
+}
+
+export function authFailureMessage(status: number, body: string): string {
+  try {
+    const parsed = JSON.parse(body) as { errors?: QoqaError[] };
+    const [error] = parsed.errors ?? [];
+    const reason = error?.detail || error?.title;
+    if (reason) return reason;
+  } catch {}
+
+  const trimmed = body.trim().slice(0, MAX_BODY_LENGTH);
+  return trimmed ? `HTTP ${status} — ${trimmed}` : `HTTP ${status}`;
+}
 
 /**
  * Authenticates with QoQa and returns a bearer token.
@@ -21,8 +39,7 @@ export async function authenticate(email: string, password: string): Promise<str
   });
 
   if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`Auth failed: ${resp.status} ${text}`);
+    throw new Error(authFailureMessage(resp.status, await resp.text()));
   }
 
   const data = (await resp.json()) as Record<string, unknown>;

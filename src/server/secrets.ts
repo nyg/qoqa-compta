@@ -83,7 +83,10 @@ async function write(secret: Secret, value: string | null): Promise<void> {
 async function migrate(secret: Secret): Promise<void> {
   try {
     const stored = readStoredSecret(secret.key);
-    if (!stored) return;
+    if (!stored) {
+      writeStoredSecret(secret.key, null);
+      return;
+    }
 
     await Bun.secrets.set({ service: SERVICE, name: secret.name, value: stored });
     writeStoredSecret(secret.key, null);

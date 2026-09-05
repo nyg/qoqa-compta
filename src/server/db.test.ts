@@ -3,7 +3,15 @@ import { neonConfig } from "@neondatabase/serverless";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { getRawNeonExecutor, getDbFilePath, initDb, isDbSqlite } from "./db";
+import {
+  closeDb,
+  deleteSqliteFile,
+  getRawBunDb,
+  getRawNeonExecutor,
+  getDbFilePath,
+  initDb,
+  isDbSqlite,
+} from "./db";
 
 const PG_URL = "postgresql://user:pass@ep-test-123.eu-central-1.aws.neon.tech/qoqa";
 
@@ -70,5 +78,38 @@ describe("the raw PostgreSQL executor", () => {
     expect(getDbFilePath()).toBeNull();
 
     fs.rmSync(path.dirname(sqliteFile), { recursive: true, force: true });
+  });
+});
+
+describe("deleting the local SQLite database", () => {
+  test("removes the file and its write-ahead log, then reopens an empty database", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "qoqa-db-"));
+    const file = path.join(dir, "qoqa.db");
+
+    await initDb(`file:${file}`);
+    const seeded = getRawBunDb()!;
+    seeded.exec("PRAGMA journal_mode=WAL");
+    seeded.exec("CREATE TABLE qoqa_orders (id INTEGER PRIMARY KEY)");
+    seeded.exec("INSERT INTO qoqa_orders (id) VALUES (1)");
+    expect(fs.existsSync(`${file}-wal`)).toBe(true);
+
+    await deleteSqliteFile();
+
+    expect(isDbSqlite()).toBe(true);
+    expect(getDbFilePath()).toBe(file);
+    expect(fs.existsSync(`${file}-wal`)).toBe(false);
+    expect(
+      getRawBunDb()!
+        .query("SELECT name FROM sqlite_master WHERE type = 'table'")
+        .all()
+    ).toEqual([]);
+
+    closeDb();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("refuses to touch anything when PostgreSQL is the active database", async () => {
+    await initDb(PG_URL);
+    await expect(deleteSqliteFile()).rejects.toThrow("Not using local SQLite");
   });
 });

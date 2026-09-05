@@ -80,6 +80,8 @@ export function startSync(options: SyncOptions): { ok: boolean; error?: string }
       addEvent({
         type: "error",
         message: `Sync failed: ${(err as Error).message}`,
+        messageKey: "syncFailed",
+        messageParams: { error: (err as Error).message },
         timestamp: new Date().toISOString(),
       });
     })

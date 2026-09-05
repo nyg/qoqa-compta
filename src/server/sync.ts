@@ -17,7 +17,12 @@ import {
   fetchStaleOrderNumbers,
   type NewOrderData,
 } from "./queries";
-import type { SyncProgressEvent, SyncEventType } from "../shared/types";
+import type {
+  SyncEventType,
+  SyncMessageKey,
+  SyncMessageParams,
+  SyncProgressEvent,
+} from "../shared/types";
 
 /**
  * QoQa keeps editing an offer's universe after the sale, and the tags only
@@ -92,8 +97,23 @@ function extractOrderFields(detail: OrderDetailData): NewOrderData {
 
 // ── Main sync function ─────────────────────────────────────────────────────────
 
-function makeEvent(type: SyncEventType, message: string, data?: Record<string, unknown>): SyncProgressEvent {
-  return { type, message, data, timestamp: new Date().toISOString() };
+function makeEvent(
+  type: SyncEventType,
+  message: string,
+  extra?: {
+    key?: SyncMessageKey;
+    params?: SyncMessageParams;
+    data?: Record<string, unknown>;
+  }
+): SyncProgressEvent {
+  return {
+    type,
+    message,
+    messageKey: extra?.key,
+    messageParams: extra?.params,
+    data: extra?.data,
+    timestamp: new Date().toISOString(),
+  };
 }
 
 export async function syncOrders(
@@ -103,26 +123,40 @@ export async function syncOrders(
 ): Promise<void> {
   const { email, password, locale, mode } = options;
 
-  emit(makeEvent("start", "Starting sync…"));
+  emit(makeEvent("start", "Starting sync…", { key: "starting" }));
 
   // 1. Prepare the database schema
   try {
     console.log("[sync] Preparing database schema…");
     const { applied, baselined } = await runMigrations();
+    const migrations = applied.join(", ");
     const message =
       applied.length > 0
-        ? `Database schema updated (${applied.join(", ")})`
+        ? `Database schema updated (${migrations})`
         : baselined
         ? "Database schema recorded as up to date"
         : "Database schema up to date";
+    const key: SyncMessageKey =
+      applied.length > 0
+        ? "schemaUpdated"
+        : baselined
+        ? "schemaBaselined"
+        : "schemaUpToDate";
     console.log(`[sync] ${message}`);
-    emit(makeEvent("db_ready", message));
+    emit(makeEvent("db_ready", message, { key, params: { migrations } }));
   } catch (err) {
+    const reason = (err as Error).message;
     console.error("[sync] Database preparation failed:", err);
-    throw new Error(`Database preparation failed: ${(err as Error).message}`);
+    emit(
+      makeEvent("error", `Database preparation failed: ${reason}`, {
+        key: "dbPrepFailed",
+        params: { error: reason },
+      })
+    );
+    return;
   }
 
-  if (signal.aborted) { emit(makeEvent("cancelled", "Sync cancelled")); return; }
+  if (signal.aborted) { emit(makeEvent("cancelled", "Sync cancelled", { key: "cancelled" })); return; }
 
   // 2. Authenticate
   let token: string;
@@ -130,14 +164,19 @@ export async function syncOrders(
     console.log("[sync] Authenticating…");
     token = await authenticate(email, password);
     console.log("[sync] Auth OK");
-    emit(makeEvent("auth_ok", "Authenticated successfully"));
+    emit(makeEvent("auth_ok", "Authenticated successfully", { key: "authOk" }));
   } catch (err) {
     console.error("[sync] Auth failed:", err);
-    emit(makeEvent("auth_error", `Authentication failed: ${(err as Error).message}`));
-    throw err;
+    emit(
+      makeEvent("auth_error", `Authentication failed: ${(err as Error).message}`, {
+        key: "authFailed",
+        params: { error: (err as Error).message },
+      })
+    );
+    return;
   }
 
-  if (signal.aborted) { emit(makeEvent("cancelled", "Sync cancelled")); return; }
+  if (signal.aborted) { emit(makeEvent("cancelled", "Sync cancelled", { key: "cancelled" })); return; }
 
   // 3. Fetch and upsert universes
   try {
@@ -153,15 +192,25 @@ export async function syncOrders(
         });
       }
     }
-    emit(makeEvent("universes_ok", `Synced ${universesData.length} universes`));
+    emit(
+      makeEvent("universes_ok", `Synced ${universesData.length} universes`, {
+        key: "universesOk",
+        params: { total: universesData.length },
+      })
+    );
     console.log(`[sync] Universes OK (${universesData.length})`);
   } catch (err) {
     console.error("[sync] Universes error:", err);
-    emit(makeEvent("universes_error", `Failed to sync universes: ${(err as Error).message}`));
+    emit(
+      makeEvent("universes_error", `Failed to sync universes: ${(err as Error).message}`, {
+        key: "universesFailed",
+        params: { error: (err as Error).message },
+      })
+    );
     // Non-fatal: continue with order sync
   }
 
-  if (signal.aborted) { emit(makeEvent("cancelled", "Sync cancelled")); return; }
+  if (signal.aborted) { emit(makeEvent("cancelled", "Sync cancelled", { key: "cancelled" })); return; }
 
   // 4. Fetch all purchases
   let purchases: Awaited<ReturnType<typeof fetchPurchases>>;
@@ -169,11 +218,22 @@ export async function syncOrders(
     console.log("[sync] Fetching purchases…");
     purchases = await fetchPurchases(token, locale);
     console.log(`[sync] Purchases fetched: ${purchases.length}`);
-    emit(makeEvent("purchases_fetched", `Found ${purchases.length} orders`, { count: purchases.length }));
+    emit(
+      makeEvent("purchases_fetched", `Found ${purchases.length} orders`, {
+        key: "purchasesFetched",
+        params: { total: purchases.length },
+        data: { count: purchases.length },
+      })
+    );
   } catch (err) {
     console.error("[sync] Failed to fetch purchases:", err);
-    emit(makeEvent("error", `Failed to fetch purchases: ${(err as Error).message}`));
-    throw err;
+    emit(
+      makeEvent("error", `Failed to fetch purchases: ${(err as Error).message}`, {
+        key: "purchasesFailed",
+        params: { error: (err as Error).message },
+      })
+    );
+    return;
   }
 
   // 5. Process each purchase
@@ -190,7 +250,13 @@ export async function syncOrders(
     mode === "update" ? await fetchStaleOrderNumbers(refreshCutoff, REFRESH_BATCH_SIZE) : []
   );
   if (stale.size > 0) {
-    emit(makeEvent("info", `Refreshing ${stale.size} order(s) not updated in ${REFRESH_INTERVAL_DAYS} days`));
+    emit(
+      makeEvent(
+        "info",
+        `Refreshing ${stale.size} order(s) not updated in ${REFRESH_INTERVAL_DAYS} days`,
+        { key: "refreshing", params: { total: stale.size, days: REFRESH_INTERVAL_DAYS } }
+      )
+    );
   }
 
   let consecutiveUnchanged = 0;
@@ -202,7 +268,12 @@ export async function syncOrders(
 
   for (const purchase of purchases) {
     if (signal.aborted) {
-      emit(makeEvent("cancelled", "Sync cancelled", { synced: syncedCount, withPdf: pdfCount, skipped: skippedCount, errors: errorCount }));
+      emit(
+        makeEvent("cancelled", "Sync cancelled", {
+          key: "cancelled",
+          data: { synced: syncedCount, withPdf: pdfCount, skipped: skippedCount, errors: errorCount },
+        })
+      );
       return;
     }
 
@@ -229,11 +300,22 @@ export async function syncOrders(
           consecutiveUnchanged++;
           if (consecutiveUnchanged >= 5) {
             reachedKnownOrders = true;
-            emit(makeEvent("info", "Reached already-synced orders — checking for pending invoices and refreshes only"));
+            emit(
+              makeEvent(
+                "info",
+                "Reached already-synced orders — checking for pending invoices and refreshes only",
+                { key: "reachedKnown" }
+              )
+            );
           }
           if (!awaitingPdf && !needsRefresh) {
             skippedCount++;
-            emit(makeEvent("order_skipped", `Skipped already-synced order ${orderReference}`));
+            emit(
+              makeEvent("order_skipped", `Skipped already-synced order ${orderReference}`, {
+                key: "orderSkipped",
+                params: { order: orderReference },
+              })
+            );
             continue;
           }
         }
@@ -261,24 +343,39 @@ export async function syncOrders(
 
       await upsertOrder(orderData);
       syncedCount++;
+      const order = orderData.order_number;
+      const [orderKey, orderMessage]: [SyncMessageKey, string] = awaitingPdf
+        ? hasPdf
+          ? ["orderPdfDownloaded", `Downloaded pending invoice for order ${order}`]
+          : ["orderPdfPending", `Invoice not available yet for order ${order}`]
+        : keepStoredPdf
+        ? ["orderRefreshed", `Refreshed order ${order}`]
+        : hasPdf
+        ? ["orderSyncedWithPdf", `Synced order ${order} (with PDF)`]
+        : ["orderSynced", `Synced order ${order}`];
       emit(
-        makeEvent(
-          "order_synced",
-          awaitingPdf
-            ? hasPdf
-              ? `Downloaded pending invoice for order ${orderData.order_number}`
-              : `Invoice not available yet for order ${orderData.order_number}`
-            : keepStoredPdf
-            ? `Refreshed order ${orderData.order_number}`
-            : `Synced order ${orderData.order_number}${hasPdf ? " (with PDF)" : ""}`,
-          { hasPdf }
-        )
+        makeEvent("order_synced", orderMessage, {
+          key: orderKey,
+          params: { order },
+          data: { hasPdf },
+        })
       );
     } catch (err) {
       errorCount++;
-      emit(makeEvent("order_error", `Error syncing order ${orderReference}: ${(err as Error).message}`));
+      emit(
+        makeEvent("order_error", `Error syncing order ${orderReference}: ${(err as Error).message}`, {
+          key: "orderFailed",
+          params: { order: orderReference, error: (err as Error).message },
+        })
+      );
     }
   }
 
-  emit(makeEvent("done", `Sync complete — ${syncedCount} synced, ${pdfCount} with PDF`, { synced: syncedCount, withPdf: pdfCount, skipped: skippedCount, errors: errorCount }));
+  emit(
+    makeEvent("done", `Sync complete — ${syncedCount} synced, ${pdfCount} with PDF`, {
+      key: "done",
+      params: { synced: syncedCount, withPdf: pdfCount },
+      data: { synced: syncedCount, withPdf: pdfCount, skipped: skippedCount, errors: errorCount },
+    })
+  );
 }

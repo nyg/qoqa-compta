@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Download, Globe, Search } from "lucide-react";
+import { Check, Download, Globe, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { useFormatter } from "@/lib/formatter-context";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
-import { saveFile } from "@/lib/downloads";
+import { fileName, saveFile, useShowsSavedPath } from "@/lib/downloads";
 import { selectionParams, type UniverseSelection } from "../../shared/filters";
 import { DEFAULT_PAGE_SIZE, type QoqaOrder, type Pagination } from "../../shared/types";
 
@@ -165,11 +165,14 @@ export function OrdersTable({
   });
 
   const [csvDownloading, setCsvDownloading] = useState(false);
+  const [csvSavedPath, setCsvSavedPath] = useState<string | null>(null);
+  const showsSavedPath = useShowsSavedPath();
 
   const handleCsvDownload = useCallback(async () => {
     setCsvDownloading(true);
+    setCsvSavedPath(null);
     try {
-      await saveFile({
+      const path = await saveFile({
         save: () =>
           apiClient.saveCsv({
             ...selectionParams(selection),
@@ -179,12 +182,16 @@ export function OrdersTable({
         url: csvUrl,
         filename: "qoqa-orders.csv",
       });
+      if (path && showsSavedPath) {
+        setCsvSavedPath(path);
+        setTimeout(() => setCsvSavedPath(null), 5000);
+      }
     } catch (e) {
       console.error("CSV download failed:", e);
     } finally {
       setCsvDownloading(false);
     }
-  }, [csvUrl, selection, from, to]);
+  }, [csvUrl, selection, from, to, showsSavedPath]);
 
   return (
     <Card>
@@ -216,8 +223,20 @@ export function OrdersTable({
                   </option>
                 ))}
               </select>
+              {csvSavedPath && (
+                <span
+                  className="max-w-48 truncate text-xs text-muted-foreground"
+                  title={csvSavedPath}
+                >
+                  {t("savedTo", { file: fileName(csvSavedPath) })}
+                </span>
+              )}
               <Button variant="outline" onClick={handleCsvDownload} disabled={csvDownloading}>
-                <Download className="h-3.5 w-3.5 mr-1.5" />
+                {csvSavedPath ? (
+                  <Check className="h-3.5 w-3.5 mr-1.5" />
+                ) : (
+                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                )}
                 {t("csvExport")}
               </Button>
             </div>

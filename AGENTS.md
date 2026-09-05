@@ -40,8 +40,11 @@ bun run db:verify        # fail if src/server/migrations.generated.ts is stale
 - `GET /api/orders` is used for client-side search and pagination.
 - `POST /api/sync` starts a sync job; progress is streamed via SSE (`GET /api/sync/stream`).
 - `GET/PUT /api/settings` reads/writes `settings.json`; the QoQa password and the PostgreSQL URL go to the OS credential store instead (see Settings below), and `GET /api/settings/credential-store` reports, per secret, which store each actually landed in. A changed database URL is connection-probed before anything is written and rejected with a 400 when it does not answer; the schema is left to the next sync.
+- `POST /api/settings/test-credentials` tries a QoQa login and reports the outcome without starting a sync; the Settings modal offers it as *Test connection*.
+- `DELETE /api/settings/database` drops and recreates every table; `DELETE /api/settings/database/file` deletes the SQLite file itself and reopens an empty one, and answers 400 when PostgreSQL is the active database. The Settings modal offers whichever of the two matches the database in use.
 - `POST /api/settings/reveal-db` opens the SQLite file in the system file manager. On desktop this runs through Electrobun's `Utils.showItemInFolder`, injected into `createApp()` as `revealInFileManager` so `src/server/` never imports the Electrobun SDK; web mode falls back to a platform-specific spawn.
 - `GET /api/app/latest-release` reads the GitHub releases API server-side (the opaque `views://` origin cannot satisfy CORS), cached 6h on success and 15m on failure; `?refresh=1` bypasses the cache.
+- `POST /api/app/open-external` hands an http(s) link to the system browser through Electrobun's `Utils.openExternal`, injected into `createApp()` as `openExternal`. The SPA routes every `target="_blank"` link through it in desktop mode (`src/views/lib/external-links.ts`), because a WebView opens one in a tab-less window of its own instead.
 - `GET /api/app/install` reports the platform and how the running copy was installed (`homebrew`, `scoop`, `manual`, `web`), so the About dialog only shows the update path that applies.
 
 ### Sync pipeline
@@ -73,7 +76,8 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 - UI built with Base UI (`@base-ui/react`) primitives, CVA + `cn()` utility from `src/views/lib/utils.ts`
 - Tailwind v4 with CSS-variable theming in `src/views/globals.css` (`@theme inline` directive) — no `tailwind.config.ts`
 - Charts use Recharts (`ComposedChart` with bar + line dual-axis; pie chart for spending breakdown); the date range picker uses react-day-picker through `src/views/components/ui/calendar.tsx`
-- UI text internationalised with react-i18next (5 locales: `en`, `fr`, `de`, `it`, `rm`); message files live in `src/views/i18n/messages/` — a new key goes into all five
+- UI text internationalised with react-i18next (5 locales: `en`, `fr`, `de`, `it`, `rm`); message files live in `src/views/i18n/messages/` — a new key goes into all five, and `messages.test.ts` fails when one is missing
+- Sync progress events carry a `messageKey` from `SYNC_MESSAGE_KEYS` plus its parameters, and the SPA renders them through the `SyncLog` namespace; the English `message` the server also sends is the console text and the fallback. A new event message means a new key in `src/shared/types.ts` and a line in all five message files
 - Locale auto-detected from the browser in `src/views/i18n/index.ts`; Romansh (`rm`) falls back to `de-CH` for `Intl` formatting
 - Number/date formatting pairs the UI language with a region resolved from the host (`src/views/lib/locale.ts`), falling back to `CH`; on desktop the real OS region is injected by `src/electrobun/locale.ts` via Electrobun's `preload`, because WKWebView and WebView2 do not expose it. Helpers in `src/views/lib/formatters.ts` + `src/views/lib/formatter-context.tsx`
 - Filter state (universe selection, date range) lives in `src/views/lib/use-filter-state.ts` and is persisted to `localStorage`; every call site turns a selection into query parameters through `selectionParams()` in `src/shared/filters.ts`
@@ -90,7 +94,7 @@ In **update** mode the sync stops after 5 consecutive already-known orders.
 - `bun run db:generate` writes migrations to `drizzle/sqlite/` and `drizzle/pg/`, then regenerates `src/server/migrations.generated.ts`, which inlines every migration's SQL so it is compiled into the desktop bundle instead of being read from disk at runtime
 - `src/server/migrate.ts` applies them at startup and as the first step of every sync — never on a settings save — and records each one in Drizzle's `__drizzle_migrations` journal. It also runs the SQLite `journal_mode=WAL` and `busy_timeout=5000` PRAGMAs, which are not schema
 - Databases created before migrations existed already have every table and no journal. On those, `runMigrations()` records migration `0000` as applied instead of executing it, then applies anything newer normally — detected as "no journal rows and `qoqa_orders` already present"
-- `dropAllTables()` (the Settings reset) drops the journal too, so the next `runMigrations()` rebuilds from `0000`
+- `dropAllTables()` (the Settings reset, offered for PostgreSQL) drops the journal too, so the next `runMigrations()` rebuilds from `0000`. For SQLite the modal deletes the database file instead — see `docs/architecture.md`
 - SQLite (`bun:sqlite`) is the default and needs no setup; PostgreSQL goes through `@neondatabase/serverless`
 
 ### Settings

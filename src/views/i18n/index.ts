@@ -17,6 +17,7 @@ const NAMESPACES = [
   "SpendingChart",
   "DateRangePicker",
   "Settings",
+  "SyncLog",
   "About",
 ] as const;
 

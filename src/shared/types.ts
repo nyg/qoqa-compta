@@ -104,9 +104,44 @@ export type SyncEventType =
   | "cancelled"
   | "error";
 
+export const SYNC_MESSAGE_KEYS = [
+  "starting",
+  "schemaUpdated",
+  "schemaBaselined",
+  "schemaUpToDate",
+  "dbPrepFailed",
+  "cancelled",
+  "authOk",
+  "authFailed",
+  "universesOk",
+  "universesFailed",
+  "purchasesFetched",
+  "purchasesFailed",
+  "refreshing",
+  "reachedKnown",
+  "orderSkipped",
+  "orderPdfDownloaded",
+  "orderPdfPending",
+  "orderRefreshed",
+  "orderSynced",
+  "orderSyncedWithPdf",
+  "orderFailed",
+  "done",
+  "syncFailed",
+  "startFailed",
+  "credentialsMissing",
+  "alreadyRunning",
+] as const;
+
+export type SyncMessageKey = (typeof SYNC_MESSAGE_KEYS)[number];
+
+export type SyncMessageParams = Record<string, string | number>;
+
 export interface SyncProgressEvent {
   type: SyncEventType;
   message: string;
+  messageKey?: SyncMessageKey;
+  messageParams?: SyncMessageParams;
   data?: Record<string, unknown>;
   timestamp: string;
 }

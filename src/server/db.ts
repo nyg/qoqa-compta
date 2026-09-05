@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzleBunSqlite, type BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import { drizzle as drizzleNeon, type NeonHttpDatabase } from "drizzle-orm/neon-http";
-import { mkdirSync } from "fs";
+import { mkdirSync, rmSync } from "fs";
 import path from "path";
 import * as schema from "./schema";
 import { resolveDataDir } from "./paths";
@@ -79,6 +79,23 @@ export function isDbSqlite(): boolean {
 
 export function getDbFilePath(): string | null {
   return _dbFilePath;
+}
+
+const SQLITE_FILE_SUFFIXES = ["", "-wal", "-shm"];
+
+export async function deleteSqliteFile(): Promise<string> {
+  const filePath = _dbFilePath;
+  if (!_isSqlite || !filePath) {
+    throw new Error("Not using local SQLite");
+  }
+
+  closeDb();
+  for (const suffix of SQLITE_FILE_SUFFIXES) {
+    rmSync(`${filePath}${suffix}`, { force: true });
+  }
+  await initDb(`file:${filePath}`);
+
+  return filePath;
 }
 
 export function getRawBunDb(): Database | null {

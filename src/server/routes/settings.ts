@@ -9,7 +9,8 @@ import {
   writePassword,
 } from "../secrets";
 import { maskDatabaseUrl, unmaskDatabaseUrl } from "../database-url";
-import { initDb, getDbFilePath, probeDatabaseUrl } from "../db";
+import { authenticate } from "../auth";
+import { initDb, deleteSqliteFile, getDbFilePath, probeDatabaseUrl } from "../db";
 import { runMigrations, dropAllTables } from "../migrate";
 import { SECRET_MASK, type AppSettings } from "../../shared/types";
 
@@ -92,6 +93,29 @@ export default function settingsRoutes(opts?: {
     }
   });
 
+  router.post("/settings/test-credentials", async (c) => {
+    const { qoqaEmail, qoqaPassword } = (await c.req
+      .json()
+      .catch(() => ({}))) as Partial<AppSettings>;
+
+    const email = qoqaEmail || readSettings().qoqaEmail;
+    const password =
+      qoqaPassword && qoqaPassword !== SECRET_MASK
+        ? qoqaPassword
+        : await readPassword();
+
+    if (!email || !password) {
+      return c.json({ ok: false, error: "Enter an email address and a password." });
+    }
+
+    try {
+      await authenticate(email, password);
+      return c.json({ ok: true });
+    } catch (err) {
+      return c.json({ ok: false, error: (err as Error).message });
+    }
+  });
+
   // DELETE /api/settings/database — reset (drop + recreate) all tables
   router.delete("/settings/database", async (c) => {
     try {
@@ -100,6 +124,20 @@ export default function settingsRoutes(opts?: {
       return c.json({ ok: true });
     } catch (err) {
       console.error("[settings/database DELETE]", err);
+      return c.json({ error: (err as Error).message }, 500);
+    }
+  });
+
+  router.delete("/settings/database/file", async (c) => {
+    if (!getDbFilePath()) {
+      return c.json({ error: "Not using local SQLite" }, 400);
+    }
+
+    try {
+      await deleteSqliteFile();
+      return c.json({ ok: true });
+    } catch (err) {
+      console.error("[settings/database/file DELETE]", err);
       return c.json({ error: (err as Error).message }, 500);
     }
   });

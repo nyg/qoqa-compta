@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api-client";
+import { copyText } from "@/lib/clipboard";
+import { useFormatter } from "@/lib/formatter-context";
 import { useInstallInfo } from "@/lib/use-install-info";
-import type { SyncMode, SyncRunner } from "@/lib/use-sync-runner";
+import type { SyncLogEntry, SyncMode, SyncRunner } from "@/lib/use-sync-runner";
 import type {
   AppSettings,
   CredentialStore,
@@ -60,6 +62,8 @@ export function SettingsModal({
   sync: SyncRunner;
 }) {
   const { t } = useTranslation("Settings");
+  const { t: tLog } = useTranslation("SyncLog");
+  const { formatTime } = useFormatter();
   const install = useInstallInfo();
   const [internalOpen, setInternalOpen] = useState(false);
 
@@ -79,19 +83,21 @@ export function SettingsModal({
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [dbPath, setDbPath] = useState<string | null>(null);
   const [pathCopied, setPathCopied] = useState(false);
   const [revealFailed, setRevealFailed] = useState(false);
+  const [destroyError, setDestroyError] = useState<string | null>(null);
   const [credentialStore, setCredentialStore] = useState<CredentialStores | null>(null);
   const loadedRef = useRef<AppSettings | null>(null);
 
-  // Reset DB
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const [resetSuccess, setResetSuccess] = useState(false);
+  const [confirmDestroy, setConfirmDestroy] = useState(false);
+  const [destroying, setDestroying] = useState(false);
+  const [destroySuccess, setDestroySuccess] = useState(false);
 
   // Sync
   const [syncMode, setSyncMode] = useState<SyncMode>("update");
@@ -103,9 +109,11 @@ export function SettingsModal({
     if (!open) return;
     setLoading(true);
     setSaved(false);
-    setConfirmReset(false);
-    setResetSuccess(false);
+    setConfirmDestroy(false);
+    setDestroySuccess(false);
     setRevealFailed(false);
+    setDestroyError(null);
+    setTestResult(null);
     // The sync log is deliberately left alone: the dialog is opened
     // automatically when a run started from the header fails, and clearing it
     // here would discard the very log the user is being shown. `start()`
@@ -168,18 +176,44 @@ export function SettingsModal({
     }
   }
 
-  async function handleResetDb() {
-    setResetting(true);
+  const usesSqlite = dbPath !== null;
+  const missingDbUrl = dbMode === "postgres" && dbUrl.trim() === "";
+
+  function revealLabel(): string {
+    if (install?.platform === "windows") return t("showInExplorer");
+    if (install?.platform === "macos") return t("showInFinder");
+    return t("showInFileManager");
+  }
+
+  async function handleDestroyDatabase() {
+    setDestroying(true);
+    setDestroyError(null);
     try {
-      await apiClient.resetDatabase();
-      setResetSuccess(true);
-      setConfirmReset(false);
+      await (usesSqlite ? apiClient.deleteDatabaseFile() : apiClient.resetDatabase());
+      setDestroySuccess(true);
+      setConfirmDestroy(false);
       onDataChanged?.();
-      setTimeout(() => setResetSuccess(false), 3000);
+      setTimeout(() => setDestroySuccess(false), 3000);
     } catch (e) {
       console.error(e);
+      setDestroyError(e instanceof Error ? e.message : String(e));
     } finally {
-      setResetting(false);
+      setDestroying(false);
+    }
+  }
+
+  async function handleTestCredentials() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      setTestResult(
+        await apiClient.testCredentials({ qoqaEmail: email, qoqaPassword: password })
+      );
+    } catch (e) {
+      console.error(e);
+      setTestResult({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -191,6 +225,14 @@ export function SettingsModal({
       console.error(e);
       setRevealFailed(true);
     }
+  }
+
+  function logMessage(entry: SyncLogEntry): string {
+    if (!entry.messageKey) return entry.message;
+    return tLog(entry.messageKey, {
+      ...entry.messageParams,
+      defaultValue: entry.message,
+    });
   }
 
   function storeName(store: CredentialStore): string {
@@ -219,7 +261,7 @@ export function SettingsModal({
           <Button
             variant="default"
             size="sm"
-            disabled={saving || loading}
+            disabled={saving || loading || missingDbUrl}
             onClick={handleSave}
           >
             {saving ? (
@@ -230,6 +272,9 @@ export function SettingsModal({
             {saved ? t("saved") : t("save")}
           </Button>
         </div>
+        {missingDbUrl && (
+          <p className="text-xs text-muted-foreground">{t("dbUrlRequired")}</p>
+        )}
         {saveError && (
           <p className="text-xs text-destructive break-words">
             {t("saveFailed", { error: saveError })}
@@ -317,6 +362,29 @@ export function SettingsModal({
                       </span>
                     )}
                   </label>
+                  <div className="space-y-1 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={testing || !email || !password}
+                      onClick={handleTestCredentials}
+                    >
+                      {testing ? (
+                        <RefreshCw className="size-3 animate-spin" />
+                      ) : testResult?.ok ? (
+                        <Check className="size-3" />
+                      ) : null}
+                      {t("testConnection")}
+                    </Button>
+                    {testResult?.ok && (
+                      <p className="text-xs text-green-500">{t("testConnectionOk")}</p>
+                    )}
+                    {testResult && !testResult.ok && (
+                      <p className="text-xs text-destructive break-words">
+                        {t("testConnectionFailed", { error: testResult.error })}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                   {saveRow}
@@ -407,78 +475,89 @@ export function SettingsModal({
                   )}
                 </div>
 
-                {/* Reset DB */}
+                {dbPath && (
+                  <div className="pt-1">
+                    <span className="text-xs font-medium block mb-1">{t("dbLocation")}</span>
+                    <div className="flex items-center gap-2">
+                      <code title={dbPath} className="flex-1 text-xs font-mono bg-muted/40 rounded px-2 py-1 truncate">{dbPath}</code>
+                      {install && install.method !== "web" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRevealDb}
+                          className="shrink-0 h-7 px-2 text-xs gap-1"
+                        >
+                          <FolderOpen className="size-3" />
+                          {revealLabel()}
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        title={pathCopied ? t("pathCopied") : t("copyPath")}
+                        aria-label={pathCopied ? t("pathCopied") : t("copyPath")}
+                        className="shrink-0 h-7 px-2 text-xs gap-1"
+                        onClick={() => {
+                          void copyText(dbPath).then((copied) => {
+                            setPathCopied(copied);
+                            if (copied) setTimeout(() => setPathCopied(false), 2000);
+                          });
+                        }}
+                      >
+                        {pathCopied ? <Check className="size-3" /> : <Copy className="size-3" />}
+                      </Button>
+                    </div>
+                    {revealFailed && (
+                      <p className="mt-1 text-xs text-destructive">{t("revealFailed")}</p>
+                    )}
+                  </div>
+                )}
+
                 <div className="pt-1 space-y-2">
-                  {!confirmReset ? (
+                  {!confirmDestroy ? (
                     <Button
                       variant="destructive"
                       size="sm"
-                      disabled={resetting}
-                      onClick={() => setConfirmReset(true)}
+                      disabled={destroying}
+                      onClick={() => setConfirmDestroy(true)}
                     >
                       <AlertTriangle className="size-3" />
-                      {t("resetDb")}
+                      {usesSqlite ? t("deleteDb") : t("resetDb")}
                     </Button>
                   ) : (
                     <div className="space-y-2">
-                      <p className="text-xs text-destructive">{t("resetDbConfirm")}</p>
+                      <p className="text-xs text-destructive">
+                        {usesSqlite ? t("deleteDbConfirm") : t("resetDbConfirm")}
+                      </p>
                       <div className="flex items-center gap-2">
                         <Button
                           variant="destructive"
                           size="sm"
-                          disabled={resetting}
-                          onClick={handleResetDb}
+                          disabled={destroying}
+                          onClick={handleDestroyDatabase}
                         >
-                          {resetting && <RefreshCw className="size-3 animate-spin" />}
-                          {t("resetDbYes")}
+                          {destroying && <RefreshCw className="size-3 animate-spin" />}
+                          {usesSqlite ? t("deleteDbYes") : t("resetDbYes")}
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={resetting}
-                          onClick={() => setConfirmReset(false)}
+                          disabled={destroying}
+                          onClick={() => setConfirmDestroy(false)}
                         >
                           {t("resetDbCancel")}
                         </Button>
                       </div>
                     </div>
                   )}
-                  {resetSuccess && (
+                  {destroySuccess && (
                     <span className="text-xs text-green-500 flex items-center gap-1">
                       <Check className="size-3" />
-                      {t("resetDbSuccess")}
+                      {usesSqlite ? t("deleteDbSuccess") : t("resetDbSuccess")}
                     </span>
                   )}
-                  {dbPath && (
-                    <div className="pt-1">
-                      <span className="text-xs font-medium block mb-1">{t("dbLocation")}</span>
-                      <div className="flex items-center gap-2">
-                        <code className="flex-1 text-xs font-mono bg-muted/40 rounded px-2 py-1 truncate">{dbPath}</code>
-                        {install && install.method !== "web" ? (
-                          <Button variant="outline" size="sm" onClick={handleRevealDb} className="shrink-0 h-7 px-2 text-xs gap-1">
-                            <FolderOpen className="size-3" />
-                            {t("showInFinder")}
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="shrink-0 h-7 px-2 text-xs gap-1"
-                            onClick={() => {
-                              navigator.clipboard.writeText(dbPath).then(() => {
-                                setPathCopied(true);
-                                setTimeout(() => setPathCopied(false), 2000);
-                              }).catch(console.error);
-                            }}
-                          >
-                            {pathCopied ? <Check className="size-3" /> : <Copy className="size-3" />}
-                          </Button>
-                        )}
-                      </div>
-                      {revealFailed && (
-                        <p className="mt-1 text-xs text-destructive">{t("showInFinderFailed")}</p>
-                      )}
-                    </div>
+                  {destroyError && (
+                    <p className="text-xs text-destructive break-words">{destroyError}</p>
                   )}
                 </div>
 
@@ -538,11 +617,19 @@ export function SettingsModal({
                 {(syncRunning || syncDone) && (
                   <div className="mt-2 space-y-1">
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 rounded-md border bg-muted/30 px-2.5 py-1.5 text-[0.65rem] font-mono">
-                      <span className="text-green-500">{syncStats.synced} synced</span>
-                      <span className="text-muted-foreground">{syncStats.withPdf} PDF</span>
-                      <span className="text-yellow-500">{syncStats.skipped} skipped</span>
+                      <span className="text-green-500">
+                        {t("statsSynced", { count: syncStats.synced })}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {t("statsPdf", { count: syncStats.withPdf })}
+                      </span>
+                      <span className="text-yellow-500">
+                        {t("statsSkipped", { count: syncStats.skipped })}
+                      </span>
                       {syncStats.errors > 0 && (
-                        <span className="text-red-500">{syncStats.errors} errors</span>
+                        <span className="text-red-500">
+                          {t("statsErrors", { count: syncStats.errors })}
+                        </span>
                       )}
                       {syncRunning && (
                         <span className="ml-auto animate-pulse text-muted-foreground">{t("syncRunning")}</span>
@@ -556,9 +643,9 @@ export function SettingsModal({
                             className={cn("leading-relaxed", logEntryColor(entry.type))}
                           >
                             <span className="text-muted-foreground/60 select-none mr-1.5">
-                              {entry.timestamp.slice(11, 19)}
+                              {formatTime(entry.timestamp)}
                             </span>
-                            {entry.message}
+                            {logMessage(entry)}
                           </div>
                         ))}
                         <div ref={logEndRef} />
