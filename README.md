@@ -4,7 +4,9 @@
   <img src="assets/icon.svg" width="80" alt="QoQa Compta icon" />
 </p>
 
-> Spending dashboard for [QoQa.ch](https://www.qoqa.ch) — automatically syncs your orders and PDF invoices to a local SQLite (or PostgreSQL) database and displays spending charts, stats, and a searchable orders table.
+Spending dashboard for [QoQa.ch](https://www.qoqa.ch) — automatically syncs your orders and PDF invoices to a local SQLite (or PostgreSQL) database and displays spending charts, stats, and a searchable orders table.
+
+> *This is an unofficial, independent open-source project. It is not affiliated with, endorsed by, or connected to QoQa Services SA.*
 
 ## Features
 
