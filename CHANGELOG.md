@@ -1,6 +1,24 @@
 # Changelog
 
 
+## [1.0.0](https://github.com/nyg/qoqa-compta/compare/v0.5.0..v1.0.0) - 2026-09-05
+
+### ⛰️  Features
+
+- [`3a7b923`](https://github.com/nyg/qoqa-compta/commit/3a7b923776cc253b013287ebf9c72b830b291c76) *(desktop)* Simplify the app icon so it reads at small sizes ([#166](https://github.com/nyg/qoqa-compta/issues/166))
+- [`f515f18`](https://github.com/nyg/qoqa-compta/commit/f515f1850a6384bc5cb82e30bf3c71b05459bc04) *(db)* Create the SQLite file on first sync, not at startup ([#164](https://github.com/nyg/qoqa-compta/issues/164))
+- [`d33fbc5`](https://github.com/nyg/qoqa-compta/commit/d33fbc5898e92e36378589c049d79db15b923fa1) *(app)* SQLite deletion, credential test, localised sync log and browser links ([#162](https://github.com/nyg/qoqa-compta/issues/162))
+- [`43549d0`](https://github.com/nyg/qoqa-compta/commit/43549d039e1a506fd41f3833a9a5002b7b0e2100) *(secrets)* Make Windows a verified credential-store platform ([#159](https://github.com/nyg/qoqa-compta/issues/159))
+
+### 🐛 Bug Fixes
+
+- [`c38eca2`](https://github.com/nyg/qoqa-compta/commit/c38eca282cfc2daa7abbcf5f906abae99666a8c7) *(calendar)* Replace the native month/year select with a Base UI Select ([#168](https://github.com/nyg/qoqa-compta/issues/168))
+
+### 📚 Documentation
+
+- [`64693e9`](https://github.com/nyg/qoqa-compta/commit/64693e949932a88c3040708e673f0ecff74ed8f8) State that the project is unaffiliated with QoQa ([#165](https://github.com/nyg/qoqa-compta/issues/165))
+- [`efa34ad`](https://github.com/nyg/qoqa-compta/commit/efa34ad82653c80971bd12139e8ca7126da2d853) Inventory every storage location and refresh the stale references ([#163](https://github.com/nyg/qoqa-compta/issues/163))
+
 ## [0.5.0](https://github.com/nyg/qoqa-compta/compare/v0.4.0..v0.5.0) - 2026-09-02
 
 ### ⛰️  Features
