@@ -30,6 +30,7 @@ export default {
       // If you add other top-level files to dist/ (e.g. favicon.ico, manifest.json),
       // add them here too.
       "dist/index.html": "views/main/index.html",
+      "dist/favicon.ico": "views/main/favicon.ico",
       "dist/assets": "views/main/assets",
     },
     watchIgnore: ["dist/**"],

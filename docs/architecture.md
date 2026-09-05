@@ -112,6 +112,7 @@ qoqa-compta/
 ├── hutch.config.ts               # Hutch workspace config — keeps Bun as the package manager
 ├── .github/                      # CI workflows — verify on ubuntu-latest, tests on windows-latest
 ├── assets/                       # App icon and README screenshot
+├── public/                       # Static files Vite copies into dist/ as-is — the favicon.ico
 ├── docs/
 │   ├── architecture.md           # this file
 │   └── universe-filters.md       # how the universe/sub-universe filter behaves
