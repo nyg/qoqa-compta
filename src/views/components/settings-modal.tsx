@@ -156,6 +156,11 @@ export function SettingsModal({
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [syncLog]);
 
+  useEffect(() => {
+    if (!open || !syncDone) return;
+    refreshDbFileInfo();
+  }, [open, syncDone]);
+
   async function handleSave() {
     setSaving(true);
     setSaved(false);
