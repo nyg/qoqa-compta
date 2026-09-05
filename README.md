@@ -13,7 +13,8 @@
 - **Category filter** — filter all data by QoQa universe/sub-universe
 - **Date range filter** — narrow every chart, card and table to a period
 - **Orders table** — searchable, paginated list of all orders
-- **Invoice PDF viewer** — opens stored invoices in an in-app popup
+- **Invoice PDF viewer** — opens stored invoices in an in-app popup, and saves them to your Downloads folder
+- **CSV export** — download whatever the current filters select as a spreadsheet
 - **Settings modal** — configure credentials, database URL, sync locale, and UI language; trigger a full or incremental sync with a live progress log
 
 <p align="center">
