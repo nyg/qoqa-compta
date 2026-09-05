@@ -32,6 +32,11 @@ function errorMessage(body: string): string | null {
   }
 }
 
+export interface DbFileInfo {
+  path: string | null;
+  exists: boolean;
+}
+
 export class ApiError extends Error {
   readonly status: number;
 
@@ -186,7 +191,7 @@ export const apiClient = {
     );
   },
 
-  resetDatabase(): Promise<void> {
+  clearDatabase(): Promise<void> {
     return request<void>(`${API_BASE}/api/settings/database`, { method: "DELETE" });
   },
 
@@ -194,8 +199,8 @@ export const apiClient = {
     return request<void>(`${API_BASE}/api/settings/database/file`, { method: "DELETE" });
   },
 
-  getDbPath(): Promise<{ path: string | null }> {
-    return request<{ path: string | null }>(`${API_BASE}/api/settings/db-path`);
+  getDbPath(): Promise<DbFileInfo> {
+    return request<DbFileInfo>(`${API_BASE}/api/settings/db-path`);
   },
 
   getCredentialStore(): Promise<CredentialStores> {

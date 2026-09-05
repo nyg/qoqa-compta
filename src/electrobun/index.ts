@@ -6,10 +6,8 @@ import {
   type ElectrobunEvent,
 } from "electrobun/main";
 import { createApp } from "../server/app";
-import { initDb } from "../server/db";
-import { runMigrations } from "../server/migrate";
 import { migrateSecretsToCredentialStore } from "../server/secrets";
-import { backfillOrderSubuniverses } from "../server/queries";
+import { prepareDatabase } from "../server/startup";
 import { installApplicationMenu } from "./menu";
 import { systemLocales } from "./locale";
 import { resolveInitialWindowState, trackWindowState } from "./window-state";
@@ -54,15 +52,7 @@ async function main() {
 
   await migrateSecretsToCredentialStore();
 
-  try {
-    await initDb();
-    await runMigrations();
-    await backfillOrderSubuniverses();
-    console.log("✓ Database ready");
-  } catch (err) {
-    console.error("✗ Database initialisation failed:", err);
-    process.exit(1);
-  }
+  await prepareDatabase();
 
   const server = Bun.serve({
     port: url === DEV_SERVER_URL ? DEV_API_PORT : 0,

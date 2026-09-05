@@ -126,7 +126,7 @@ qoqa-compta/
     │   ├── locale.ts             # Reads the OS languages and region, injected into the SPA by the preload
     │   └── window-state.ts       # Persists and restores the window frame (window-state.json)
     ├── server/                   # Hono API + sync engine (Bun)
-    │   ├── index.ts              # Web entry point — mounts routes, migrates DB, serves dist/
+    │   ├── index.ts              # Web entry point — mounts routes, prepares the DB, serves dist/
     │   ├── app.ts                # Hono app factory (shared by web and desktop entry points)
     │   ├── auth.ts               # POST /v2/login → Bearer token
     │   ├── api.ts                # QoQa REST API client (universes, purchases, PDFs)
@@ -134,7 +134,8 @@ qoqa-compta/
     │   ├── sync-job.ts           # Running-job state (abort controller, status)
     │   ├── db.ts                 # Drizzle ORM client — SQLite or PostgreSQL
     │   ├── schema.ts             # Drizzle table definitions (dual SQLite + PG)
-    │   ├── migrate.ts            # Applies the Drizzle migrations at startup; baselines pre-migrations databases
+    │   ├── migrate.ts            # Applies the Drizzle migrations; baselines pre-migrations databases
+    │   ├── startup.ts            # Shared entry-point boot: open the database, upgrade it only if a schema is already there
     │   ├── migrations.generated.ts # Generated — migration SQL inlined so it ships in the bundle
     │   ├── queries.ts            # All DB operations (upsert, select, aggregate)
     │   ├── settings.ts           # settings.json read/write (platform-aware path)
@@ -149,7 +150,7 @@ qoqa-compta/
     │       ├── dashboard.ts      # GET /api/dashboard
     │       ├── orders.ts         # GET /api/orders, GET /api/orders/:n/pdf, GET /api/orders/csv, and the desktop-only …/csv-save and …/:n/pdf-save
     │       ├── sync.ts           # POST /api/sync, DELETE /api/sync, GET /api/sync/stream (SSE)
-    │       └── settings.ts       # GET/PUT /api/settings, POST /api/settings/test-credentials, DELETE /api/settings/database, DELETE /api/settings/database/file, GET /api/settings/db-path, GET /api/settings/credential-store, POST /api/settings/reveal-db
+    │       └── settings.ts       # GET/PUT /api/settings, POST /api/settings/test-credentials, DELETE /api/settings/database, DELETE /api/settings/database/file, GET /api/settings/db-path → { path, exists }, GET /api/settings/credential-store, POST /api/settings/reveal-db
     ├── views/                    # Vite SPA (React 19)
     │   ├── main.tsx              # React entry point
     │   ├── globals.css           # Tailwind v4 + CSS variable theming
@@ -262,6 +263,7 @@ The sync runs inside the Hono server process as an async task managed by `src/se
 
 ```
 POST /api/sync { mode: "full" | "update" }
+  → db.ts            — ensureDb() → creates the SQLite file if this is the first sync
   → migrate.ts       — runMigrations() → emits db_ready with the migrations it applied
   → auth.ts          — POST auth.qoqa.ch/v2/login → JWT
   → api.ts           — fetchUniverses + sub-universes → upsert to qoqa_universes / qoqa_subuniverses
@@ -275,7 +277,7 @@ POST /api/sync { mode: "full" | "update" }
 
 In **update** mode, sync stops after 5 consecutive already-known orders to avoid full re-scans.
 
-The schema step comes first because saving a database URL no longer creates anything — see [Schema migrations](#schema-migrations). It is idempotent, so on every sync after the first it costs one journal read and emits *Database schema up to date*.
+The schema step comes first because nothing else creates a database — neither saving a URL nor starting the app, see [Schema migrations](#schema-migrations). It is idempotent, so on every sync after the first it costs one journal read and emits *Database schema up to date*.
 
 ---
 
@@ -315,7 +317,7 @@ On Windows the same two calls land in Credential Manager as **generic** credenti
 
 The protection boundary is weaker than on macOS and it is worth being blunt about it: Windows shows no consent prompt and binds no per-application ACL, so **any** process running as the same user can read the value straight back. What is gained is the same thing macOS gains — the credential is not sitting in a JSON file that a backup, a synced profile directory or a stray `type settings.json` will expose — not isolation from other local code.
 
-`GET /api/settings/credential-store` reports where each secret actually ended up — `keychain`, `credential-manager`, `keyring`, `file` (with the path) or `env` (with the variable name) — and the Settings modal prints it under the password field and under the database URL field, so the user can see whether a value is protected or sitting in a JSON file. The two are reported separately because they can genuinely differ: a store that refuses one write leaves that secret in the file while the other stays in the store.
+`GET /api/settings/credential-store` reports where each secret actually ended up — `keychain`, `credential-manager`, `keyring`, `file` (with the path), `env` (with the variable name), or `none` when there is no secret to place anywhere — and the Settings modal prints it under the password field and under the database URL field, so the user can see whether a value is protected or sitting in a JSON file. It prints nothing for `none`: `storeOf()` used to fall back to the native store when it found no secret anywhere, so an empty database URL still claimed to be in the Keychain, which reads as a value the form failed to load rather than a value that was never set. The two are reported separately because they can genuinely differ: a store that refuses one write leaves that secret in the file while the other stays in the store.
 
 The connection string reaches the SPA with only its password segment replaced by `*****` (`src/server/database-url.ts`), so the host stays readable for troubleshooting while the credential does not leave the server in the clear. `PUT /api/settings` puts the stored password back when the mask returns unedited, which also means the host can be corrected without retyping the password. A URL whose password is genuinely retyped is taken as-is, and a string that does not parse as a URL is passed through untouched in both directions.
 
@@ -343,13 +345,17 @@ The database file defaults to:
 
 The same first-launch migration described under [Settings](#settings) applies here; on macOS and Windows both files live in one directory, so a single rename carries them across together.
 
+Nothing creates that file except a sync. `initDb()` resolves the path and opens the database only when the file is already there; `ensureDb()` — called as the first step of `syncOrders()`, immediately before `runMigrations()` — is the single path that brings one into existence, and it is also what creates the data directory. So an install that is launched, looked at and quit leaves nothing on disk, and a deleted database stays deleted until the user syncs again. In between, `getDbFilePath()` still reports the path the file *will* have, which is what keeps the Settings modal showing SQLite rather than mistaking the absent handle for PostgreSQL; `sqliteFileExists()` is the separate question of whether it is there yet, and `GET /api/settings/db-path` answers both at once as `{ path, exists }`.
+
 ### PostgreSQL
 
 Set `DATABASE_URL` to a `postgresql://…` connection string in the Settings modal (or `.env` in dev).
 
 Saving a URL neither creates nor touches a schema. `PUT /api/settings` runs `probeDatabaseUrl()` — a `SELECT 1` on a throwaway client — and rejects the save with a 400 when the server does not answer, so a typo leaves the working connection in place instead of writing itself into `settings.json` and then failing. Only once the probe passes is the URL stored and the live connection swapped.
 
-Between that save and the first sync the target has no tables. `GET /api/dashboard` and `GET /api/orders` handle that by checking `isSchemaReady()` when a query fails and answering with an empty payload rather than a 500, which is what puts the SPA in its "no orders — run a sync" state. The check only runs on the failure path, so a working database never pays for it.
+Between that save and the first sync the target has no tables. `GET /api/dashboard` and `GET /api/orders` handle that by checking `hasUsableSchema()` when a query fails and answering with an empty payload rather than a 500, which is what puts the SPA in its "no orders — run a sync" state. The check only runs on the failure path, so a working database never pays for it. The same fallback covers a SQLite install whose file has not been created yet, where there is no open handle at all.
+
+`hasUsableSchema()` is `isSchemaReady()` with a `catch`: a server that cannot be reached answers no question at all, and for these two routes that is indistinguishable from having no schema — both mean there is nothing to serve. Serving the empty payload keeps the SPA usable, and therefore keeps the Settings modal reachable, which is where a wrong connection string gets corrected. `isSchemaReady()` itself stays strict, so `prepareDatabase()` still logs the real connection error at startup, and a sync still reports it as `dbPrepFailed` rather than pretending the database is merely empty.
 
 ### Schema migrations
 
@@ -368,6 +374,8 @@ bun run db:generate
 `scripts/embed-migrations.ts` then regenerates `src/server/migrations.generated.ts`, which holds every migration's SQL as a string constant. The SQL is inlined rather than read from `drizzle/` at runtime, because the desktop app is a single compiled Bun bundle — a migrations directory that only exists in the repo would be missing at first run on a user's machine. `bun test` asserts the generated file still matches `drizzle/`, so a forgotten `db:generate` fails CI instead of shipping.
 
 `src/server/migrate.ts` applies the migrations at two points: at startup in both entry points, and as the first step of every sync, where it emits a `db_ready` progress event naming the migrations it applied. Those are the only two, and neither is a settings save — creating tables in a remote database as a side effect of typing a URL into a form was the behaviour this replaced. `runMigrations()` returns what it did (`{ applied, baselined }`) so the sync log can say it, and it is idempotent, so the sync step is a journal read on every run after the first.
+
+The two are not symmetric. Startup only ever *upgrades*: `prepareDatabase()` in `src/server/startup.ts` — the shared body both entry points call — runs `initDb()`, and then migrates and backfills only when `isSchemaReady()` says a schema is already there. Creating one, locally or in a remote PostgreSQL, is always the sync's job. On SQLite with no file the check costs nothing, because there is no handle to query; on PostgreSQL it is one `to_regclass` round-trip. The whole block is best-effort and logs rather than exiting: an unreachable PostgreSQL server used to end in `process.exit(1)`, which left the desktop app unable to start and therefore unable to reach the Settings modal where the wrong URL could be corrected.
 
 It replaced the old `bootstrapSchema()` and reuses Drizzle's own journal format — a `__drizzle_migrations` table holding the SHA-256 of each applied migration and its timestamp, in the `drizzle` schema on PostgreSQL — and the same "apply everything newer than the newest recorded timestamp" rule, so the journal stays readable by Drizzle's stock migrator. On SQLite it also runs `PRAGMA journal_mode=WAL` and `PRAGMA busy_timeout=5000`, which are connection settings rather than schema and so sit outside the migration transaction.
 
@@ -389,7 +397,11 @@ Migration `0000` is the schema as it stood when migrations were introduced, whic
 
 `dropAllTables()` drops the journal along with the four tables. The next `runMigrations()` therefore sees neither a journal nor a `qoqa_orders` table, takes the fresh path, and rebuilds from `0000`.
 
-The Settings modal picks the destructive action that fits the database actually in use, because dropping tables is the only thing a remote PostgreSQL server allows and it is not what a user asking to delete a local database means. On PostgreSQL the button resets: `dropAllTables()` followed by `runMigrations()`, so the schema is back and empty. On SQLite it deletes: `deleteSqliteFile()` closes the handle, removes `qoqa.db` along with its `-wal` and `-shm` sidecars, and reopens the same path, leaving a file with no schema at all until the next sync creates one. Both leave the dashboard empty — `isSchemaReady()` is what keeps the API answering with empty results rather than errors in between.
+The Settings modal offers *Clear database* for both dialects and, on SQLite only, *Delete database file* alongside it — dropping tables is the only thing a remote PostgreSQL server allows, and it is not what a user asking to delete a local database means. Clearing is `DELETE /api/settings/database`: `dropAllTables()` followed by `runMigrations()`, so the schema is back and empty. Deleting is `DELETE /api/settings/database/file`: `deleteSqliteFile()` closes the handle and removes `qoqa.db` along with its `-wal` and `-shm` sidecars, leaving no file and no open database until the next sync creates one. Both leave the dashboard empty — `isSchemaReady()` is what keeps the API answering with empty results rather than errors in between.
+
+Every one of those endpoints, plus `POST /api/settings/reveal-db`, answers 400 when the SQLite file is not there, and the modal disables both buttons in that state rather than relying on the error. The location row is hidden then too: a path to a file that does not exist reads as though it did, and there is nothing to reveal or copy. It is likewise hidden as soon as the PostgreSQL radio is selected, which follows the radio rather than the saved path so the panel stops describing SQLite the moment the user stops asking for it.
+
+The destructive block disappears entirely while that selection is unsaved, with no message: the buttons act on the database the server currently holds open, which is not the one the form is showing, and the dangerous direction is a saved PostgreSQL with an unsaved "local" selection on screen. Saving is never blocked on the form's own state — an empty URL with PostgreSQL selected stores `null`, which is local SQLite, and the radio moves back to match.
 
 ### Table structure
 

@@ -8,7 +8,7 @@ import {
   fetchUniverses,
   fetchSpendingByGroup,
 } from "../queries";
-import { isSchemaReady } from "../migrate";
+import { hasUsableSchema } from "../migrate";
 import { readSettings } from "../settings";
 import { parseSubuniverseKey } from "../../shared/filters";
 import {
@@ -106,7 +106,7 @@ router.get("/dashboard", async (c) => {
 
     return c.json(body);
   } catch (err) {
-    if (!(await isSchemaReady())) return c.json(emptyDashboard());
+    if (!(await hasUsableSchema())) return c.json(emptyDashboard());
     console.error("[dashboard]", err);
     return c.json({ error: (err as Error).message }, 500);
   }

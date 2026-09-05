@@ -5,8 +5,8 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { closeDb, getDb, getRawBunDb, initDb } from "./db";
-import { dropAllTables, isSchemaReady, runMigrations } from "./migrate";
+import { closeDb, ensureDb, getDb, getRawBunDb, initDb } from "./db";
+import { dropAllTables, hasUsableSchema, isSchemaReady, runMigrations } from "./migrate";
 import { pgMigrations, sqliteMigrations } from "./migrations.generated";
 import { qoqaOrdersSqlite } from "./schema";
 
@@ -84,6 +84,7 @@ function tempDbPath(): string {
 
 async function openAt(filePath: string): Promise<void> {
   await initDb(`file:${filePath}`);
+  ensureDb();
 }
 
 function seedLegacyDatabase(filePath: string, orderNumbers: string[]): void {
@@ -248,6 +249,26 @@ describe("runMigrations on SQLite", () => {
     );
   });
 
+  test("reports a database whose file does not exist yet as not ready", async () => {
+    const filePath = tempDbPath();
+    await initDb(`file:${filePath}`);
+
+    expect(await isSchemaReady()).toBe(false);
+    expect(fs.existsSync(filePath)).toBe(false);
+  });
+
+  test("builds the schema on the file ensureDb creates", async () => {
+    const filePath = tempDbPath();
+    await initDb(`file:${filePath}`);
+    ensureDb();
+
+    const { applied } = await runMigrations();
+
+    expect(applied).toEqual(sqliteMigrations.map((migration) => migration.tag));
+    expect(await isSchemaReady()).toBe(true);
+    expect(fs.existsSync(filePath)).toBe(true);
+  });
+
   test("reports a schema-less database as not ready until it is migrated", async () => {
     await openAt(tempDbPath());
     expect(await isSchemaReady()).toBe(false);
@@ -373,6 +394,16 @@ describe("runMigrations on PostgreSQL", () => {
 
   afterEach(() => {
     (neonConfig as unknown as { fetchFunction: unknown }).fetchFunction = undefined;
+  });
+
+  test("reports an unreachable server as having no usable schema", async () => {
+    (neonConfig as unknown as { fetchFunction: unknown }).fetchFunction = () => {
+      throw new Error("connection refused");
+    };
+    await initDb(PG_URL);
+
+    await expect(isSchemaReady()).rejects.toThrow();
+    expect(await hasUsableSchema()).toBe(false);
   });
 
   test("creates every application table on an empty database", async () => {

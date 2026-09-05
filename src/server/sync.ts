@@ -1,4 +1,5 @@
 import { authenticate } from "./auth";
+import { ensureDb } from "./db";
 import { runMigrations } from "./migrate";
 import {
   fetchUniverses,
@@ -128,6 +129,7 @@ export async function syncOrders(
   // 1. Prepare the database schema
   try {
     console.log("[sync] Preparing database schema…");
+    ensureDb();
     const { applied, baselined } = await runMigrations();
     const migrations = applied.join(", ");
     const message =

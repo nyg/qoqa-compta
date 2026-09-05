@@ -6,11 +6,13 @@ import path from "path";
 import {
   closeDb,
   deleteSqliteFile,
+  ensureDb,
   getRawBunDb,
   getRawNeonExecutor,
   getDbFilePath,
   initDb,
   isDbSqlite,
+  sqliteFileExists,
 } from "./db";
 
 const PG_URL = "postgresql://user:pass@ep-test-123.eu-central-1.aws.neon.tech/qoqa";
@@ -81,35 +83,81 @@ describe("the raw PostgreSQL executor", () => {
   });
 });
 
-describe("deleting the local SQLite database", () => {
-  test("removes the file and its write-ahead log, then reopens an empty database", async () => {
+describe("opening a local SQLite database", () => {
+  test("leaves the file absent until ensureDb creates it", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "qoqa-db-"));
     const file = path.join(dir, "qoqa.db");
 
     await initDb(`file:${file}`);
+
+    expect(isDbSqlite()).toBe(true);
+    expect(getDbFilePath()).toBe(file);
+    expect(getRawBunDb()).toBeNull();
+    expect(sqliteFileExists()).toBe(false);
+    expect(fs.existsSync(file)).toBe(false);
+
+    ensureDb();
+
+    expect(getRawBunDb()).not.toBeNull();
+    expect(sqliteFileExists()).toBe(true);
+    expect(fs.existsSync(file)).toBe(true);
+
+    closeDb();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("reopens a file that is already there", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "qoqa-db-"));
+    const file = path.join(dir, "qoqa.db");
+
+    await initDb(`file:${file}`);
+    ensureDb();
+    getRawBunDb()!.exec("CREATE TABLE qoqa_orders (id INTEGER PRIMARY KEY)");
+    closeDb();
+
+    await initDb(`file:${file}`);
+
+    expect(getRawBunDb()).not.toBeNull();
+    expect(
+      getRawBunDb()!
+        .query("SELECT name FROM sqlite_master WHERE type = 'table'")
+        .all()
+    ).toEqual([{ name: "qoqa_orders" }]);
+
+    closeDb();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe("deleting the local SQLite database", () => {
+  test("removes the file and its write-ahead log, and reopens nothing", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "qoqa-db-"));
+    const file = path.join(dir, "qoqa.db");
+
+    await initDb(`file:${file}`);
+    ensureDb();
     const seeded = getRawBunDb()!;
     seeded.exec("PRAGMA journal_mode=WAL");
     seeded.exec("CREATE TABLE qoqa_orders (id INTEGER PRIMARY KEY)");
     seeded.exec("INSERT INTO qoqa_orders (id) VALUES (1)");
     expect(fs.existsSync(`${file}-wal`)).toBe(true);
 
-    await deleteSqliteFile();
+    deleteSqliteFile();
 
     expect(isDbSqlite()).toBe(true);
     expect(getDbFilePath()).toBe(file);
+    expect(getRawBunDb()).toBeNull();
+    expect(sqliteFileExists()).toBe(false);
+    expect(fs.existsSync(file)).toBe(false);
     expect(fs.existsSync(`${file}-wal`)).toBe(false);
-    expect(
-      getRawBunDb()!
-        .query("SELECT name FROM sqlite_master WHERE type = 'table'")
-        .all()
-    ).toEqual([]);
+    expect(fs.existsSync(`${file}-shm`)).toBe(false);
 
-    closeDb();
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
   test("refuses to touch anything when PostgreSQL is the active database", async () => {
     await initDb(PG_URL);
-    await expect(deleteSqliteFile()).rejects.toThrow("Not using local SQLite");
+    expect(() => deleteSqliteFile()).toThrow("Not using local SQLite");
+    expect(sqliteFileExists()).toBe(false);
   });
 });

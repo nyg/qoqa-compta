@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzleBunSqlite, type BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import { drizzle as drizzleNeon, type NeonHttpDatabase } from "drizzle-orm/neon-http";
-import { mkdirSync, rmSync } from "fs";
+import { existsSync, mkdirSync, rmSync } from "fs";
 import path from "path";
 import * as schema from "./schema";
 import { resolveDataDir } from "./paths";
@@ -32,6 +32,14 @@ function isSqliteUrl(url: string | null | undefined): boolean {
   return !url || url.startsWith("file:") || url.startsWith("sqlite");
 }
 
+function openSqlite(create: boolean): void {
+  const filePath = _dbFilePath;
+  if (!filePath) throw new Error("No SQLite database file is configured");
+  if (create) mkdirSync(path.dirname(filePath), { recursive: true });
+  _bunDb = new Database(filePath, { create, readwrite: true });
+  _handle = { dialect: "sqlite", db: drizzleBunSqlite(_bunDb, { schema }) };
+}
+
 export async function initDb(databaseUrl?: string): Promise<void> {
   closeDb();
 
@@ -39,14 +47,11 @@ export async function initDb(databaseUrl?: string): Promise<void> {
   _isSqlite = isSqliteUrl(rawUrl);
 
   if (_isSqlite) {
-    const filePath = rawUrl
+    _dbFilePath = rawUrl
       ? rawUrl.replace(/^(file:|sqlite:\/\/\/)/, "")
       : getDefaultSqlitePath();
-    mkdirSync(path.dirname(filePath), { recursive: true });
-    _dbFilePath = filePath;
-    _bunDb = new Database(filePath, { create: true });
     _neonExecutor = null;
-    _handle = { dialect: "sqlite", db: drizzleBunSqlite(_bunDb, { schema }) };
+    if (existsSync(_dbFilePath)) openSqlite(false);
   } else {
     const neonFn = neon(rawUrl!);
     _neonExecutor = (sql, params) => neonFn.query(sql, params);
@@ -54,6 +59,12 @@ export async function initDb(databaseUrl?: string): Promise<void> {
     _dbFilePath = null;
     _handle = { dialect: "pg", db: drizzleNeon(neonFn, { schema }) };
   }
+}
+
+export function ensureDb(): void {
+  if (_handle) return;
+  if (!_isSqlite) throw new Error("Database not initialised — call initDb() first.");
+  openSqlite(true);
 }
 
 export function closeDb(): void {
@@ -69,7 +80,7 @@ export function closeDb(): void {
 }
 
 export function getDb(): DatabaseHandle {
-  if (!_handle) throw new Error("Database not initialised — call initDb() first.");
+  if (!_handle) throw new Error("No database is open — run a sync to create one.");
   return _handle;
 }
 
@@ -81,9 +92,13 @@ export function getDbFilePath(): string | null {
   return _dbFilePath;
 }
 
+export function sqliteFileExists(): boolean {
+  return _isSqlite && _dbFilePath !== null && existsSync(_dbFilePath);
+}
+
 const SQLITE_FILE_SUFFIXES = ["", "-wal", "-shm"];
 
-export async function deleteSqliteFile(): Promise<string> {
+export function deleteSqliteFile(): string {
   const filePath = _dbFilePath;
   if (!_isSqlite || !filePath) {
     throw new Error("Not using local SQLite");
@@ -93,7 +108,6 @@ export async function deleteSqliteFile(): Promise<string> {
   for (const suffix of SQLITE_FILE_SUFFIXES) {
     rmSync(`${filePath}${suffix}`, { force: true });
   }
-  await initDb(`file:${filePath}`);
 
   return filePath;
 }
