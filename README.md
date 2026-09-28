@@ -29,13 +29,25 @@ Desktop apps are available for both macOS (Apple Silicon) and Windows, get them 
 
 ### macOS
 
-**Manual** — download [`qoqa-compta-…-macos-arm64.dmg`](https://github.com/nyg/qoqa-compta/releases/latest), open it and drag **QoQa Compta.app** into your **Applications** folder. The app is **not notarized**, so macOS quarantines it after download and blocks the first launch (you may see *"Apple could not verify…"* or *"QoQa Compta.app is damaged"*). To let it through, open **System Settings → Privacy & Security**, scroll to the bottom and click **Open Anyway** next to *"QoQa Compta.app" was blocked to protect your Mac*. Alternatively, remove the quarantine flag yourself using the terminal:
+**Manual**
+
+Download [`qoqa-compta-…-macos-arm64.dmg`](https://github.com/nyg/qoqa-compta/releases/latest), open it and drag **QoQa Compta.app** into your **Applications** folder. The app is **not notarized**, so macOS quarantines it after download and blocks the first launch (you may see *"Apple could not verify…"* or *"QoQa Compta.app is damaged"*). To let it through, open **System Settings → Privacy & Security**, scroll to the bottom and click **Open Anyway** next to *"QoQa Compta.app" was blocked to protect your Mac*. Alternatively, remove the quarantine flag yourself using the terminal:
 
 ```sh
 xattr -dr com.apple.quarantine "/Applications/QoQa Compta.app"
 ```
 
-**[Homebrew](https://brew.sh)** — handles the above automatically:
+**[Homebrew](https://brew.sh)**
+
+Homebrew is a package manager for macOS. It handles all of the above automatically.
+
+To install Homebrew, open Terminal and run:
+
+```sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+When it finishes, run the commands it prints under *Next steps* to add `brew` to your `PATH`. Then install the app with:
 
 ```sh
 brew install --cask nyg/tap/qoqa-compta
@@ -43,9 +55,13 @@ brew install --cask nyg/tap/qoqa-compta
 
 ### Windows
 
-**Manual** — download [`qoqa-compta-…-windows-x64-setup.exe`](https://github.com/nyg/qoqa-compta/releases/latest) and run it. It installs to `%LOCALAPPDATA%` (`C:\Users\<you>\AppData\Local` — no admin rights needed). The app is not code-signed, so the SmartScreen will show *"Windows protected your PC"* on first run — click **More info → Run anyway** (no admin rights needed, but company policy may block it, in which case Scoop is recommended).
+**Manual**
 
-**[Scoop](https://scoop.sh)** — Scoop is a package manager for Windows, similar to Homebrew for macOS and Linux. Use this install method if your company policy restricts manual installs.
+Download [`qoqa-compta-…-windows-x64-setup.exe`](https://github.com/nyg/qoqa-compta/releases/latest) and run it. It installs to `%LOCALAPPDATA%`, i.e. `C:\Users\<you>\AppData\Local`. The app is not code-signed, so SmartScreen will show *"Windows protected your PC"* on first run — click **More info → Run anyway**. No admin rights are needed, but a company laptop's policy may still block the installer. If it does, use Scoop instead.
+
+**[Scoop](https://scoop.sh)**
+
+Scoop is a package manager for Windows, similar to Homebrew for macOS. Use this install method if your company policy restricts manual installs.
 
 To install Scoop, open PowerShell and run:
 
