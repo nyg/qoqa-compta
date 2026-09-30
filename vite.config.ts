@@ -1,11 +1,11 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
-import path from "path"
-import fs from "fs"
+import path from "node:path"
+import fs from "node:fs"
 
 const { version } = JSON.parse(
-  fs.readFileSync(path.resolve(__dirname, "package.json"), "utf-8")
+  fs.readFileSync(path.resolve(import.meta.dirname, "package.json"), "utf-8")
 ) as { version: string }
 
 export default defineConfig({
@@ -15,7 +15,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src/views"),
+      "@": path.resolve(import.meta.dirname, "src/views"),
     },
   },
   server: {
