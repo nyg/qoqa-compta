@@ -1,6 +1,18 @@
 # Changelog
 
 
+## [1.0.2](https://github.com/nyg/qoqa-compta/compare/v1.0.1..v1.0.2) - 2026-09-30
+
+### 📚 Documentation
+
+- [`4dc73ff`](https://github.com/nyg/qoqa-compta/commit/4dc73ffaed49dd0dd31e3d251467299656a37e6c) Explain company-blocked SmartScreen and recommend Scoop on Windows ([#171](https://github.com/nyg/qoqa-compta/issues/171))
+
+### ⚙️ Miscellaneous
+
+- [`e6b222c`](https://github.com/nyg/qoqa-compta/commit/e6b222c04ea7bc5fb4723a7a7f693311c1edaa03) *(build)* Resolve vite.config.ts paths with import.meta.dirname ([#173](https://github.com/nyg/qoqa-compta/issues/173))
+- [`8ebb8ea`](https://github.com/nyg/qoqa-compta/commit/8ebb8ead1373196c4a6cea367395208d8eeb5e46) *(desktop)* Migrate to Electrobun 2.0.2 ([#172](https://github.com/nyg/qoqa-compta/issues/172))
+- [`6477471`](https://github.com/nyg/qoqa-compta/commit/64774714656c940550958366e5aba79aa89dbb2c) *(build)* Minify the packaged main process bundle ([#170](https://github.com/nyg/qoqa-compta/issues/170))
+
 ## [1.0.1](https://github.com/nyg/qoqa-compta/compare/v1.0.0..v1.0.1) - 2026-09-05
 
 ### 📚 Documentation
