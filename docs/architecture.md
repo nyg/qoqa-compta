@@ -92,7 +92,6 @@ qoqa-compta/
 ├── LICENSE
 ├── README.md
 ├── AGENTS.md                     # Instructions for coding agents
-├── CLAUDE.md                     # Points Claude Code at AGENTS.md
 ├── index.html                    # Vite SPA entry
 ├── vite.config.ts
 ├── tsconfig.json                 # Solution file — references the six projects below
