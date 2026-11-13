@@ -10,7 +10,11 @@ import { migrateSecretsToCredentialStore } from "../server/secrets";
 import { prepareDatabase } from "../server/startup";
 import { installApplicationMenu } from "./menu";
 import { systemLocales } from "./locale";
-import { resolveInitialWindowState, trackWindowState } from "./window-state";
+import {
+  resolveInitialWindowState,
+  restoreMaximized,
+  trackWindowState,
+} from "./window-state";
 
 type NewWindowOpenEvent = ElectrobunEvent<
   { detail?: string | { url?: string } },
@@ -98,10 +102,10 @@ async function main() {
 
   trackWindowState(win, initialWindowState);
 
-  const restoreMaximized = () => {
+  const restoreMaximizedState = () => {
     try {
-      if (initialWindowState.maximized && !win.isMaximized()) {
-        win.maximize();
+      if (initialWindowState.maximized) {
+        restoreMaximized(win);
       }
     } catch (err) {
       console.error("✗ Could not restore the maximized window state:", err);
@@ -110,9 +114,9 @@ async function main() {
 
   if (!maximizeBeforeShow) {
     win.show();
-    restoreMaximized();
+    restoreMaximizedState();
   } else {
-    restoreMaximized();
+    restoreMaximizedState();
     win.show();
   }
 
