@@ -124,6 +124,7 @@ qoqa-compta/
     │   ├── index.ts              # Desktop entry — starts Hono, opens BrowserWindow, installs the menu
     │   ├── menu.ts               # Application menu — macOS only
     │   ├── locale.ts             # Reads the OS languages and region, injected into the SPA by the preload
+    │   ├── window-geometry.ts    # Pure frame helpers — work-area match, frame shrunk before a zoom
     │   └── window-state.ts       # Persists and restores the window frame (window-state.json)
     ├── server/                   # Hono API + sync engine (Bun)
     │   ├── index.ts              # Web entry point — mounts routes, prepares the DB, serves dist/
@@ -237,6 +238,8 @@ Both entry points bind the API to loopback — the desktop one to `127.0.0.1` al
 `src/electrobun/window-state.ts` writes `window-state.json` next to `settings.json`, in the config directory `resolveConfigDir()` returns. It holds a version, the frame (`x`, `y`, `width`, `height`), whether the window was maximized, and a fingerprint of the displays that were attached when it was captured — nothing else, and nothing about the content of the app.
 
 The window is created hidden at its saved frame and maximized on restore. On Windows the maximize happens after `show()`, so it reaches a window whose WebView2 controller already exists; on macOS it happens before, which is what keeps the maximize animation off screen.
+
+On macOS `isMaximized()` is AppKit's `isZoomed`, which is also true for a frame within about ten points of the zoomed one, and `maximize()` does nothing to a window AppKit already takes for zoomed. A window sized by hand to nearly fill the screen would therefore be stored as maximized without its frame, and left at the old frame on the next start. So a zoomed window is stored as maximized only when its frame is a display's work area (`fillsWorkArea` in `src/electrobun/window-geometry.ts`), and as the frame it has otherwise, and `restoreMaximized` shrinks a window that already reads as zoomed before it maximizes it. Windows and Linux take `isMaximized()` as it is.
 
 The saved frame is not trusted blindly. Sizes are clamped to the union of the current displays and to an 800×600 minimum; a frame that would land off every screen, or one captured against a different display fingerprint, is discarded in favour of a centred default, so unplugging a monitor never hides the window. Writes are debounced 400 ms, skipped for the first 600 ms after launch while the frame settles, skipped while minimized or fullscreen, and written to a `.tmp` file that is renamed over the target. Every failure path is swallowed: losing the window layout must never take the app down.
 
