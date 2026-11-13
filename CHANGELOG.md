@@ -1,6 +1,30 @@
 # Changelog
 
 
+## [1.0.3](https://github.com/nyg/qoqa-compta/compare/v1.0.2..v1.0.3) - 2026-11-13
+
+### 🐛 Bug Fixes
+
+- [`c5180cb`](https://github.com/nyg/qoqa-compta/commit/c5180cb42a6c7f1d014f71fb9b6a50511ef49ebc) *(desktop)* Remember a window that nearly fills the screen on macOS ([#186](https://github.com/nyg/qoqa-compta/issues/186))
+- [`d02aaed`](https://github.com/nyg/qoqa-compta/commit/d02aaedaa3fe6a3d510ba2d0ca4496c87ec57246) *(deps)* Update dependency hono to v4.13.16 [security] ([#185](https://github.com/nyg/qoqa-compta/issues/185))
+- [`f24fa67`](https://github.com/nyg/qoqa-compta/commit/f24fa673a7328671f0a973c645bd3b3c79a40bd9) *(deps)* Update dependency react-i18next to v18 ([#184](https://github.com/nyg/qoqa-compta/issues/184))
+- [`7c0d5aa`](https://github.com/nyg/qoqa-compta/commit/7c0d5aa1275582db6b08f7e6f9c97ac22e26dad4) *(deps)* Update dependency i18next to v27 ([#183](https://github.com/nyg/qoqa-compta/issues/183))
+- [`8476aa4`](https://github.com/nyg/qoqa-compta/commit/8476aa406f74a794a6f26312531ee1a26b3ef312) *(deps)* Update all stable non-major dependencies ([#178](https://github.com/nyg/qoqa-compta/issues/178))
+- [`63a18e6`](https://github.com/nyg/qoqa-compta/commit/63a18e619b652b4db8ee93084176809659493370) *(deps)* Update dependency hono to v4.13.11 [security] ([#177](https://github.com/nyg/qoqa-compta/issues/177))
+- [`e265f31`](https://github.com/nyg/qoqa-compta/commit/e265f31b59d40698eaef83d845f7ac689831b61c) *(deps)* Update dependency hono to v4.13.7 [security] ([#174](https://github.com/nyg/qoqa-compta/issues/174))
+
+### 📚 Documentation
+
+- [`cfa94d7`](https://github.com/nyg/qoqa-compta/commit/cfa94d7417f843634cfd60793c697d320b9c39fc) Remove CLAUDE.md now that Claude Code reads AGENTS.md ([#182](https://github.com/nyg/qoqa-compta/issues/182))
+
+### ⚙️ Miscellaneous
+
+- [`2a46b12`](https://github.com/nyg/qoqa-compta/commit/2a46b12d66b7903ba76182757ac8e8034a50ecc7) *(deps)* Lock file maintenance ([#181](https://github.com/nyg/qoqa-compta/issues/181))
+- [`a3a5a60`](https://github.com/nyg/qoqa-compta/commit/a3a5a60543b4170501976ae58f818ebde957fd49) *(deps)* Lock file maintenance ([#180](https://github.com/nyg/qoqa-compta/issues/180))
+- [`f1aac86`](https://github.com/nyg/qoqa-compta/commit/f1aac860f0673ae25cdea2585c1eb234d8eb6656) *(deps)* Lock file maintenance ([#179](https://github.com/nyg/qoqa-compta/issues/179))
+- [`0029f58`](https://github.com/nyg/qoqa-compta/commit/0029f580184ee151862bb842d7939ae42a43203a) *(deps)* Update dependency vite to v8.2.4 [security] ([#176](https://github.com/nyg/qoqa-compta/issues/176))
+- [`c8e707e`](https://github.com/nyg/qoqa-compta/commit/c8e707e2f3c73d3ea331b104efa44d9c30d2cc5a) *(deps)* Lock file maintenance ([#175](https://github.com/nyg/qoqa-compta/issues/175))
+
 ## [1.0.2](https://github.com/nyg/qoqa-compta/compare/v1.0.1..v1.0.2) - 2026-09-30
 
 ### 📚 Documentation
